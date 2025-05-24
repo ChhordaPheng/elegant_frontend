@@ -1,0 +1,46 @@
+/* assets/css/main.css */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html,
+  body {
+    font-family: "Roboto", "Battambang", "Arial", sans-serif;
+  }
+}
+
+* {
+  padding: 0;
+  margin: 0;
+  box-sizing: border-box;
+  --tw-ring-shadow: none !important;
+}
+
+/* body {
+  font-family: "Khmer_OS_Battambang", "Roboto", sans-serif !important;
+} */
+
+.slide-box .v-slide-group__prev,
+.slide-box .v-slide-group__next {
+  display: none;
+}
+
+.submit-btn {
+  border: 1px solid #1890ff !important;
+  background-color: #e7f0ff !important;
+  transition: background-color 0.3s ease;
+  font-size: 16px;
+  color: #1890ff !important;
+  font-weight: bold;
+}
+label {
+  display: inline-block;
+  font-size: 18px;
+  font-weight: 500;
+  color: #4a5568; 
+}
+label.required::after {
+  content: " *";
+  color: #e53e3e; 
+}

@@ -1,0 +1,15 @@
+{
+    "login_in_id": "登录 ID",
+    "sub": "提交",
+    "currency": "货币",
+    "amount": "金额",
+    "status": "状态",
+    "user_id": "用户 ID",
+    "gross_commission": "总佣金",
+    "turn_over": "营业额",
+    "lose": "输",
+    "total": "总计",
+    "pending": "待处理",
+    "success": "成功",
+    "holding": "持有"
+}

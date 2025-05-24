@@ -1,0 +1,15 @@
+{
+    "login_in_id": "Log in ID",
+    "sub": "Submit",
+    "currency": "Currency",
+    "amount": "Amount",
+    "status": "Status",
+    "user_id": "User ID",
+    "gross_commission": "Gross Commission",
+    "turn_over": "Turn Over",
+    "lose": "Lose",
+    "total": "Total",
+    "pending": "Pending",
+    "success": "Success",
+    "holding": "Holding"
+}
