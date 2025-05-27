@@ -23,6 +23,8 @@ watch(group, () => {
 <template>
   <v-card class="w-100">
     <v-layout class="w-100">
+      <!-- :color="isSelected ? 'white' : 'black'" -->
+
       <v-app-bar height="64">
         <v-app-bar-nav-icon variant="text" @click.stop="drawer = !drawer" />
         <v-row>
@@ -37,7 +39,7 @@ watch(group, () => {
               >
                 <v-list-item-title>
                   <p
-                  class="text-[15px]"
+                    class="text-[15px]"
                     :class="{
                       '!text-black font-bold': group === item.value,
                       'text-gray-400 font-medium': group !== item.value,
