@@ -52,7 +52,7 @@ watch(group, () => {
             </v-list>
           </v-col>
           <v-col cols="3" class="d-flex justify-center align-center">
-            <img class="size-20" src="logo/logo.png" />
+            <img class="size-16" src="logo/logo.png" />
           </v-col>
           <v-col class="text-center d-flex justify-evenly align-center">
             <v-btn size="small" icon="line-md:search" variant="elevated" />
