@@ -1,7 +1,7 @@
 export default defineNuxtConfig({
   compatibilityDate: '2024-04-03',
   devtools: { enabled: false },
-  ssr: false,
+  ssr: true,
   // Nuxt Modules
   modules: [
     '@nuxtjs/tailwindcss', // Tailwind CSS module
@@ -33,8 +33,8 @@ export default defineNuxtConfig({
     fontsDir: 'assets/fonts/google',
     base64: true,
     families: {
-      Roboto: true,
       Battambang: [400, 500, 600, 700, 800, 900],
+      'Noticia+Text': true,
     },
     download: true,
     display: 'swap',
@@ -55,11 +55,11 @@ export default defineNuxtConfig({
         extend: {
           fontFamily: {
             khmer: ['Battambang', 'Roboto', 'Khmer OS', 'sans-serif'],
-            body: ['Roboto', 'Battambang', 'Arial', 'sans-serif'],
+            body: ['Noticia Text', 'Roboto', 'Battambang', 'Arial', 'sans-serif'],
           },
         },
       },
-      
+
     },
   },
   // Runtime Configuration
