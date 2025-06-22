@@ -3,20 +3,20 @@ import { useI18n } from "vue-i18n";
 
 const { locale } = useI18n();
 onMounted(async () => {
-  const storedLanguage = localStorage.getItem('lang');
-  if(storedLanguage){
+  const storedLanguage = localStorage.getItem("lang");
+  if (storedLanguage) {
     locale.value = storedLanguage;
   }
 });
 </script>
 <template>
-  <div class="w-full md:w-full lg:w-[430px] mx-auto h-full">
+  <div class="w-full h-screen">
     <v-app>
       <v-main>
         <NuxtPage />
       </v-main>
     </v-app>
   </div>
-</template>
+</template> 
 
 <style scoped></style>
