@@ -16,6 +16,8 @@ const priceRange = ref([50, 120]);
 const selected = ref("Blue");
 const selectedSizes = ref<number[]>([]);
 const selectedBrands = ref<number[]>([]);
+const manStore = useManIteStore();
+const manItems = storeToRefs(manStore);
 
 const colors = [
   { name: "Blue", hex: "#2D5BFF" },
@@ -196,6 +198,10 @@ const toggleBrand = (brandId: number) => {
     selectedBrands.value.push(brandId);
   }
 };
+
+onMounted(async () => {
+  await manStore.fetchManItems();
+});
 </script>
 <template>
   <div>
@@ -510,98 +516,102 @@ const toggleBrand = (brandId: number) => {
                   </v-row>
                   <div class="d-flex flex-wrap">
                     <v-card
-                      v-for="n in 5"
-                      :key="n"
+                      v-for="manitem in manItems.items.value"
+                      :key="manitem.id"
                       class="ma-4 w-[280px]"
                       variant="text"
                     >
-                      <!-- Make this the group -->
-                      <div class="relative w-fit group">
-                        <!-- Image -->
-                        <img
-                          src="/images/da.jpg"
-                          alt=""
-                          class="block rounded"
-                        />
-                        <!-- Buttons Container -->
-                        <div class="absolute top-3 right-2 text-center">
-                          <p class="bg-red px-4 rounded text-[13px] mb-2">
-                            New
-                          </p>
-                          <p
-                            class="bg-orange text-white rounded text-[13px] mb-2"
-                          >
-                            Hot
-                          </p>
-                          <p class="bg-red text-white rounded text-[13px]">
-                            -33% OFF
-                          </p>
-                        </div>
-
-                        <!-- Buttons Container -->
-                        <div
-                          class="absolute inset-0 flex items-end justify-between p-4 w-[65%] mx-auto"
-                        >
-                          <!-- Favorite Button -->
-                          <v-tooltip text="Add to Favorites" location="top">
-                            <template v-slot:activator="{ props }">
-                              <v-btn
-                                v-bind="props"
-                                icon="mynaui:heart"
-                                size="small"
-                              ></v-btn>
-                            </template>
-                          </v-tooltip>
-
-                          <!-- Cart Button -->
-                          <v-tooltip text="Add to Cart" location="top">
-                            <template v-slot:activator="{ props }">
-                              <v-btn
-                                v-bind="props"
-                                icon="pepicons-pencil:cart"
-                                size="small"
-                              ></v-btn>
-                            </template>
-                          </v-tooltip>
-
-                          <!-- Quick View Button -->
-                          <v-tooltip text="Quick View" location="top">
-                            <template v-slot:activator="{ props }">
-                              <v-btn
-                                v-bind="props"
-                                icon="carbon:image-copy"
-                                size="small"
-                              ></v-btn>
-                            </template>
-                          </v-tooltip>
-                        </div>
-                      </div>
-
-                      <!-- Card Content -->
-                      <div class="text-center my-5">
-                        <div class="d-flex justify-center">
-                          <Icon icon="noto:star" width="20" height="20" />
-                          <div v-for="i in 4" :key="i">
-                            <Icon
-                              icon="uim:star"
-                              class="!text-gray-400"
-                              width="20"
-                              height="20"
-                            />
+                      <template
+                        v-for="variant in manitem.variants"
+                        :key="variant.id"
+                      >
+                        <!-- Make this the group -->
+                        <div class="relative w-fit group">
+                          <!-- Image -->
+                          <img :src="variant.image" :alt="manitem.name" />
+                          <!-- Buttons Container -->
+                          <div class="absolute top-3 right-2 text-center">
+                            <p class="bg-red px-4 rounded text-[13px] mb-2">
+                              New
+                            </p>
+                            <p
+                              class="bg-orange text-white rounded text-[13px] mb-2"
+                            >
+                              Hot
+                            </p>
+                            <p class="bg-red text-white rounded text-[13px]">
+                              -{{ variant.discount?.value }}% OFF
+                            </p>
                           </div>
-                          <p class="text-gray-500 text-[14px] pl-1 mb-3">
-                            ( 1 Review )
+
+                          <!-- Action Buttons -->
+                          <div
+                            class="absolute inset-0 flex items-end justify-between p-4 w-[65%] mx-auto"
+                          >
+                            <v-tooltip text="Add to Favorites" location="top">
+                              <template v-slot:activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon="mynaui:heart"
+                                  size="small"
+                                ></v-btn>
+                              </template>
+                            </v-tooltip>
+
+                            <v-tooltip text="Add to Cart" location="top">
+                              <template v-slot:activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon="pepicons-pencil:cart"
+                                  size="small"
+                                ></v-btn>
+                              </template>
+                            </v-tooltip>
+
+                            <v-tooltip text="Quick View" location="top">
+                              <template v-slot:activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon="carbon:image-copy"
+                                  size="small"
+                                ></v-btn>
+                              </template>
+                            </v-tooltip>
+                          </div>
+                        </div>
+
+                        <!-- Card Content -->
+                        <div class="text-center my-5">
+                          <div class="d-flex justify-center">
+                            <Icon icon="noto:star" width="20" height="20" />
+                            <div v-for="i in 4" :key="i">
+                              <Icon
+                                icon="uim:star"
+                                class="!text-gray-400"
+                                width="20"
+                                height="20"
+                              />
+                            </div>
+                            <p class="text-gray-500 text-[14px] pl-1 mb-3">
+                              ( 1 Review )
+                            </p>
+                          </div>
+                          <p class="font-bold text-[20px]">
+                            {{ manitem.name }}
                           </p>
+                          <p class="text-blue-700 font-bold uppercase my-1">
+                            {{ manitem.brand?.name }}
+                          </p>
+                          <div class="flex justify-center items-center mt-2">
+                            <p class="text-red mr-2">
+                              ${{ variant.final_price.toFixed(2) }} USD
+                            </p>
+                            <p class="line-through text-gray-500">
+                              ${{ parseFloat(variant.price).toFixed(2) }} USD
+                            </p>
+                          </div>
                         </div>
-                        <p class="font-bold text-[20px]">White Shirt</p>
-                        <p class="text-blue-700 font-bold uppercase my-1">
-                          Zara
-                        </p>
-                        <div class="flex justify-center items-center mt-2">
-                          <p class="text-red mr-2">$60.00 USD</p>
-                          <p class="line-through text-gray-500">$70.00 USD</p>
-                        </div>
-                      </div>
+                      </template>
                     </v-card>
                   </div>
                 </v-container>

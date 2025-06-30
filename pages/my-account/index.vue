@@ -1,5 +1,7 @@
 <script setup lang="ts">
 const tab = ref<"account" | "password">("account");
+const userStore = useProfileStore();
+const { userProfile } = storeToRefs(userStore);
 const tabs = [
   { label: "Edit Info", value: "account" },
   { label: "Change Password", value: "password" },
@@ -19,10 +21,6 @@ const password = ref({
 });
 
 const showCard = ref(false);
-onMounted(() => {
-  // trigger card appear animation
-  showCard.value = true;
-});
 
 // Avatar image URL, default
 const avatarUrl = ref("images/dada.jpg");
@@ -92,6 +90,18 @@ function changePassword() {
   }
   console.log("Changing password:", password.value);
 }
+
+onMounted(async () => {
+  await userStore.fetchUserProfile();
+  if (userProfile.value) {
+    account.value.name = userProfile.value.full_name;
+    account.value.email = userProfile.value.email;
+    // You may not have gender/dob, so set with fallback or extend API to support it
+    account.value.gender = "male"; // Default or from extra field
+    account.value.dob = "1995-06-18"; // Default or from extra field
+  }
+  showCard.value = true;
+});
 </script>
 
 <template>
@@ -119,8 +129,10 @@ function changePassword() {
           </v-hover>
 
           <div class="ml-4">
-            <div class="text-xl font-semibold">{{ account.name }}</div>
-            <div class="text-sm text-grey">{{ account.email }}</div>
+            <div class="text-xl font-semibold">
+              {{ userProfile?.full_name }}
+            </div>
+            <div class="text-sm text-grey">{{ userProfile?.email }}</div>
             <div class="text-sm text-grey capitalize">
               {{ account.gender }} • {{ formatDate(account.dob) }}
             </div>

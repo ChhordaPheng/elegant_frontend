@@ -12,10 +12,10 @@ export const useLoginStore = defineStore('useLoginStore', {
       this.isSpinning = true;
 
       try {
-        const response = await useFetchDataApi<LoginResponse>('/auth/login', {
+        const response = await useFetchDataApi<LoginResponse>('/login', {
           method: 'POST',
           body: {
-            user_name: this.user.user_name,
+            phone_number: this.user.phone_number,
             password: this.user.password,
           }
         });
@@ -24,7 +24,7 @@ export const useLoginStore = defineStore('useLoginStore', {
 
         if (data && data.value) {
           const token = useCookie('accessToken');
-          token.value = data.value.data.token;
+          token.value = data.value.token;
           this.authenticated = true;
           navigateTo({ name: 'index' });
           return data.value;

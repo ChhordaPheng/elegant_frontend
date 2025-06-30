@@ -1,6 +1,7 @@
 <script setup>
 import { ref, watch, onMounted, onBeforeUnmount, computed } from "vue";
 import { useDisplay } from "vuetify";
+import Footer from "~/components/Footer.vue";
 
 const drawer = ref(false);
 const group = ref(null);
