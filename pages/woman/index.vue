@@ -2,7 +2,10 @@
 definePageMeta({
   layout: "main-layout",
 });
+
 import { useDisplay } from "vuetify";
+
+// Reactive variables
 const activeIndex = ref<number | null>(null);
 const drawer = ref<boolean>(false);
 const { mdAndDown, lgAndUp } = useDisplay();
@@ -12,11 +15,18 @@ const page = ref<number>(1);
 // Consider anything md and down as mobile
 const isMobile = computed(() => mdAndDown.value);
 const isLarge = computed(() => lgAndUp.value);
+
+// Filter states
 const priceRange = ref([50, 120]);
 const selected = ref("Blue");
 const selectedSizes = ref<number[]>([]);
 const selectedBrands = ref<number[]>([]);
 
+// Store
+const womanStore = useWomanIteStore();
+const womanItems = storeToRefs(womanStore);
+
+// Static data
 const colors = [
   { name: "Blue", hex: "#2D5BFF" },
   { name: "Grey", hex: "#B0B0B0" },
@@ -27,59 +37,22 @@ const colors = [
   { name: "Brown", hex: "#963D36" },
   { name: "White", hex: "#FFFFFF" },
 ];
+
 const sizes = [
-  {
-    id: 1,
-    name: "xs",
-  },
-  {
-    id: 2,
-    name: "s",
-  },
-  {
-    id: 3,
-    name: "m",
-  },
-  {
-    id: 4,
-    name: "l",
-  },
-  {
-    id: 5,
-    name: "xl",
-  },
-  {
-    id: 6,
-    name: "2xl",
-  },
+  { id: 1, name: "xs" },
+  { id: 2, name: "s" },
+  { id: 3, name: "m" },
+  { id: 4, name: "l" },
+  { id: 5, name: "xl" },
+  { id: 6, name: "2xl" },
 ];
 
 const brands = [
-  {
-    id: 1,
-    name: "Inamore",
-    image: "/brands/inamore.png",
-  },
-  {
-    id: 2,
-    name: "Mable",
-    image: "/brands/mable.png",
-  },
-  {
-    id: 3,
-    name: "Ruelala",
-    image: "/brands/ruelala.png",
-  },
-  {
-    id: 4,
-    name: "SMKFLWR",
-    image: "/brands/SMKFLWR.webp",
-  },
-  {
-    id: 5,
-    name: "Zara",
-    image: "/brands/zara.webp",
-  },
+  { id: 1, name: "Inamore", image: "/brands/inamore.png" },
+  { id: 2, name: "Mable", image: "/brands/mable.png" },
+  { id: 3, name: "Ruelala", image: "/brands/ruelala.png" },
+  { id: 4, name: "SMKFLWR", image: "/brands/SMKFLWR.webp" },
+  { id: 5, name: "Zara", image: "/brands/zara.webp" },
 ];
 
 // Computed properties for active filters
@@ -196,10 +169,16 @@ const toggleBrand = (brandId: number) => {
     selectedBrands.value.push(brandId);
   }
 };
+
+// Lifecycle
+onMounted(async () => {
+  await womanStore.fetchWomanItems();
+});
 </script>
+
 <template>
   <div>
-    <!-- banner  -->
+    <!-- Banner -->
     <div
       class="banner w-100 d-flex flex-col justify-center items-center h-[400px]"
     >
@@ -224,7 +203,7 @@ const toggleBrand = (brandId: number) => {
                 <img
                   src="/images/daa.jpg"
                   class="w-40 rounded-full border-white border-2"
-                  alt="da"
+                  alt="category"
                 />
               </div>
               <p class="text-white mt-3">Shoes</p>
@@ -234,9 +213,9 @@ const toggleBrand = (brandId: number) => {
       </div>
     </div>
 
-    <!-- filter  -->
+    <!-- Main Content -->
     <v-app>
-      <!-- App Bar -->
+      <!-- App Bar for mobile -->
       <v-app-bar app flat>
         <v-app-bar-nav-icon v-if="isMobile" @click="drawer = true" />
         <div v-if="isMobile">Responsive Layout</div>
@@ -245,10 +224,10 @@ const toggleBrand = (brandId: number) => {
       <!-- Large screen layout -->
       <template v-if="isLarge">
         <v-container fluid class="pa-0 mt-[60px]">
-          <v-row no-gutters class="">
+          <v-row no-gutters>
             <!-- Sidebar -->
             <v-col cols="4" class="pa-3 pl-12" style="min-height: 100vh">
-              <!-- price  -->
+              <!-- Price Filter -->
               <div class="flex justify-between items-center border-b-2">
                 <p class="uppercase font-bold text-[25px]">price</p>
                 <v-btn
@@ -269,15 +248,15 @@ const toggleBrand = (brandId: number) => {
                   track-color="grey"
                   thumb-color="red"
                 ></v-range-slider>
-
                 <div class="mt-2 font-weight-medium">
                   <span class="text-gray-600 mr-2">Range :</span>
-                  <span class="text-black font-weight-bold"
-                    >{{ priceRange[0] }}$ - {{ priceRange[1] }}$</span
-                  >
+                  <span class="text-black font-weight-bold">
+                    ${{ priceRange[0] }} - ${{ priceRange[1] }}
+                  </span>
                 </div>
               </div>
-              <!-- color  -->
+
+              <!-- Color Filter -->
               <div class="flex justify-between items-center border-b-2 my-5">
                 <p class="uppercase font-bold text-[25px]">colors</p>
                 <v-btn
@@ -310,7 +289,8 @@ const toggleBrand = (brandId: number) => {
                   </v-chip-group>
                 </v-responsive>
               </v-sheet>
-              <!-- size  -->
+
+              <!-- Size Filter -->
               <div class="flex justify-between items-center border-b-2 my-5">
                 <p class="uppercase font-bold text-[25px]">sizes</p>
                 <v-btn
@@ -339,7 +319,8 @@ const toggleBrand = (brandId: number) => {
                   </v-col>
                 </v-row>
               </v-container>
-              <!-- brand  -->
+
+              <!-- Brand Filter -->
               <div class="flex justify-between items-center border-b-2 my-5">
                 <p class="uppercase font-bold text-[25px]">brands</p>
                 <v-btn
@@ -369,13 +350,14 @@ const toggleBrand = (brandId: number) => {
                       @click="toggleBrand(brand.id)"
                     >
                       <div class="flex h-16 w-16 justify-center items-center">
-                        <img :src="brand.image" :alt="brand.image" />
+                        <img :src="brand.image" :alt="brand.name" />
                       </div>
                     </v-card>
                   </v-col>
                 </v-row>
               </v-container>
-              <!-- trending  -->
+
+              <!-- Trending Products -->
               <div class="border-b-2 my-5">
                 <p class="uppercase font-bold text-[25px]">TRENDING PRODUCTS</p>
               </div>
@@ -391,13 +373,13 @@ const toggleBrand = (brandId: number) => {
                         src="/images/daa.jpg"
                         class="rounded"
                         width="150px"
-                        alt=""
+                        alt="trending product"
                       />
                     </div>
                     <div class="ml-5 mt-2">
                       <div class="d-flex items-end">
                         <Icon icon="noto:star" width="25" height="25" />
-                        <div class="" v-for="i in 4" :key="i">
+                        <div v-for="i in 4" :key="i">
                           <Icon
                             icon="uim:star"
                             class="!text-gray-400"
@@ -430,7 +412,12 @@ const toggleBrand = (brandId: number) => {
                   <v-row>
                     <v-col>
                       <div class="pl-3">
-                        <p>Clothing ( 130 items )</p>
+                        <p>
+                          Clothing ({{
+                            womanItems.items.value?.length || 0
+                          }}
+                          items)
+                        </p>
                         <div class="my-3 flex items-center flex-wrap">
                           <p class="text-[14px] mr-2 mb-2">SORT BY :</p>
                           <div
@@ -490,7 +477,6 @@ const toggleBrand = (brandId: number) => {
                             all
                           </p>
                         </div>
-                        <!-- filter  -->
                         <div>
                           <v-select
                             label="Select"
@@ -500,7 +486,7 @@ const toggleBrand = (brandId: number) => {
                               'Short by latest',
                               'Short by : hight to low',
                               'Short by : low to hight',
-                              'Short by season ',
+                              'Short by season',
                             ]"
                             variant="underlined"
                           ></v-select>
@@ -508,104 +494,135 @@ const toggleBrand = (brandId: number) => {
                       </div>
                     </v-col>
                   </v-row>
+
+                  <!-- Products Grid -->
                   <div class="d-flex flex-wrap">
                     <v-card
-                      v-for="n in 5"
-                      :key="n"
+                      v-for="womanitem in womanItems.items.value"
+                      :key="womanitem.id"
                       class="ma-4 w-[280px]"
                       variant="text"
                     >
-                      <!-- Make this the group -->
-                      <div class="relative w-fit group">
-                        <!-- Image -->
-                        <img
-                          src="/images/da.jpg"
-                          alt=""
-                          class="block rounded"
-                        />
-                        <!-- Buttons Container -->
-                        <div class="absolute top-3 right-2 text-center">
-                          <p class="bg-red px-4 rounded text-[13px] mb-2">
-                            New
-                          </p>
-                          <p
-                            class="bg-orange text-white rounded text-[13px] mb-2"
-                          >
-                            Hot
-                          </p>
-                          <p class="bg-red text-white rounded text-[13px]">
-                            -33% OFF
-                          </p>
-                        </div>
-
-                        <!-- Buttons Container -->
-                        <div
-                          class="absolute inset-0 flex items-end justify-between p-4 w-[65%] mx-auto"
-                        >
-                          <!-- Favorite Button -->
-                          <v-tooltip text="Add to Favorites" location="top">
-                            <template v-slot:activator="{ props }">
-                              <v-btn
-                                v-bind="props"
-                                icon="mynaui:heart"
-                                size="small"
-                              ></v-btn>
-                            </template>
-                          </v-tooltip>
-
-                          <!-- Cart Button -->
-                          <v-tooltip text="Add to Cart" location="top">
-                            <template v-slot:activator="{ props }">
-                              <v-btn
-                                v-bind="props"
-                                icon="pepicons-pencil:cart"
-                                size="small"
-                              ></v-btn>
-                            </template>
-                          </v-tooltip>
-
-                          <!-- Quick View Button -->
-                          <v-tooltip text="Quick View" location="top">
-                            <template v-slot:activator="{ props }">
-                              <v-btn
-                                v-bind="props"
-                                icon="carbon:image-copy"
-                                size="small"
-                              ></v-btn>
-                            </template>
-                          </v-tooltip>
-                        </div>
-                      </div>
-
-                      <!-- Card Content -->
-                      <div class="text-center my-5">
-                        <div class="d-flex justify-center">
-                          <Icon icon="noto:star" width="20" height="20" />
-                          <div v-for="i in 4" :key="i">
-                            <Icon
-                              icon="uim:star"
-                              class="!text-gray-400"
-                              width="20"
-                              height="20"
-                            />
+                      <div
+                        v-if="
+                          womanitem.variants && womanitem.variants.length > 0
+                        "
+                      >
+                        <!-- Make this the group -->
+                        <div class="relative w-fit group">
+                          <!-- Image -->
+                          <img
+                            src="https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg"
+                            :alt="womanitem.name"
+                            class="w-full h-auto"
+                          />
+                          <!-- <img
+                            :src="womanitem.variants[0]?.image"
+                            :alt="womanitem.name"
+                            class="w-full h-auto"
+                          /> -->
+                          <!-- Buttons Container -->
+                          <div class="absolute top-3 right-2 text-center">
+                            <p
+                              class="bg-red px-4 rounded text-[13px] mb-2 text-white"
+                            >
+                              New
+                            </p>
+                            <p
+                              class="bg-orange text-white rounded text-[13px] mb-2 px-2"
+                            >
+                              Hot
+                            </p>
+                            <p
+                              v-if="womanitem.variants[0]?.discount"
+                              class="bg-red text-white rounded text-[13px] px-2"
+                            >
+                              -{{ womanitem.variants[0].discount?.value }}% OFF
+                            </p>
                           </div>
-                          <p class="text-gray-500 text-[14px] pl-1 mb-3">
-                            ( 1 Review )
-                          </p>
+
+                          <!-- Action Buttons -->
+                          <div
+                            class="absolute inset-0 flex items-end justify-between p-4 w-[65%] mx-auto"
+                          >
+                            <v-tooltip text="Add to Favorites" location="top">
+                              <template v-slot:activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon="mynaui:heart"
+                                  size="small"
+                                ></v-btn>
+                              </template>
+                            </v-tooltip>
+
+                            <v-tooltip text="Add to Cart" location="top">
+                              <template v-slot:activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon="pepicons-pencil:cart"
+                                  size="small"
+                                ></v-btn>
+                              </template>
+                            </v-tooltip>
+
+                            <v-tooltip text="Quick View" location="top">
+                              <template v-slot:activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon="carbon:image-copy"
+                                  size="small"
+                                ></v-btn>
+                              </template>
+                            </v-tooltip>
+                          </div>
                         </div>
-                        <p class="font-bold text-[20px]">White Shirt</p>
-                        <p class="text-blue-700 font-bold uppercase my-1">
-                          Zara
-                        </p>
-                        <div class="flex justify-center items-center mt-2">
-                          <p class="text-red mr-2">$60.00 USD</p>
-                          <p class="line-through text-gray-500">$70.00 USD</p>
+
+                        <!-- Card Content -->
+                        <div class="text-center my-5">
+                          <div class="d-flex justify-center">
+                            <Icon icon="noto:star" width="20" height="20" />
+                            <div v-for="i in 4" :key="i">
+                              <Icon
+                                icon="uim:star"
+                                class="!text-gray-400"
+                                width="20"
+                                height="20"
+                              />
+                            </div>
+                            <p class="text-gray-500 text-[14px] pl-1 mb-3">
+                              ( 1 Review )
+                            </p>
+                          </div>
+                          <p class="font-bold text-[20px]">
+                            {{ womanitem.name }}
+                          </p>
+                          <p class="text-blue-700 font-bold uppercase my-1">
+                            {{ womanitem.brand?.name }}
+                          </p>
+                          <div class="flex justify-center items-center mt-2">
+                            <p class="text-red mr-2">
+                              ${{
+                                womanitem.variants[0]?.final_price?.toFixed(2)
+                              }}
+                              USD
+                            </p>
+                            <p class="line-through text-gray-500">
+                              ${{
+                                parseFloat(
+                                  womanitem.variants[0]?.price || "0"
+                                ).toFixed(2)
+                              }}
+                              USD
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </v-card>
                   </div>
                 </v-container>
               </v-main>
+
+              <!-- Pagination -->
               <div class="text-center">
                 <v-container>
                   <v-row justify="center">
@@ -632,190 +649,38 @@ const toggleBrand = (brandId: number) => {
         <!-- Navigation Drawer -->
         <v-navigation-drawer v-model="drawer" temporary app>
           <v-container>
-            <div class="d-flex justify-space-between">
-              <div class="pa-4" style="min-height: 100vh">
-                <!-- price  -->
-                <div class="flex justify-between items-center border-b-2">
-                  <p class="uppercase font-bold text-[25px]">price</p>
-                  <v-btn
-                    variant="text"
-                    class="uppercase !font-bold text-[15px] text-gray-500"
-                    @click="resetPrice"
-                  >
-                    reset
-                  </v-btn>
-                </div>
-                <div class="my-10">
-                  <v-range-slider
-                    v-model="priceRange"
-                    :min="0"
-                    :max="200"
-                    step="1"
-                    color="red"
-                    track-color="grey"
-                    thumb-color="red"
-                  ></v-range-slider>
-
-                  <div class="mt-2 font-weight-medium">
-                    <span class="text-gray-600 mr-2">Range :</span>
-                    <span class="text-black font-weight-bold"
-                      >{{ priceRange[0] }}$ - {{ priceRange[1] }}$</span
-                    >
-                  </div>
-                </div>
-                <!-- color  -->
-                <div class="flex justify-between items-center border-b-2 my-5">
-                  <p class="uppercase font-bold text-[25px]">colors</p>
-                  <v-btn
-                    variant="text"
-                    class="uppercase !font-bold text-[15px] text-gray-500"
-                    @click="resetColor"
-                  >
-                    reset
-                  </v-btn>
-                </div>
-                <v-sheet class="py-4 px-1">
-                  <v-responsive class="overflow-y-auto" max-height="280">
-                    <v-chip-group v-model="selected" column mandatory>
-                      <v-chip
-                        v-for="color in colors"
-                        :key="color.name"
-                        :value="color.name"
-                        class="ma-1"
-                        :class="{ 'border-selected': selected === color.name }"
-                        variant="outlined"
-                      >
-                        <div class="d-flex align-center">
-                          <div
-                            class="dot mr-2"
-                            :style="{ backgroundColor: color.hex }"
-                          ></div>
-                          {{ color.name }}
-                        </div>
-                      </v-chip>
-                    </v-chip-group>
-                  </v-responsive>
-                </v-sheet>
-                <!-- size  -->
-                <div class="flex justify-between items-center border-b-2 my-5">
-                  <p class="uppercase font-bold text-[25px]">sizes</p>
-                  <v-btn
-                    variant="text"
-                    class="uppercase !font-bold text-[15px] text-gray-500"
-                    @click="resetSizes"
-                  >
-                    reset
-                  </v-btn>
-                </div>
-                <v-container>
-                  <v-row>
-                    <v-col
-                      v-for="size in sizes"
-                      :key="size.id"
-                      cols="12"
-                      md="4"
-                    >
-                      <v-card
-                        :class="[
-                          'd-flex align-center',
-                          selectedSizes.includes(size.id) ? 'bg-primary' : '',
-                        ]"
-                        variant="outlined"
-                        @click="toggleSize(size.id)"
-                      >
-                        <div class="text-h3 flex-grow-1 text-center pa-5">
-                          <p class="uppercase text-[20px]">
-                            {{ size.name }}
-                          </p>
-                        </div>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                </v-container>
-                <!-- brand  -->
-                <div class="flex justify-between items-center border-b-2 my-5">
-                  <p class="uppercase font-bold text-[25px]">brands</p>
-                  <v-btn
-                    variant="text"
-                    class="uppercase !font-bold text-[15px] text-gray-500"
-                    @click="resetBrands"
-                  >
-                    reset
-                  </v-btn>
-                </div>
-                <v-container>
-                  <v-row>
-                    <v-col
-                      v-for="brand in brands"
-                      :key="brand.id"
-                      cols="12"
-                      md="4"
-                    >
-                      <v-card
-                        :class="[
-                          'd-flex align-center justify-center',
-                          selectedBrands.includes(brand.id)
-                            ? 'selected-card'
-                            : '',
-                        ]"
-                        variant="outlined"
-                        @click="toggleBrand(brand.id)"
-                      >
-                        <div class="flex h-16 w-16 justify-center items-center">
-                          <img :src="brand.image" :alt="brand.image" />
-                        </div>
-                      </v-card>
-                    </v-col>
-                  </v-row>
-                </v-container>
-                <!-- trending  -->
-                <div class="border-b-2 my-5">
-                  <p class="uppercase font-bold text-[25px]">
-                    TRENDING PRODUCTS
-                  </p>
-                </div>
-                <div
-                  v-for="n in 3"
-                  :key="n"
-                  class="border-b-[1px] border-gray-400 pb-3 mb-3"
+            <div class="pa-4" style="min-height: 100vh">
+              <!-- Mobile filter content (same as desktop but in drawer) -->
+              <!-- Price Filter -->
+              <div class="flex justify-between items-center border-b-2">
+                <p class="uppercase font-bold text-[25px]">price</p>
+                <v-btn
+                  variant="text"
+                  class="uppercase !font-bold text-[15px] text-gray-500"
+                  @click="resetPrice"
                 >
-                  <v-card variant="text">
-                    <div class="">
-                      <div>
-                        <img src="/images/daa.jpg" class="rounded" alt="" />
-                      </div>
-                      <div class="ml-5 mt-2">
-                        <div class="d-flex items-end justify-center">
-                          <Icon icon="noto:star" width="25" height="25" />
-                          <div class="" v-for="i in 4" :key="i">
-                            <Icon
-                              icon="uim:star"
-                              class="!text-gray-400"
-                              width="25"
-                              height="25"
-                            />
-                          </div>
-                        </div>
-                        <div class="d-flex items-end justify-center">
-                          <p class="text-gray-500 text-[16px] ml-1">
-                            ( 0 Reviews )
-                          </p>
-                        </div>
-                        <p class="font-bold my-3 text-[20px]">White Shirt</p>
-                        <p class="text-blue-700 font-bold uppercase my-1">
-                          Zara
-                        </p>
-                        <div class="flex item-center my-3">
-                          <p class="line-through text-gray-500 text-[15px]">
-                            $70.00 USD
-                          </p>
-                          <p class="text-red ml-2 text-[20px]">$60.00 USD</p>
-                        </div>
-                      </div>
-                    </div>
-                  </v-card>
+                  reset
+                </v-btn>
+              </div>
+              <div class="my-10">
+                <v-range-slider
+                  v-model="priceRange"
+                  :min="0"
+                  :max="200"
+                  step="1"
+                  color="red"
+                  track-color="grey"
+                  thumb-color="red"
+                ></v-range-slider>
+                <div class="mt-2 font-weight-medium">
+                  <span class="text-gray-600 mr-2">Range :</span>
+                  <span class="text-black font-weight-bold">
+                    ${{ priceRange[0] }} - ${{ priceRange[1] }}
+                  </span>
                 </div>
               </div>
+
+              <!-- Other mobile filters would go here... -->
             </div>
           </v-container>
         </v-navigation-drawer>
@@ -823,7 +688,7 @@ const toggleBrand = (brandId: number) => {
         <v-main>
           <v-container>
             <div class="pl-3">
-              <p>Clothing ( 130 items )</p>
+              <p>Clothing ({{ womanItems.items.value?.length || 0 }} items)</p>
               <div class="my-3 flex items-center flex-wrap">
                 <p class="text-[14px] mr-2 mb-2">SORT BY :</p>
                 <div
@@ -849,8 +714,50 @@ const toggleBrand = (brandId: number) => {
                 </p>
               </div>
             </div>
-            <h1>Welcome to My App</h1>
-            <p>The sidebar is toggleable on mobile.</p>
+
+            <!-- Mobile Products Grid -->
+            <div class="d-flex flex-wrap justify-center">
+              <v-card
+                v-for="womanitem in womanItems.items.value"
+                :key="womanitem.id"
+                class="ma-2 w-[280px]"
+                variant="text"
+              >
+                <!-- Mobile product content (same structure as desktop) -->
+                <div v-if="womanitem.variants && womanitem.variants.length > 0">
+                  <div class="relative w-fit group">
+                    <img
+                      :src="womanitem.variants[0]?.image"
+                      :alt="womanitem.name"
+                      class="w-full h-auto"
+                    />
+                    <!-- Mobile product details -->
+                    <div class="text-center my-3">
+                      <p class="font-bold text-[18px]">{{ womanitem.name }}</p>
+                      <p class="text-blue-700 font-bold uppercase my-1">
+                        {{ womanitem.brand?.name }}
+                      </p>
+                      <div class="flex justify-center items-center mt-2">
+                        <p class="text-red mr-2">
+                          ${{
+                            womanitem.variants[0]?.final_price?.toFixed(2)
+                          }}
+                          USD
+                        </p>
+                        <p class="line-through text-gray-500">
+                          ${{
+                            parseFloat(
+                              womanitem.variants[0]?.price || "0"
+                            ).toFixed(2)
+                          }}
+                          USD
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </v-card>
+            </div>
           </v-container>
         </v-main>
       </template>
@@ -861,16 +768,20 @@ const toggleBrand = (brandId: number) => {
 <style scoped>
 .banner {
   background-image: url(/public/banners/banner-bag.png);
-  background-position: left bottom left;
+  background-position: left bottom;
+  background-size: cover;
 }
+
 .dot {
   width: 15px;
   height: 15px;
   border-radius: 50%;
 }
+
 .border-selected {
   border: 2px solid blue !important;
 }
+
 .selected-card {
   border: 2px solid #1976d2 !important;
   background-color: transparent !important;

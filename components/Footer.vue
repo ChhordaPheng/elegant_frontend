@@ -1,5 +1,6 @@
 <script setup>
-import { ref } from "vue";
+const SiteInfoStore = useSiteInfoStore();
+const { site_info } = storeToRefs(SiteInfoStore);
 
 const icons = ref([
   "mdi-facebook",
@@ -7,6 +8,10 @@ const icons = ref([
   "mdi-linkedin",
   "mdi-instagram",
 ]);
+
+onMounted(async () => {
+  await SiteInfoStore.fetchSiteInfo();
+});
 </script>
 
 <template>
@@ -46,11 +51,11 @@ const icons = ref([
           class="flex flex-col justify-center items-center mb-6 md:mb-0"
         >
           <div>
-            <img class="w-36 sm:w-40" src="logo/logo.png" alt="Logo" />
+            <img class="w-36 sm:w-40" :src="site_info.site_logo" alt="Logo" />
           </div>
           <p class="text-center text-sm sm:text-base mt-2 px-2">
-            <span class="font-bold">Elegant Chic</span> offers stylish,
-            affordable clothing to help you look and feel your best every day.
+            <span class="font-bold mr-2">{{ site_info.site_name }}</span> <br />
+            <span>{{ site_info.site_description }}</span>
           </p>
           <div class="d-flex ga-3 text-[#1576F5] mt-3">
             <v-btn

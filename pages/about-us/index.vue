@@ -1,279 +1,280 @@
-<template>
-  <v-container fluid class="pa-0">
-    <!-- Hero Section -->
-    <v-row class="hero-section" no-gutters>
-      <v-col cols="12">
-        <v-container class="py-16">
-          <v-row justify="center" align="center" class="text-center">
-            <v-col cols="12" md="8">
-              <h1 class="display-2 font-weight-bold mb-4 text-white">
-                About Our Company
-              </h1>
-              <p class="headline font-weight-light text-white mb-8">
-                Innovative solutions for a better tomorrow
-              </p>
-              <v-btn
-                color="primary"
-                size="large"
-                variant="elevated"
-                @click="scrollToSection('mission')"
-              >
-                Learn More
-              </v-btn>
-            </v-col>
-          </v-row>
-        </v-container>
-      </v-col>
-    </v-row>
+<script setup lang="ts">
+const coreValues = [
+  {
+    title: "Integrity",
+    desc: "We hold ourselves to the highest standards of transparency, ethics, and responsibility.",
+  },
+  {
+    title: "Creativity",
+    desc: "We push the boundaries of design with bold ideas and timeless elegance.",
+  },
+  {
+    title: "Sustainability",
+    desc: "Our commitment to sustainability drives every decision we make—from fabrics to packaging.",
+  },
+];
 
-    <!-- Mission Section -->
-    <v-container id="mission" class="py-16">
-      <v-row justify="center">
-        <v-col cols="12" md="10">
-          <div class="text-center mb-12">
-            <h2 class="display-1 font-weight-bold mb-4">Our Mission</h2>
-            <p class="title font-weight-light text-grey-darken-1">
-              Empowering businesses through cutting-edge technology and exceptional service
-            </p>
-          </div>
-          
-          <v-row>
-            <v-col cols="12" md="4" v-for="value in companyValues" :key="value.title">
-              <v-card class="h-100" elevation="2" hover>
-                <v-card-text class="text-center pa-8">
-                  <v-icon
-                    :icon="value.icon"
-                    size="64"
-                    :color="value.color"
-                    class="mb-4"
-                  ></v-icon>
-                  <h3 class="text-h5 font-weight-bold mb-3">{{ value.title }}</h3>
-                  <p class="text-body-1">{{ value.description }}</p>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
+const team = [
+  { name: "Sophie Lee", role: "Creative Director", img: "/images/da.jpg" },
+  { name: "David Tran", role: "Marketing Head", img: "/images/da.jpg" },
+  { name: "Amara Chen", role: "Lead Designer", img: "/images/da.jpg" },
+];
+</script>
+
+<template>
+  <div>
+    <!-- Hero Section -->
+    <section class="hero">
+      <div class="overlay" />
+      <div class="hero-content">
+        <h1 class="text-5xl font-bold mb-4 animate-fade">Elegant Chic</h1>
+        <p class="text-lg animate-fade delay-1">
+          Where timeless fashion meets modern vision.
+        </p>
+      </div>
+    </section>
+
+    <!-- Brand Introduction -->
+    <v-container class="py-20">
+      <v-row class="fade-in delay-1">
+        <v-col cols="12" md="6">
+          <h2 class="text-3xl font-bold mb-4">About Our Brand</h2>
+          <p class="text-gray-700 text-lg leading-relaxed">
+            Founded with a passion for elevated simplicity, Elegant Chic is more
+            than a fashion label — it's a lifestyle philosophy. Our collections
+            blend classic silhouettes with contemporary detail, delivering
+            confidence and refinement to the everyday wardrobe. We believe that
+            elegance is an attitude, and style is its expression.
+          </p>
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-img
+            src="https://i.pinimg.com/736x/ac/c9/d0/acc9d098125812c4515c16b885d67138.jpg"
+            height="350"
+            class="rounded-xl shadow-lg"
+            cover
+          />
+        </v-col>
+      </v-row>
+    </v-container>
+
+    <!-- Philosophy Section -->
+    <v-container class="py-20 fade-in delay-2">
+      <v-row align="center">
+        <v-col cols="12" md="6">
+          <h2 class="text-3xl font-bold mb-4">Our Philosophy</h2>
+          <p class="text-gray-700 text-lg leading-relaxed">
+            We design with purpose and passion. At the core of every collection
+            is our belief that fashion should not only empower—but also endure.
+            We focus on ethical sourcing, high-quality materials, and versatile
+            designs to ensure that each piece can be cherished for years to
+            come.
+          </p>
+        </v-col>
+        <v-col cols="12" md="6">
+          <v-img
+            src="https://source.unsplash.com/800x600/?philosophy,fashion"
+            height="350"
+            class="rounded-xl shadow-md"
+            cover
+          />
+        </v-col>
+      </v-row>
+    </v-container>
+
+    <!-- Craftsmanship Section -->
+    <v-container class="py-20 bg-surface fade-in delay-3">
+      <v-row>
+        <v-col cols="12" md="6">
+          <v-img
+            src="https://source.unsplash.com/800x600/?craft,fashion"
+            height="350"
+            class="rounded-xl shadow-md"
+            cover
+          />
+        </v-col>
+        <v-col cols="12" md="6">
+          <h2 class="text-3xl font-bold mb-4">Craftsmanship</h2>
+          <p class="text-gray-700 text-lg leading-relaxed">
+            Every stitch, every seam, and every detail is an expression of care.
+            Our artisans and designers collaborate to ensure exceptional
+            quality—from first sketch to final finish. We champion slow fashion:
+            fewer pieces, higher quality, and greater meaning.
+          </p>
+        </v-col>
+      </v-row>
+    </v-container>
+
+    <!-- Core Values -->
+    <v-container class="py-20 fade-in delay-4">
+      <h2 class="text-center text-3xl font-semibold mb-10">Our Core Values</h2>
+      <v-row justify="center" class="gap-6">
+        <v-col
+          v-for="(val, i) in coreValues"
+          :key="i"
+          cols="12"
+          sm="6"
+          md="4"
+          class="fade-in"
+          :class="`delay-${i + 5}`"
+        >
+          <v-card class="modern-card pa-8 text-center elevation-1">
+            <h3 class="card-title mb-3">{{ val.title }}</h3>
+            <p class="card-desc">{{ val.desc }}</p>
+          </v-card>
         </v-col>
       </v-row>
     </v-container>
 
     <!-- Team Section -->
-    <v-container class="py-16 bg-grey-lighten-5">
+    <v-container class="py-20 fade-in delay-5">
+      <h2 class="text-center text-3xl font-bold mb-10">Meet the Team</h2>
       <v-row justify="center">
-        <v-col cols="12" md="10">
-          <div class="text-center mb-12">
-            <h2 class="display-1 font-weight-bold mb-4">Meet Our Team</h2>
-            <p class="title font-weight-light text-grey-darken-1">
-              The talented individuals behind our success
-            </p>
-          </div>
-          
-          <v-row>
-            <v-col 
-              cols="12" 
-              sm="6" 
-              md="4" 
-              v-for="member in teamMembers" 
-              :key="member.name"
-              class="d-flex"
-            >
-              <v-card class="flex-grow-1" elevation="3" hover>
-                <v-img
-                  :src="member.image"
-                  height="300"
-                  cover
-                  class="white--text align-end"
-                  gradient="to bottom, rgba(0,0,0,.1), rgba(0,0,0,.5)"
-                >
-                </v-img>
-                <v-card-title class="text-h6 font-weight-bold">
-                  {{ member.name }}
-                </v-card-title>
-                <v-card-subtitle class="text-primary font-weight-medium">
-                  {{ member.position }}
-                </v-card-subtitle>
-                <v-card-text>
-                  <p class="text-body-2 mb-3">{{ member.bio }}</p>
-                  <div class="d-flex justify-center">
-                    <v-btn
-                      v-for="social in member.social"
-                      :key="social.platform"
-                      :icon="social.icon"
-                      variant="text"
-                      size="small"
-                      :color="social.color"
-                      @click="openLink(social.url)"
-                    ></v-btn>
-                  </div>
-                </v-card-text>
-              </v-card>
-            </v-col>
-          </v-row>
-        </v-col>
-      </v-row>
-    </v-container>
-
-    <!-- Company Stats -->
-    <v-container class="py-16">
-      <v-row justify="center">
-        <v-col cols="12" md="10">
-          <div class="text-center mb-12">
-            <h2 class="display-1 font-weight-bold mb-4">Our Impact</h2>
-          </div>
-          
-          <v-row>
-            <v-col 
-              cols="6" 
-              md="3" 
-              v-for="stat in companyStats" 
-              :key="stat.label"
-              class="text-center"
-            >
-              <div class="mb-4">
-                <h3 class="display-2 font-weight-bold text-primary">
-                  {{ stat.value }}
-                </h3>
-                <p class="text-h6 font-weight-medium text-grey-darken-1">
-                  {{ stat.label }}
-                </p>
-              </div>
-            </v-col>
-          </v-row>
-        </v-col>
-      </v-row>
-    </v-container>
-
-    <!-- Contact Section -->
-    <v-container class="py-16 bg-primary">
-      <v-row justify="center">
-        <v-col cols="12" md="8" class="text-center">
-          <h2 class="display-1 font-weight-bold mb-4 text-white">
-            Ready to Work Together?
-          </h2>
-          <p class="title font-weight-light text-white mb-8">
-            Let's discuss how we can help your business grow
-          </p>
-          <v-btn
-            color="white"
-            variant="elevated"
-            size="large"
-            @click="contactUs"
+        <v-col
+          v-for="(person, index) in team"
+          :key="index"
+          cols="12"
+          sm="4"
+          class="text-center fade-in"
+          :class="`delay-${index + 6}`"
+        >
+          <v-card
+            class="pa-6 rounded-xl elevation-2 hover:scale-[1.03] transition-transform"
           >
-            Get In Touch
-          </v-btn>
+            <v-avatar size="100" class="mb-4 mx-auto">
+              <v-img :src="person.img" />
+            </v-avatar>
+            <h3 class="text-lg font-semibold">{{ person.name }}</h3>
+            <p class="text-gray-600">{{ person.role }}</p>
+          </v-card>
         </v-col>
       </v-row>
     </v-container>
-  </v-container>
+  </div>
 </template>
 
-<script setup>
-import { ref, reactive } from 'vue'
-
-// Company values data
-const companyValues = reactive([
-  {
-    title: 'Innovation',
-    description: 'We push boundaries and embrace new technologies to deliver cutting-edge solutions.',
-    icon: 'mdi-lightbulb-outline',
-    color: 'primary'
-  },
-  {
-    title: 'Quality',
-    description: 'Excellence is not negotiable. We deliver high-quality products and services every time.',
-    icon: 'mdi-star-outline',
-    color: 'success'
-  },
-  {
-    title: 'Partnership',
-    description: 'We build lasting relationships with our clients based on trust and mutual success.',
-    icon: 'mdi-handshake-outline',
-    color: 'info'
-  }
-])
-
-// Team members data
-const teamMembers = reactive([
-  {
-    name: 'Sarah Johnson',
-    position: 'CEO & Founder',
-    bio: 'Visionary leader with 15+ years of experience in technology and business development.',
-    image: 'https://images.unsplash.com/photo-1494790108755-2616b612b786?w=400',
-    social: [
-      { platform: 'LinkedIn', icon: 'mdi-linkedin', color: 'blue-darken-3', url: '#' },
-      { platform: 'Twitter', icon: 'mdi-twitter', color: 'blue', url: '#' }
-    ]
-  },
-  {
-    name: 'Michael Chen',
-    position: 'CTO',
-    bio: 'Technical expert passionate about creating scalable solutions and leading development teams.',
-    image: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400',
-    social: [
-      { platform: 'LinkedIn', icon: 'mdi-linkedin', color: 'blue-darken-3', url: '#' },
-      { platform: 'GitHub', icon: 'mdi-github', color: 'grey-darken-3', url: '#' }
-    ]
-  },
-  {
-    name: 'Emily Rodriguez',
-    position: 'Head of Design',
-    bio: 'Creative designer focused on user experience and creating beautiful, functional interfaces.',
-    image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=400',
-    social: [
-      { platform: 'LinkedIn', icon: 'mdi-linkedin', color: 'blue-darken-3', url: '#' },
-      { platform: 'Dribbble', icon: 'mdi-dribbble', color: 'pink', url: '#' }
-    ]
-  }
-])
-
-// Company statistics
-const companyStats = reactive([
-  { value: '500+', label: 'Happy Clients' },
-  { value: '1000+', label: 'Projects Completed' },
-  { value: '50+', label: 'Team Members' },
-  { value: '8', label: 'Years Experience' }
-])
-
-// Methods
-const scrollToSection = (sectionId) => {
-  const element = document.getElementById(sectionId)
-  if (element) {
-    element.scrollIntoView({ behavior: 'smooth' })
-  }
-}
-
-const openLink = (url) => {
-  if (url !== '#') {
-    window.open(url, '_blank')
-  }
-}
-
-const contactUs = () => {
-  // Implement contact functionality
-  console.log('Contact us clicked')
-  // You could navigate to a contact page or open a dialog
-}
-</script>
-
 <style scoped>
-.hero-section {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  min-height: 500px;
+.hero {
+  height: 300px;
+  background-image: url("/banners/about_us.png");
+  background-size: cover;
+  background-position: center;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+}
+.hero-content {
+  z-index: 2;
+  text-align: center;
+  color: white;
+}
+.bg-surface {
+  background-color: #f9f9f9;
+}
+.glass {
+  backdrop-filter: blur(10px);
+  background: rgba(255, 255, 255, 0.8);
+  border-radius: 1rem;
 }
 
-.v-container {
-  max-width: 1200px;
+/* Animations */
+@keyframes fadeUp {
+  from {
+    opacity: 0;
+    transform: translateY(40px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.animate-fade {
+  opacity: 0;
+  animation: fadeUp 1s ease-out forwards;
+}
+.fade-in {
+  opacity: 0;
+  animation: fadeUp 1s ease-out forwards;
+}
+.delay-1 {
+  animation-delay: 0.3s;
+}
+.delay-2 {
+  animation-delay: 0.6s;
+}
+.delay-3 {
+  animation-delay: 0.9s;
+}
+.delay-4 {
+  animation-delay: 1.2s;
+}
+.delay-5 {
+  animation-delay: 1.5s;
+}
+.delay-6 {
+  animation-delay: 1.8s;
+}
+.delay-7 {
+  animation-delay: 2.1s;
+}
+.delay-8 {
+  animation-delay: 2.4s;
 }
 
-.v-card {
-  transition: transform 0.3s ease-in-out;
+/* Text Color */
+.text-gray-600 {
+  color: #6b7280;
 }
-
-.v-card:hover {
-  transform: translateY(-5px);
+.text-gray-700 {
+  color: #374151;
 }
-
-.bg-grey-lighten-5 {
-  background-color: #fafafa !important;
+.modern-card {
+  background: linear-gradient(135deg, #fefefe 0%, #e0f2fe 100%);
+  border-radius: 16px;
+  box-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.08),
+    0 8px 12px rgba(0, 120, 255, 0.12);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  cursor: default;
+}
+.modern-card:hover {
+  transform: translateY(-8px) scale(1.05);
+  box-shadow:
+    0 6px 15px rgba(0, 0, 0, 0.15),
+    0 12px 20px rgba(0, 120, 255, 0.3);
+}
+.card-title {
+  font-family: 'Inter', sans-serif;
+  font-weight: 600;
+  font-size: 1.5rem;
+  color: #0f172a; /* Very dark blue/gray */
+  position: relative;
+  display: inline-block;
+  margin: 0 auto;
+  padding-bottom: 8px;
+}
+.card-title::after {
+  content: '';
+  display: block;
+  width: 50px;
+  height: 3px;
+  background: #3b82f6; /* Blue accent */
+  margin: 8px auto 0;
+  border-radius: 2px;
+}
+.card-desc {
+  font-family: 'Inter', sans-serif;
+  font-weight: 400;
+  font-size: 1rem;
+  color: #475569; /* Medium gray */
+  line-height: 1.5;
+  max-width: 280px;
+  margin: 0 auto;
 }
 </style>

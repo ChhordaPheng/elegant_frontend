@@ -9,6 +9,8 @@ const dialog = ref(false);
 const activeButton = ref("login");
 const display = useDisplay();
 const { smAndDown } = display;
+const SiteInfoStore = useSiteInfoStore();
+const { site_info } = storeToRefs(SiteInfoStore);
 
 const menus = [
   { title: "HOME", value: "home", path: "/" },
@@ -50,7 +52,8 @@ watchEffect(() => {
   group.value = match ? match.value : null;
 });
 
-onMounted(() => {
+onMounted(async () => {
+  await SiteInfoStore.fetchSiteInfo();
   window.addEventListener("scroll", handleScroll);
 });
 onBeforeUnmount(() => {
@@ -109,11 +112,10 @@ onBeforeUnmount(() => {
             </v-list-item>
           </v-list>
         </v-col>
-
         <!-- Center: Logo -->
         <v-col cols="3" class="d-flex justify-center align-center">
           <NuxtLink to="/">
-            <img class="w-20" src="logo/logo.png" />
+            <img class="w-20" :src="site_info.site_logo" />
           </NuxtLink>
         </v-col>
 

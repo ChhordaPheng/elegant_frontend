@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
-import type { Item, ItemResponse } from '~/types/man_category/man_category';
+import type { Item, ItemResponse } from '~/types/woman_category/woman_category';
 
-export const usemanIteStore = defineStore('usemanIteStore', {
+export const useWomanIteStore = defineStore('useWomanIteStore', {
   state: () => ({
     items: [] as Item[],
     total: 0,
@@ -20,14 +20,14 @@ export const usemanIteStore = defineStore('usemanIteStore', {
   },
 
   actions: {
-    async fetchmanItems(page = 1) {
+    async fetchWomanItems(page = 1) {
       this.loading = true;
       this.error = null;
 
       try {
         const baseURL = getBaseURL();
         const responseRef = await useFetchDataApi<ItemResponse>(
-          `/items/group/men?page=${page}&per_page=${this.perPage}`
+          `/items/group/women?page=${page}&per_page=${this.perPage}`
         );
         const response = responseRef.data.value;
 
@@ -64,7 +64,7 @@ export const usemanIteStore = defineStore('usemanIteStore', {
           this.items = [];
         }
       } catch (error: any) {
-        console.error('Error fetching man items:', error);
+        console.error('Error fetching woman items:', error);
         this.error = error?.data?.message || error?.message || 'Failed to fetch items';
         this.items = [];
       } finally {
@@ -83,7 +83,7 @@ export const usemanIteStore = defineStore('usemanIteStore', {
     // Add method to update page
     setPage(newPage: number) {
       this.page = newPage;
-      this.fetchmanItems(newPage);
+      this.fetchWomanItems(newPage);
     },
   },
 });

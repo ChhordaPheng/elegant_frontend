@@ -8,10 +8,10 @@ const tabs = [
 ];
 
 const account = ref({
-  name: "Chhorda Pheng",
-  email: "chhorda@example.com",
+  name: "",
+  email: "",
   gender: "male",
-  dob: "1995-06-18",
+  dob: "",
 });
 
 const password = ref({

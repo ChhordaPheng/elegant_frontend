@@ -1,40 +1,46 @@
 <script setup>
-import { Icon } from "@iconify/vue";
+import { useBannerStore } from "../stores/banner/bannerStore";
 
 definePageMeta({
   layout: "main-layout",
 });
 
 const tab = ref("newArrival");
-const rmBanners = ref([
-  {
-    id: 1,
-    img: "images/da_rm_bg.png",
-  },
-  {
-    id: 2,
-    img: "images/da_rm_bg.png",
-  },
-  {
-    id: 3,
-    img: "images/da_rm_bg.png",
-  },
-]);
+const bannerStore = useBannerStore();
+const { banners } = storeToRefs(bannerStore);
+// const rmBanners = ref([
+//   {
+//     id: 1,
+//     img: "images/da_rm_bg.png",
+//   },
+//   {
+//     id: 2,
+//     img: "images/da_rm_bg.png",
+//   },
+//   {
+//     id: 3,
+//     img: "images/da_rm_bg.png",
+//   },
+// ]);
 
-const banners = ref([
-  {
-    id: 1,
-    img: "images/da.jpg",
-  },
-  {
-    id: 2,
-    img: "images/da.jpg",
-  },
-  {
-    id: 3,
-    img: "images/da.jpg",
-  },
-]);
+// const banners = ref([
+//   {
+//     id: 1,
+//     img: "images/da.jpg",
+//   },
+//   {
+//     id: 2,
+//     img: "images/da.jpg",
+//   },
+//   {
+//     id: 3,
+//     img: "images/da.jpg",
+//   },
+// ]);
+
+onMounted(async () => {
+  await bannerStore.fetchBanners();
+});
 </script>
 
 <template>
@@ -59,9 +65,9 @@ const banners = ref([
               cycle
               class="w-full max-w-[405px] h-auto"
             >
-              <v-carousel-item v-for="banner in rmBanners" :key="banner.id">
+              <v-carousel-item v-for="banner in banners" :key="banner.id">
                 <img
-                  :src="banner.img"
+                  :src="banner.big_image"
                   alt="banner"
                   class="w-full object-cover"
                 />
@@ -73,20 +79,33 @@ const banners = ref([
           <v-col
             cols="12"
             md="4"
-            class="flex flex-col justify-center text-center"
+            class="flex flex-col justify-center text-center h-[900px]"
           >
-            <p class="text-red text-4xl font-bold">50% SALE</p>
-            <p class="font-bold text-[40px] md:text-[70px]">Unique Fashion</p>
-            <p class="my-5 px-2 md:px-6">
-              Lorem ipsum, dolor sit amet consectetur adipisicing elit. Id
-              temporibus pariatur molestias, iusto beatae odio...
-            </p>
-            <div class="flex justify-center gap-3 mt-2">
-              <v-btn size="large" class="!font-bold">Shop Now</v-btn>
-              <v-btn size="large" class="bg-blue !text-white !font-bold"
-                >New Arrival</v-btn
-              >
-            </div>
+            <v-carousel
+              :show-arrows="false"
+              hide-delimiter-background
+              hide-delimiters
+              :interval="5000"
+              cycle
+            >
+              <v-carousel-item v-for="banner in banners" :key="banner.id">
+                <p class="text-red text-4xl font-bold">
+                  {{ banner.discount }} % SALE
+                </p>
+                <p class="font-bold text-[40px] md:text-[70px]">
+                  {{ banner.title }}
+                </p>
+                <p class="my-5 px-2 md:px-6">
+                  {{ banner.description }}
+                </p>
+                <div class="flex justify-center gap-3 mt-2">
+                  <v-btn size="large" class="!font-bold">Shop Now</v-btn>
+                  <v-btn size="large" class="bg-blue !text-white !font-bold"
+                    >New Arrival</v-btn
+                  >
+                </div>
+              </v-carousel-item>
+            </v-carousel>
           </v-col>
 
           <!-- Column 3: Card with Carousel -->
@@ -102,7 +121,7 @@ const banners = ref([
               >
                 <v-carousel-item v-for="banner in banners" :key="banner.id">
                   <v-img
-                    :src="banner.img"
+                    :src="banner.small_image"
                     class="rounded-sm w-full h-auto !border-4 border-gray-400"
                     cover
                     alt=""
@@ -472,27 +491,46 @@ const banners = ref([
             <p class="text-end text-gray-500">Check out latest trends</p>
             <div class="photo-grid">
               <div class="photo-item photo-1 placeholder">
-                <img src="/images/dada.jpg" alt="trend" />
+                <img
+                  class="bg-top"
+                  src="https://i.pinimg.com/736x/6f/1a/f6/6f1af60d4d7765280cd779b92cba05ce.jpg"
+                  alt="trend"
+                />
               </div>
 
               <div class="photo-item photo-2 placeholder">
-                <img src="/images/dada.jpg" alt="trend" />
+                <img
+                  src="https://i.pinimg.com/736x/08/50/81/0850815065b7978f80fe952d4bfba244.jpg"
+                  alt="trend"
+                />
               </div>
 
               <div class="photo-item photo-3 placeholder">
-                <img src="/images/dada.jpg" alt="trend" />
+                <img
+                  src="https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg"
+                  alt="trend"
+                />
               </div>
 
               <div class="photo-item photo-4 placeholder">
-                <img src="/images/dada.jpg" alt="trend" />
+                <img
+                  src="https://i.pinimg.com/736x/19/b5/f9/19b5f9d1937a42c515091c80993584ae.jpg"
+                  alt="trend"
+                />
               </div>
 
               <div class="photo-item photo-5 placeholder">
-                <img src="/images/dada.jpg" alt="trend" />
+                <img
+                  src="https://i.pinimg.com/736x/1d/b8/10/1db810bc7ff9f5aa2f21fe7b35059901.jpg"
+                  alt="trend"
+                />
               </div>
 
               <div class="photo-item photo-6 placeholder">
-                <img src="/images/dada.jpg" alt="trend" />
+                <img
+                  src="https://i.pinimg.com/736x/51/5e/07/515e0795115fd625cfc797eebc0bd9f4.jpg"
+                  alt="trend"
+                />
               </div>
             </div>
           </v-col>
@@ -622,6 +660,7 @@ const banners = ref([
   width: 100%;
   height: 100%;
   object-fit: cover;
+  object-position: top;
   display: block;
 }
 
