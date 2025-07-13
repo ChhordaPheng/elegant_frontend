@@ -21,10 +21,33 @@ const priceRange = ref([50, 120]);
 const selected = ref("Blue");
 const selectedSizes = ref<number[]>([]);
 const selectedBrands = ref<number[]>([]);
+const router = useRouter();
 
 // Store
 const womanStore = useWomanIteStore();
 const womanItems = storeToRefs(womanStore);
+
+// In your woman page, update the quickView function:
+const quickView = (productId: string | number) => {
+  console.log("Quick view clicked for product ID:", productId);
+  // Make sure the route name matches your router configuration
+  router.push({
+    path: "/product-detail", // or use name: 'product-detail'
+    query: { id: productId.toString() }, // Ensure it's a string
+  });
+};
+
+// Optional: Add to favorites function
+const addToFavorites = (productId: string | number) => {
+  console.log("Added to favorites:", productId);
+  // You might want to call a store method or API here
+};
+
+// Optional: Add to cart function
+const addToCart = (productId: string | number) => {
+  console.log("Added to cart:", productId);
+  // You might want to call a store method or API here
+};
 
 // Static data
 const colors = [
@@ -413,9 +436,7 @@ onMounted(async () => {
                     <v-col>
                       <div class="pl-3">
                         <p>
-                          Clothing ({{
-                            womanItems.items.value?.length || 0
-                          }}
+                          Clothing ({{ womanItems.items.value?.length || 0 }}
                           items)
                         </p>
                         <div class="my-3 flex items-center flex-wrap">
@@ -500,121 +521,110 @@ onMounted(async () => {
                     <v-card
                       v-for="womanitem in womanItems.items.value"
                       :key="womanitem.id"
-                      class="ma-4 w-[280px]"
+                      class="relative w-[280px] mr-5"
                       variant="text"
                     >
-                      <div
-                        v-if="
-                          womanitem.variants && womanitem.variants.length > 0
-                        "
-                      >
-                        <!-- Make this the group -->
-                        <div class="relative w-fit group">
-                          <!-- Image -->
+                      <v-hover v-slot="{ isHovering, props }">
+                        <div
+                          v-bind="props"
+                          class="relative w-full cursor-pointer"
+                        >
+                          <!-- Product Image -->
                           <img
                             src="https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg"
                             :alt="womanitem.name"
-                            class="w-full h-auto"
+                            class="w-full h-auto cursor-pointer"
+                            @click="quickView(womanitem.id)"
                           />
-                          <!-- <img
-                            :src="womanitem.variants[0]?.image"
-                            :alt="womanitem.name"
-                            class="w-full h-auto"
-                          /> -->
-                          <!-- Buttons Container -->
-                          <div class="absolute top-3 right-2 text-center">
-                            <p
-                              class="bg-red px-4 rounded text-[13px] mb-2 text-white"
-                            >
-                              New
-                            </p>
-                            <p
-                              class="bg-orange text-white rounded text-[13px] mb-2 px-2"
-                            >
-                              Hot
-                            </p>
-                            <p
-                              v-if="womanitem.variants[0]?.discount"
-                              class="bg-red text-white rounded text-[13px] px-2"
-                            >
-                              -{{ womanitem.variants[0].discount?.value }}% OFF
-                            </p>
-                          </div>
 
-                          <!-- Action Buttons -->
+                          <!-- Animated Buttons on Hover (narrow wrapper for better positioning) -->
                           <div
-                            class="absolute inset-0 flex items-end justify-between p-4 w-[65%] mx-auto"
+                            class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-6"
                           >
-                            <v-tooltip text="Add to Favorites" location="top">
-                              <template v-slot:activator="{ props }">
-                                <v-btn
-                                  v-bind="props"
-                                  icon="mynaui:heart"
-                                  size="small"
-                                ></v-btn>
-                              </template>
-                            </v-tooltip>
+                            <!-- Favorite (slide from left) -->
+                            <transition name="slide-left">
+                              <div v-if="isHovering">
+                                <v-tooltip text="Add to Favorites">
+                                  <template #activator="{ props }">
+                                    <v-btn
+                                      v-bind="props"
+                                      icon
+                                      class="bg-white text-black"
+                                    >
+                                      <v-icon icon="akar-icons:heart" />
+                                    </v-btn>
+                                  </template>
+                                </v-tooltip>
+                              </div>
+                            </transition>
 
-                            <v-tooltip text="Add to Cart" location="top">
-                              <template v-slot:activator="{ props }">
-                                <v-btn
-                                  v-bind="props"
-                                  icon="pepicons-pencil:cart"
-                                  size="small"
-                                ></v-btn>
-                              </template>
-                            </v-tooltip>
+                            <!-- Quick View (slide from bottom) -->
+                            <transition name="slide-up">
+                              <div v-if="isHovering">
+                                <v-tooltip text="Quick View">
+                                  <template #activator="{ props }">
+                                    <v-btn
+                                      v-bind="props"
+                                      icon
+                                      class="bg-white text-black"
+                                      @click.stop="quickView(womanitem.id)"
+                                    >
+                                      <v-icon icon="carbon:image-copy" />
+                                    </v-btn>
+                                  </template>
+                                </v-tooltip>
+                              </div>
+                            </transition>
 
-                            <v-tooltip text="Quick View" location="top">
-                              <template v-slot:activator="{ props }">
-                                <v-btn
-                                  v-bind="props"
-                                  icon="carbon:image-copy"
-                                  size="small"
-                                ></v-btn>
-                              </template>
-                            </v-tooltip>
+                            <!-- Add to Cart (slide from right) -->
+                            <transition name="slide-right">
+                              <div v-if="isHovering">
+                                <v-tooltip text="Add to Cart">
+                                  <template #activator="{ props }">
+                                    <v-btn
+                                      v-bind="props"
+                                      icon
+                                      class="bg-white text-black"
+                                    >
+                                      <v-icon icon="pepicons-pencil:cart" />
+                                    </v-btn>
+                                  </template>
+                                </v-tooltip>
+                              </div>
+                            </transition>
                           </div>
                         </div>
+                      </v-hover>
 
-                        <!-- Card Content -->
-                        <div class="text-center my-5">
-                          <div class="d-flex justify-center">
-                            <Icon icon="noto:star" width="20" height="20" />
-                            <div v-for="i in 4" :key="i">
-                              <Icon
-                                icon="uim:star"
-                                class="!text-gray-400"
-                                width="20"
-                                height="20"
-                              />
-                            </div>
-                            <p class="text-gray-500 text-[14px] pl-1 mb-3">
-                              ( 1 Review )
-                            </p>
+                      <!-- Product Info -->
+                      <div class="text-center my-5">
+                        <p
+                          class="font-bold text-[20px] cursor-pointer hover:text-blue-500 transition-colors"
+                          @click="quickView(womanitem.id)"
+                        >
+                          {{ womanitem.name }}
+                        </p>
+                        <p class="text-blue-700 font-bold uppercase my-1">
+                          {{ womanitem.brand.name }}
+                        </p>
+                        <div class="d-flex justify-center">
+                          <Icon icon="noto:star" width="20" height="20" />
+                          <div v-for="i in 4" :key="i">
+                            <Icon
+                              icon="uim:star"
+                              class="!text-gray-400"
+                              width="20"
+                              height="20"
+                            />
                           </div>
-                          <p class="font-bold text-[20px]">
-                            {{ womanitem.name }}
+                        </div>
+                        <div class="flex justify-center items-center mt-2">
+                          <p class="text-red mr-2">
+                            ${{ womanitem.variants[0].final_price }} USD
                           </p>
-                          <p class="text-blue-700 font-bold uppercase my-1">
-                            {{ womanitem.brand?.name }}
+                          <p class="line-through text-gray-500">
+                            ${{ womanitem.variants[0].price }} USD
                           </p>
-                          <div class="flex justify-center items-center mt-2">
-                            <p class="text-red mr-2">
-                              ${{
-                                womanitem.variants[0]?.final_price?.toFixed(2)
-                              }}
-                              USD
-                            </p>
-                            <p class="line-through text-gray-500">
-                              ${{
-                                parseFloat(
-                                  womanitem.variants[0]?.price || "0"
-                                ).toFixed(2)
-                              }}
-                              USD
-                            </p>
-                          </div>
                         </div>
                       </div>
                     </v-card>
@@ -726,33 +736,69 @@ onMounted(async () => {
                 <!-- Mobile product content (same structure as desktop) -->
                 <div v-if="womanitem.variants && womanitem.variants.length > 0">
                   <div class="relative w-fit group">
+                    <!-- Image -->
                     <img
-                      :src="womanitem.variants[0]?.image"
+                      src="https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg"
                       :alt="womanitem.name"
                       class="w-full h-auto"
                     />
-                    <!-- Mobile product details -->
-                    <div class="text-center my-3">
-                      <p class="font-bold text-[18px]">{{ womanitem.name }}</p>
-                      <p class="text-blue-700 font-bold uppercase my-1">
-                        {{ womanitem.brand?.name }}
+
+                    <!-- Buttons Container -->
+                    <div class="absolute top-3 right-2 text-center">
+                      <p
+                        class="bg-red px-4 rounded text-[13px] mb-2 text-white"
+                      >
+                        New
                       </p>
-                      <div class="flex justify-center items-center mt-2">
-                        <p class="text-red mr-2">
-                          ${{
-                            womanitem.variants[0]?.final_price?.toFixed(2)
-                          }}
-                          USD
-                        </p>
-                        <p class="line-through text-gray-500">
-                          ${{
-                            parseFloat(
-                              womanitem.variants[0]?.price || "0"
-                            ).toFixed(2)
-                          }}
-                          USD
-                        </p>
-                      </div>
+                      <p
+                        class="bg-orange text-white rounded text-[13px] mb-2 px-2"
+                      >
+                        Hot
+                      </p>
+                      <p
+                        v-if="womanitem.variants[0]?.discount"
+                        class="bg-red text-white rounded text-[13px] px-2"
+                      >
+                        -{{ womanitem.variants[0].discount?.value }}% OFF
+                      </p>
+                    </div>
+
+                    <!-- Action Buttons -->
+                    <div
+                      class="absolute inset-0 flex items-end justify-between p-4 w-[65%] mx-auto"
+                    >
+                      <v-tooltip text="Add to Favorites" location="top">
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            v-bind="props"
+                            icon="mynaui:heart"
+                            size="small"
+                            @click="addToFavorites(womanitem.id)"
+                          ></v-btn>
+                        </template>
+                      </v-tooltip>
+
+                      <v-tooltip text="Add to Cart" location="top">
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            v-bind="props"
+                            icon="pepicons-pencil:cart"
+                            size="small"
+                            @click="addToCart(womanitem.id)"
+                          ></v-btn>
+                        </template>
+                      </v-tooltip>
+
+                      <v-tooltip text="Quick View" location="top">
+                        <template v-slot:activator="{ props }">
+                          <v-btn
+                            v-bind="props"
+                            icon="carbon:image-copy"
+                            size="small"
+                            @click="quickView(womanitem.id)"
+                          ></v-btn>
+                        </template>
+                      </v-tooltip>
                     </div>
                   </div>
                 </div>
@@ -785,5 +831,28 @@ onMounted(async () => {
 .selected-card {
   border: 2px solid #1976d2 !important;
   background-color: transparent !important;
+}
+.slide-left-enter-active,
+.slide-left-leave-active,
+.slide-right-enter-active,
+.slide-right-leave-active,
+.slide-up-enter-active,
+.slide-up-leave-active {
+  transition: all 0.3s ease;
+}
+.slide-left-enter-from,
+.slide-left-leave-to {
+  opacity: 0;
+  transform: translateX(-20px);
+}
+.slide-right-enter-from,
+.slide-right-leave-to {
+  opacity: 0;
+  transform: translateX(20px);
+}
+.slide-up-enter-from,
+.slide-up-leave-to {
+  opacity: 0;
+  transform: translateY(20px);
 }
 </style>

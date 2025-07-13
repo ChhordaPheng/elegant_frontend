@@ -1,6 +1,7 @@
 <script setup>
 const SiteInfoStore = useSiteInfoStore();
 const { site_info } = storeToRefs(SiteInfoStore);
+const sideGuide = ref(false);
 
 const icons = ref([
   "mdi-facebook",
@@ -94,11 +95,38 @@ onMounted(async () => {
         <v-col cols="6" sm="2" md="2" class="mb-6 md:mb-0">
           <p class="font-bold text-lg pb-2">Customer Service</p>
           <ul class="circle-list pl-4">
-            <li>FAQs</li>
+            <li>
+              <NuxtLink to="/faq"> FAQs </NuxtLink>
+            </li>
             <li>Shipping & Delivery</li>
             <li>Exchanges</li>
             <li>Track Order</li>
-            <li>Size Guide</li>
+            <li class="cursor-pointer">
+              <v-dialog>
+                <template v-slot:activator="{ props: activatorProps }">
+                  <div v-bind="activatorProps">
+                    <p>Size Guide</p>
+                  </div>
+                </template>
+
+                <template v-slot:default="{ isActive }">
+                  <v-card>
+                    <v-card-title>
+                      <div class="flex justify-end">
+                        <v-btn
+                          icon="iconoir:cancel"
+                          variant="text"
+                          @click="isActive.value = false"
+                        />
+                      </div>
+                    </v-card-title>
+                    <v-card-text>
+                      <SideGuide />
+                    </v-card-text>
+                  </v-card>
+                </template>
+              </v-dialog>
+            </li>
           </ul>
         </v-col>
 

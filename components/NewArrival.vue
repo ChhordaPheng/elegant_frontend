@@ -1,13 +1,25 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+const newArrivalStore = useNewArrivalStore();
+const { items } = storeToRefs(newArrivalStore);
+
+onMounted(async () => {
+  await newArrivalStore.fetchNewArrivals();
+});
+</script>
 
 <template>
   <v-slide-group center-active>
-    <v-slide-group-item v-for="n in 10" :key="n" v-slot="{ toggle }">
+    <v-slide-group-item
+      v-for="item in items"
+      :key="item.id"
+      v-slot="{ toggle }"
+    >
       <v-card class="relative w-[360px] mr-5" variant="text">
         <v-hover v-slot="{ isHovering, props }">
           <div v-bind="props" class="relative w-full cursor-pointer">
             <!-- Product Image -->
-            <img src="/images/da.jpg" class="w-full object-cover" />
+            <img :src="item.variants[0].image" class="w-full object-cover" />
+            <!-- <img src="/images/da.jpg" class="w-full object-cover" /> -->
 
             <!-- Animated Buttons on Hover (narrow wrapper for better positioning) -->
             <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-6">
@@ -55,8 +67,10 @@
 
         <!-- Product Info -->
         <div class="text-center my-5">
-          <p class="font-bold text-[20px]">White Shirt</p>
-          <p class="text-blue-700 font-bold uppercase my-1">Zara</p>
+          <p class="font-bold text-[20px]">{{ item.name }}</p>
+          <p class="text-blue-700 font-bold uppercase my-1">
+            {{ item.brand.name }}
+          </p>
           <div class="d-flex justify-center">
             <Icon icon="noto:star" width="20" height="20" />
             <div v-for="i in 4" :key="i">
@@ -69,8 +83,12 @@
             </div>
           </div>
           <div class="flex justify-center items-center mt-2">
-            <p class="text-red mr-2">$60.00 USD</p>
-            <p class="line-through text-gray-500">$70.00 USD</p>
+            <p class="text-red mr-2">
+              ${{ item.variants[0]?.final_price }} USD
+            </p>
+            <p class="line-through text-gray-500">
+              ${{ item.variants[0]?.price }} USD
+            </p>
           </div>
         </div>
       </v-card>

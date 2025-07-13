@@ -1,7 +1,5 @@
 <script setup>
-import { ref, watch, onMounted, onBeforeUnmount, computed } from "vue";
 import { useDisplay } from "vuetify";
-import Footer from "~/components/Footer.vue";
 
 const drawer = ref(false);
 const group = ref(null);
@@ -84,7 +82,6 @@ onBeforeUnmount(() => {
           cols="6"
           sm="4"
           md="4"
-          class="mt-2"
           v-if="!display.smAndDown.value"
         >
           <v-list
@@ -178,9 +175,12 @@ onBeforeUnmount(() => {
             </v-dialog>
           </div>
           <!-- login / register group -->
-          <div class="bg-gray-200 !p-[7px] rounded-full">
-            <NuxtLink to="/login">
+          <div
+            class="bg-gray-200 rounded-full px-1 py-1 flex items-center space-x-1 max-w-full overflow-hidden"
+          >
+            <NuxtLink to="/login" class="flex-1">
               <v-btn
+                block
                 :size="btnSize"
                 :density="btnDensity"
                 class="!text-black !font-semibold"
@@ -192,11 +192,12 @@ onBeforeUnmount(() => {
               </v-btn>
             </NuxtLink>
 
-            <NuxtLink to="/login">
+            <NuxtLink to="/login" class="flex-1">
               <v-btn
+                block
                 :size="btnSize"
                 :density="btnDensity"
-                class="ml-2 !text-black !font-semibold"
+                class="!text-black !font-semibold"
                 rounded
                 :variant="activeButton === 'register' ? 'elevated' : 'text'"
                 @click="activeButton = 'register'"

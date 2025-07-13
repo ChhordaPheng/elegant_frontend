@@ -463,7 +463,7 @@ onMounted(async () => {
       <v-container>
         <v-row>
           <v-col
-            cols="4"
+            cols="12"
             md="4"
             sm="12"
             class="flex flex-col items-center justify-center"
@@ -487,7 +487,7 @@ onMounted(async () => {
               </v-btn>
             </div>
           </v-col>
-          <v-col cols="8" md="8" sm="12">
+          <v-col cols="12" md="8" sm="12">
             <p class="text-end text-gray-500">Check out latest trends</p>
             <div class="photo-grid">
               <div class="photo-item photo-1 placeholder">
