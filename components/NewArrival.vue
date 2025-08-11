@@ -1,6 +1,85 @@
 <script setup lang="ts">
 const newArrivalStore = useNewArrivalStore();
 const { items } = storeToRefs(newArrivalStore);
+const currentProduct = ref<any>(null);
+const currentVariant = ref<any>(null);
+const quantity = ref<number>(1);
+const snackbar = ref(false);
+const text = ref(""); // message for snackbar
+
+const cartStore = useCartStore();
+
+// Core add to cart logic
+const handleAddToCart = async () => {
+  if (!currentProduct.value || !currentVariant.value) {
+    text.value = "No item available to add to cart.";
+    snackbar.value = true;
+    return;
+  }
+
+  if (currentVariant.value.quantity === 0) {
+    text.value = "Item is out of stock.";
+    snackbar.value = true;
+    return;
+  }
+
+  if (quantity.value > currentVariant.value.quantity) {
+    text.value = "Requested quantity exceeds available stock.";
+    snackbar.value = true;
+    return;
+  }
+
+  const cartPayload = {
+    item_variant_id: currentVariant.value.id,
+    quantity: quantity.value,
+  };
+
+  try {
+    const cartPayload = {
+      item_variant_id: currentVariant.value.id,
+      quantity: quantity.value,
+    };
+    await cartStore.addToCart(cartPayload);
+
+    if (cartStore.error) {
+      text.value = cartStore.error || "Failed to add to cart.";
+    } else {
+      text.value = "Item successfully added to cart!";
+      quantity.value = 1;
+    }
+  } catch (error) {
+    text.value = "Something went wrong while adding to cart.";
+  } finally {
+    snackbar.value = true;
+  }
+};
+
+// Optional: Add to cart function
+const addToCart = (variantId: string) => {
+  // Find the product containing this variant
+  const product = items.value.find((item) =>
+    item.variants?.some((v) => v.id === variantId)
+  );
+
+  if (!product) {
+    console.warn("No product found for variant", variantId);
+    return;
+  }
+
+  // Find the variant itself
+  const variant = product.variants.find((v) => v.id === variantId);
+
+  if (!variant) {
+    console.warn("Variant not found", variantId);
+    return;
+  }
+
+  currentProduct.value = product;
+  currentVariant.value = variant;
+  quantity.value = 1;
+
+  handleAddToCart();
+};
 
 onMounted(async () => {
   await newArrivalStore.fetchNewArrivals();
@@ -18,7 +97,13 @@ onMounted(async () => {
         <v-hover v-slot="{ isHovering, props }">
           <div v-bind="props" class="relative w-full cursor-pointer">
             <!-- Product Image -->
-            <img :src="item.variants[0].image" class="w-full object-cover" />
+            <v-img
+              :src="item.variants[0].image"
+              cover
+              position="top"
+              class="h-[400px] md:h-[420px]"
+            />
+
             <!-- <img src="/images/da.jpg" class="w-full object-cover" /> -->
 
             <!-- Animated Buttons on Hover (narrow wrapper for better positioning) -->
@@ -54,13 +139,39 @@ onMounted(async () => {
                 <div v-if="isHovering">
                   <v-tooltip text="Add to Cart">
                     <template #activator="{ props }">
-                      <v-btn v-bind="props" icon class="bg-white text-black">
+                      <v-btn
+                        v-bind="props"
+                        @click="addToCart(item.variants[0].id)"
+                        icon
+                        class="bg-white text-black"
+                      >
                         <v-icon icon="pepicons-pencil:cart" />
                       </v-btn>
                     </template>
                   </v-tooltip>
                 </div>
               </transition>
+
+              <!-- snackbar add to cart  -->
+              <v-snackbar
+                v-model="snackbar"
+                :timeout="3000"
+                location="top right"
+                color="success"
+                class="text-white"
+              >
+                {{ text }}
+
+                <template v-slot:actions>
+                  <v-btn
+                    variant="text"
+                    class="text-white"
+                    @click="snackbar = false"
+                  >
+                    Close
+                  </v-btn>
+                </template>
+              </v-snackbar>
             </div>
           </div>
         </v-hover>

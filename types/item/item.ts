@@ -11,10 +11,14 @@ export interface Item {
   category_id: string;
   season_id: string;
   brand_id: string;
+  discount_id: string | null;
   created_at: string;
   updated_at: string;
   variants: Variant[];
   brand: Brand;
+  category: Category;
+  season: Season;
+  reviews: unknown[]; // If reviews have a structure, define it
 }
 
 export interface Variant {
@@ -27,11 +31,23 @@ export interface Variant {
   price: string;
   created_at: string;
   updated_at: string;
-  discount_id: string;
-  final_price: number;
+  final_price: string;
   color: Color;
   size: Size;
-  discount: Discount;
+  item: ItemSummary;
+}
+
+export interface ItemSummary {
+  id: string;
+  name: string;
+  description: string;
+  category_id: string;
+  season_id: string;
+  brand_id: string;
+  discount_id: string | null;
+  created_at: string;
+  updated_at: string;
+  discount: Discount | null;
 }
 
 export interface Color {
@@ -72,6 +88,35 @@ export interface Brand {
   description: string;
   logo_url: string;
   is_featured: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Category {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  category_group_id: string;
+  created_at: string;
+  updated_at: string;
+  group: CategoryGroup;
+}
+
+export interface CategoryGroup {
+  id: string;
+  name: string;
+  slug: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Season {
+  id: string;
+  name: string;
+  slug: string;
+  description: string;
+  is_active: boolean;
   created_at: string;
   updated_at: string;
 }

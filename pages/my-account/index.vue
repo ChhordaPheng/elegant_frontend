@@ -1,16 +1,25 @@
 <script setup lang="ts">
-const tab = ref<"account" | "password">("account");
+const tab = ref<"account" | "password" | "address">("account");
+const snackbarChangePasswordSuccess = ref<boolean>(false);
+const snackbarChangePasswordFail = ref<boolean>(false);
+const snackbarAddressSuccess = ref<boolean>(false);
+const snackbarAddressFail = ref<boolean>(false);
+const addressMessage = ref<string>("");
+
 const userStore = useProfileStore();
-const { userProfile } = storeToRefs(userStore);
+const { userProfile, loading, passwordChanging } = storeToRefs(userStore);
+
 const tabs = [
   { label: "Edit Info", value: "account" },
   { label: "Change Password", value: "password" },
+  { label: "Addresses", value: "address" },
 ];
 
 const account = ref({
-  name: "",
+  firstname: "",
+  lastname: "",
   email: "",
-  gender: "male",
+  phone_number: "",
   dob: "",
 });
 
@@ -20,21 +29,39 @@ const password = ref({
   confirm: "",
 });
 
+// Address management
+const showAddressDialog = ref(false);
+const editingAddress = ref<any>(null);
+const addressForm = ref({
+  name: "",
+  home: "",
+  street: "",
+  city: "",
+  country: "",
+});
+
+// Confirm dialog
+const showConfirmDialog = ref(false);
+const confirmDialogTitle = ref("");
+const confirmDialogMessage = ref("");
+const confirmDialogAction = ref<(() => Promise<void>) | null>(null);
+
 const showCard = ref(false);
+const addressLoading = ref(false);
 
 // Avatar image URL, default
 const avatarUrl = ref("images/dada.jpg");
-
 const fileInput = ref<HTMLInputElement | null>(null);
 
 function triggerFileInput() {
   if (fileInput.value) {
-    fileInput.value.style.display = "block"; // temporarily show
+    fileInput.value.style.display = "block";
     fileInput.value.focus();
     fileInput.value.click();
-    fileInput.value.style.display = "none"; // hide again
+    fileInput.value.style.display = "none";
   }
 }
+
 function onFileSelected(event: Event) {
   const files = (event.target as HTMLInputElement).files;
   if (files && files[0]) {
@@ -50,7 +77,6 @@ function onFileSelected(event: Event) {
 const underlineLeft = ref(0);
 const underlineWidth = ref(0);
 
-// Calculate position and width of the underline below active tab
 function updateUnderline() {
   nextTick(() => {
     const activeTab = document.querySelector(
@@ -63,42 +89,176 @@ function updateUnderline() {
   });
 }
 
-// Watch tab to update underline on change
 watch(tab, () => updateUnderline());
-
-// Initial underline set
 updateUnderline();
-
-function formatDate(dateStr: string): string {
-  if (!dateStr) return "";
-  const date = new Date(dateStr);
-  return new Intl.DateTimeFormat(undefined, {
-    year: "numeric",
-    month: "long",
-    day: "numeric",
-  }).format(date);
-}
 
 function saveAccount() {
   console.log("Saving account:", account.value);
+  // TODO: Implement account update functionality
 }
 
-function changePassword() {
+const changePassword = async () => {
   if (password.value.new !== password.value.confirm) {
-    alert("Passwords do not match!");
+    addressMessage.value = "New password and confirmation do not match.";
+    snackbarChangePasswordFail.value = true;
     return;
   }
-  console.log("Changing password:", password.value);
+
+  try {
+    await userStore.changePassword({
+      current_password: password.value.old,
+      old_password: password.value.old,
+      new_password: password.value.new,
+      new_password_confirmation: password.value.confirm,
+    });
+
+    if (userStore.passwordChangeSuccess) {
+      password.value.old = "";
+      password.value.new = "";
+      password.value.confirm = "";
+      addressMessage.value = "Password changed successfully!";
+      snackbarChangePasswordSuccess.value = true;
+    } else {
+      addressMessage.value = userStore.passwordChangeMessage || "Failed to change password";
+      snackbarChangePasswordFail.value = true;
+    }
+  } catch (error: any) {
+    addressMessage.value = error.message || "Failed to change password";
+    snackbarChangePasswordFail.value = true;
+  }
+};
+
+// Address functions
+function openAddAddressDialog() {
+  editingAddress.value = null;
+  addressForm.value = {
+    name: "",
+    home: "",
+    street: "",
+    city: "",
+    country: "",
+  };
+  showAddressDialog.value = true;
 }
+
+function openEditAddressDialog(address: any) {
+  editingAddress.value = address;
+  addressForm.value = {
+    name: address.name,
+    home: address.home,
+    street: address.street,
+    city: address.city,
+    country: address.country,
+  };
+  showAddressDialog.value = true;
+}
+
+function closeAddressDialog() {
+  showAddressDialog.value = false;
+  editingAddress.value = null;
+  addressForm.value = {
+    name: "",
+    home: "",
+    street: "",
+    city: "",
+    country: "",
+  };
+}
+
+const saveAddress = async () => {
+  addressLoading.value = true;
+  
+  try {
+    if (editingAddress.value) {
+      // Update existing address
+      await userStore.updateAddress(addressForm.value, editingAddress.value.id);
+      addressMessage.value = "Address updated successfully!";
+      snackbarAddressSuccess.value = true;
+    } else {
+      // Add new address
+      await userStore.addAdress(addressForm.value);
+      addressMessage.value = "Address added successfully!";
+      snackbarAddressSuccess.value = true;
+    }
+
+    // Refresh user profile to get updated addresses
+    await userStore.fetchUserProfile();
+    closeAddressDialog();
+  } catch (error: any) {
+    addressMessage.value = error.message || "Failed to save address";
+    snackbarAddressFail.value = true;
+  } finally {
+    addressLoading.value = false;
+  }
+};
+
+// Custom confirm dialog functions
+function showConfirm(title: string, message: string, action: () => Promise<void>) {
+  confirmDialogTitle.value = title;
+  confirmDialogMessage.value = message;
+  confirmDialogAction.value = action;
+  showConfirmDialog.value = true;
+}
+
+function closeConfirmDialog() {
+  showConfirmDialog.value = false;
+  confirmDialogAction.value = null;
+}
+
+async function handleConfirm() {
+  if (confirmDialogAction.value) {
+    await confirmDialogAction.value();
+  }
+  closeConfirmDialog();
+}
+
+const deleteAddress = async (addressId: string) => {
+  const performDelete = async () => {
+    addressLoading.value = true;
+    
+    try {
+      const message = await userStore.deleteAddress(addressId);
+      addressMessage.value = message || "Address deleted successfully!";
+      snackbarAddressSuccess.value = true;
+
+      // Refresh user profile to get updated addresses
+      await userStore.fetchUserProfile();
+    } catch (error: any) {
+      addressMessage.value = error.message || "Failed to delete address";
+      snackbarAddressFail.value = true;
+    } finally {
+      addressLoading.value = false;
+    }
+  };
+
+  showConfirm(
+    "Delete Address",
+    "Are you sure you want to delete this address? This action cannot be undone.",
+    performDelete
+  );
+};
+
+// Load all addresses when switching to address tab
+// watch(tab, async (newTab) => {
+//   if (newTab === 'address' && userProfile.value) {
+//     try {
+//       const addresses = await userStore.getAddress();
+//       if (addresses && userProfile.value) {
+//         userProfile.value.addresses = addresses;
+//       }
+//     } catch (error) {
+//       console.error('Failed to fetch addresses:', error);
+//     }
+//   }
+// });
 
 onMounted(async () => {
   await userStore.fetchUserProfile();
   if (userProfile.value) {
-    account.value.name = userProfile.value.full_name;
+    account.value.firstname = userProfile.value.first_name;
+    account.value.lastname = userProfile.value.last_name;
     account.value.email = userProfile.value.email;
-    // You may not have gender/dob, so set with fallback or extend API to support it
-    account.value.gender = "male"; // Default or from extra field
-    account.value.dob = "1995-06-18"; // Default or from extra field
+    account.value.phone_number = userProfile.value.phone_number;
   }
   showCard.value = true;
 });
@@ -113,6 +273,19 @@ onMounted(async () => {
         elevation="6"
         rounded="xl"
       >
+        <!-- Loading Overlay -->
+        <v-overlay
+          v-model="loading"
+          class="align-center justify-center"
+          contained
+        >
+          <v-progress-circular
+            color="primary"
+            indeterminate
+            size="64"
+          ></v-progress-circular>
+        </v-overlay>
+
         <!-- PROFILE INFO -->
         <v-row
           align="center"
@@ -134,11 +307,10 @@ onMounted(async () => {
             </div>
             <div class="text-sm text-grey">{{ userProfile?.email }}</div>
             <div class="text-sm text-grey capitalize">
-              {{ account.gender }} • {{ formatDate(account.dob) }}
+              {{ userProfile?.phone_number }}
             </div>
           </div>
-          <!-- Hidden file input -->
-          <!-- Single hidden file input -->
+
           <input
             ref="fileInput"
             type="file"
@@ -149,7 +321,7 @@ onMounted(async () => {
         </v-row>
 
         <!-- Tabs -->
-        <v-tabs v-model="tab" color="transparent" class="tab-wrapper">
+        <v-tabs v-model="tab" color="primary" class="tab-wrapper">
           <v-tab
             v-for="item in tabs"
             :key="item.value"
@@ -171,12 +343,21 @@ onMounted(async () => {
 
         <!-- Tab Content -->
         <v-window v-model="tab" class="tab-content">
+          <!-- Account Tab -->
           <v-window-item value="account">
             <transition name="slide-fade" mode="out-in">
               <v-form @submit.prevent="saveAccount" key="account-form">
                 <v-text-field
-                  v-model="account.name"
-                  label="Full Name"
+                  v-model="account.firstname"
+                  label="First Name"
+                  prepend-inner-icon="mdi-account"
+                  variant="outlined"
+                  class="mb-4 mt-2"
+                />
+
+                <v-text-field
+                  v-model="account.lastname"
+                  label="Last Name"
                   prepend-inner-icon="mdi-account"
                   variant="outlined"
                   class="mb-4 mt-2"
@@ -191,24 +372,13 @@ onMounted(async () => {
                   class="mb-4"
                 />
 
-                <v-radio-group
-                  v-model="account.gender"
-                  label="Gender"
-                  inline
-                  class="mb-4"
-                >
-                  <v-radio label="Male" value="male" />
-                  <v-radio label="Female" value="female" />
-                  <v-radio label="Other" value="other" />
-                </v-radio-group>
-
                 <v-text-field
-                  v-model="account.dob"
-                  label="Date of Birth"
-                  prepend-inner-icon="mdi-calendar"
-                  type="date"
+                  v-model="account.phone_number"
+                  label="Phone Number"
+                  prepend-inner-icon="mdi-phone"
                   variant="outlined"
-                  class="mb-6"
+                  type="tel"
+                  class="mb-4"
                 />
 
                 <v-btn type="submit" color="primary" block class="animated-btn">
@@ -218,6 +388,7 @@ onMounted(async () => {
             </transition>
           </v-window-item>
 
+          <!-- Password Tab -->
           <v-window-item value="password">
             <transition name="slide-fade" mode="out-in">
               <v-form @submit.prevent="changePassword" key="password-form">
@@ -248,15 +419,314 @@ onMounted(async () => {
                   class="mb-6"
                 />
 
-                <v-btn type="submit" color="primary" block class="animated-btn">
+                <v-btn 
+                  type="submit" 
+                  color="primary" 
+                  block 
+                  class="animated-btn"
+                  :loading="passwordChanging"
+                  :disabled="passwordChanging"
+                >
                   Change Password
                 </v-btn>
               </v-form>
             </transition>
           </v-window-item>
+
+          <!-- Address Tab -->
+          <v-window-item value="address">
+            <transition name="slide-fade" mode="out-in">
+              <div key="address-content">
+                <div class="d-flex justify-between align-center mb-4">
+                  <h3 class="text-h6 font-weight-bold">My Addresses</h3>
+                  <v-btn
+                    color="primary"
+                    prepend-icon="mdi-plus"
+                    @click="openAddAddressDialog"
+                    class="animated-btn"
+                    :disabled="addressLoading"
+                  >
+                    Add Address
+                  </v-btn>
+                </div>
+
+                <!-- Address List -->
+                <div
+                  v-if="
+                    userProfile?.addresses && userProfile.addresses.length > 0
+                  "
+                >
+                  <v-card
+                    v-for="address in userProfile.addresses"
+                    :key="address.id"
+                    class="mb-3 pa-4 address-card"
+                    elevation="2"
+                    rounded="lg"
+                  >
+                    <div class="d-flex justify-between align-start">
+                      <div class="flex-grow-1">
+                        <h4 class="text-subtitle-1 font-weight-bold mb-2">
+                          {{ address.name }}
+                        </h4>
+                        <div class="text-body-2 text-grey-darken-1">
+                          <div class="mb-1">
+                            <v-icon size="small" class="mr-2">mdi-home</v-icon>
+                            {{ address.home }}
+                          </div>
+                          <div class="mb-1">
+                            <v-icon size="small" class="mr-2">mdi-road</v-icon>
+                            {{ address.street }}
+                          </div>
+                          <div class="mb-1">
+                            <v-icon size="small" class="mr-2">mdi-city</v-icon>
+                            {{ address.city }}, {{ address.country }}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div class="d-flex flex-column ga-2">
+                        <v-btn
+                          size="small"
+                          color="primary"
+                          variant="outlined"
+                          icon="mdi-pencil"
+                          @click="openEditAddressDialog(address)"
+                          :disabled="addressLoading"
+                        ></v-btn>
+                        <v-btn
+                          size="small"
+                          color="error"
+                          variant="outlined"
+                          icon="mdi-delete"
+                          @click="deleteAddress(address.id)"
+                          :loading="addressLoading"
+                          :disabled="addressLoading"
+                        ></v-btn>
+                      </div>
+                    </div>
+                  </v-card>
+                </div>
+
+                <!-- Empty State -->
+                <v-card
+                  v-else
+                  class="pa-8 text-center"
+                  elevation="1"
+                  rounded="lg"
+                >
+                  <v-icon size="64" color="grey-lighten-1" class="mb-4">
+                    mdi-map-marker-off
+                  </v-icon>
+                  <h3 class="text-h6 mb-2 text-grey-darken-1">
+                    No addresses yet
+                  </h3>
+                  <p class="text-body-2 text-grey mb-4">
+                    Add your first address to get started with deliveries
+                  </p>
+                  <v-btn
+                    color="primary"
+                    prepend-icon="mdi-plus"
+                    @click="openAddAddressDialog"
+                    :disabled="addressLoading"
+                  >
+                    Add Your First Address
+                  </v-btn>
+                </v-card>
+              </div>
+            </transition>
+          </v-window-item>
         </v-window>
       </v-card>
     </transition>
+
+    <!-- Address Dialog -->
+    <v-dialog v-model="showAddressDialog" max-width="600px" persistent>
+      <v-card rounded="xl" class="pa-2">
+        <v-card-title class="text-h5 pa-6 pb-4">
+          {{ editingAddress ? "Edit Address" : "Add New Address" }}
+        </v-card-title>
+
+        <v-card-text class="px-6">
+          <v-form @submit.prevent="saveAddress">
+            <v-text-field
+              v-model="addressForm.name"
+              label="Address Name"
+              prepend-inner-icon="mdi-tag"
+              variant="outlined"
+              class="mb-4"
+              placeholder="e.g., Home, Office, etc."
+              required
+            />
+
+            <v-text-field
+              v-model="addressForm.home"
+              label="House/Building Number"
+              prepend-inner-icon="mdi-home"
+              variant="outlined"
+              class="mb-4"
+              placeholder="e.g., House #123, Building A"
+              required
+            />
+
+            <v-text-field
+              v-model="addressForm.street"
+              label="Street Address"
+              prepend-inner-icon="mdi-road"
+              variant="outlined"
+              class="mb-4"
+              placeholder="e.g., Main Street, Oak Avenue"
+              required
+            />
+
+            <v-text-field
+              v-model="addressForm.city"
+              label="City"
+              prepend-inner-icon="mdi-city"
+              variant="outlined"
+              class="mb-4"
+              required
+            />
+
+            <v-text-field
+              v-model="addressForm.country"
+              label="Country"
+              prepend-inner-icon="mdi-earth"
+              variant="outlined"
+              class="mb-4"
+              required
+            />
+          </v-form>
+        </v-card-text>
+
+        <v-card-actions class="pa-6 pt-2">
+          <v-spacer />
+          <v-btn
+            color="grey"
+            variant="outlined"
+            @click="closeAddressDialog"
+            class="mr-3"
+            :disabled="addressLoading"
+          >
+            Cancel
+          </v-btn>
+          <v-btn 
+            color="primary" 
+            @click="saveAddress" 
+            class="animated-btn"
+            :loading="addressLoading"
+            :disabled="addressLoading"
+          >
+            {{ editingAddress ? "Update" : "Save" }} Address
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Confirm Dialog -->
+    <v-dialog v-model="showConfirmDialog" max-width="450px" persistent>
+      <v-card rounded="xl" class="pa-2">
+        <v-card-title class="text-h5 pa-6 pb-4 d-flex align-center">
+          <v-icon color="warning" size="28" class="mr-3">mdi-alert-circle</v-icon>
+          {{ confirmDialogTitle }}
+        </v-card-title>
+
+        <v-card-text class="px-6 pb-4">
+          <p class="text-body-1 mb-0">{{ confirmDialogMessage }}</p>
+        </v-card-text>
+
+        <v-card-actions class="pa-6 pt-2">
+          <v-spacer />
+          <v-btn
+            color="grey"
+            variant="outlined"
+            @click="closeConfirmDialog"
+            class="mr-3"
+          >
+            Cancel
+          </v-btn>
+          <v-btn 
+            color="error" 
+            @click="handleConfirm"
+            class="animated-btn"
+          >
+            Delete
+          </v-btn>
+        </v-card-actions>
+      </v-card>
+    </v-dialog>
+
+    <!-- Snackbars -->
+    <v-snackbar
+      timeout="3000"
+      color="success"
+      location="top right"
+      v-model="snackbarChangePasswordSuccess"
+    >
+      Password changed successfully!
+      <template v-slot:actions>
+        <v-btn
+          icon="mdi-close"
+          color="white"
+          variant="text"
+          @click="snackbarChangePasswordSuccess = false"
+        >
+        </v-btn>
+      </template>
+    </v-snackbar>
+
+    <v-snackbar
+      timeout="3000"
+      color="error"
+      location="top right"
+      v-model="snackbarChangePasswordFail"
+    >
+      {{ addressMessage }}
+      <template v-slot:actions>
+        <v-btn
+          icon="mdi-close"
+          color="white"
+          variant="text"
+          @click="snackbarChangePasswordFail = false"
+        >
+        </v-btn>
+      </template>
+    </v-snackbar>
+
+    <v-snackbar
+      timeout="3000"
+      color="success"
+      location="top right"
+      v-model="snackbarAddressSuccess"
+    >
+      {{ addressMessage }}
+      <template v-slot:actions>
+        <v-btn
+          icon="mdi-close"
+          color="white"
+          variant="text"
+          @click="snackbarAddressSuccess = false"
+        >
+        </v-btn>
+      </template>
+    </v-snackbar>
+
+    <v-snackbar
+      timeout="3000"
+      color="error"
+      location="top right"
+      v-model="snackbarAddressFail"
+    >
+      {{ addressMessage }}
+      <template v-slot:actions>
+        <v-btn
+          icon="mdi-close"
+          color="white"
+          variant="text"
+          @click="snackbarAddressFail = false"
+        >
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -264,6 +734,7 @@ onMounted(async () => {
 .card-appear-enter-active {
   animation: cardFadeScaleIn 0.5s ease forwards;
 }
+
 @keyframes cardFadeScaleIn {
   0% {
     opacity: 0;
@@ -275,11 +746,11 @@ onMounted(async () => {
   }
 }
 
-/* Colorful animated underline */
 .tab-wrapper {
   position: relative;
   overflow: visible;
 }
+
 .animated-underline {
   position: absolute;
   bottom: 0;
@@ -289,33 +760,36 @@ onMounted(async () => {
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-/* Tab item text */
 .tab-item {
   font-weight: 600;
   color: #444;
   transition: color 0.3s ease;
 }
+
 .v-tab--active.tab-item {
   color: #5c4def;
 }
 
-/* Slide + fade transition for tab content */
 .slide-fade-enter-active,
 .slide-fade-leave-active {
   transition: all 0.5s ease;
 }
+
 .slide-fade-enter-from {
   opacity: 0;
   transform: translateY(20px);
 }
+
 .slide-fade-enter-to {
   opacity: 1;
   transform: translateY(0);
 }
+
 .slide-fade-leave-from {
   opacity: 1;
   transform: translateY(0);
 }
+
 .slide-fade-leave-to {
   opacity: 0;
   transform: translateY(20px);
@@ -325,5 +799,34 @@ onMounted(async () => {
   animation: pulseGlow 2.5s infinite;
   border-radius: 50%;
   cursor: pointer;
+}
+
+.animated-btn {
+  transition: all 0.3s ease;
+}
+
+.animated-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+}
+
+.address-card {
+  transition: all 0.3s ease;
+  border: 1px solid rgba(0, 0, 0, 0.05);
+}
+
+.address-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes pulseGlow {
+  0%,
+  100% {
+    box-shadow: 0 0 10px rgba(124, 115, 245, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 20px rgba(124, 115, 245, 0.6);
+  }
 }
 </style>

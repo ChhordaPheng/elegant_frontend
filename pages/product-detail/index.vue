@@ -1,19 +1,31 @@
 <script setup lang="ts">
-import type { Item } from "~/types/item/item"; // Make sure this path is correct
-
-// Layout
+import type { Item } from "~/types/item/item";
 definePageMeta({ layout: "main-layout" });
-
-// Router
-const route = useRoute();
-const router = useRouter();
 
 // UI States
 const quantity = ref<number>(1);
 const isLiked = ref<boolean>(true);
-const tab = ref<string>("description");
-const rating = ref<number>(4.5);
+const tab = ref<string>("review");
+const rating = ref<number>(1);
 const selectedSizeId = ref<string | number | null>(null);
+const selectedVariantIndex = ref<number>(0);
+const selectedColorId = ref<string | null>(null);
+const currentProduct = ref<Item | null>(null);
+const isLoadingProduct = ref(false);
+const productError = ref<string | null>(null);
+const selectedVariantId = ref<string | null>(null);
+const comment = ref<string>("");
+const submittingReview = ref(false);
+const reviewError = ref<string | null>(null);
+const errors = ref<string | null>(null);
+const isSubmitting = ref(false);
+
+// Router
+const route = useRoute();
+const router = useRouter();
+const cartStore = useCartStore();
+const reviewStore = useReviewStore();
+const { reviews } = storeToRefs(reviewStore);
 
 const colors = ["green", "purple", "orange", "indigo", "red"];
 const icons = ref([
@@ -29,11 +41,6 @@ const notes = ref([
   "IRON AT MAX. TEMP. OF 110° C WITHOUT STEAM",
   "DO NOT DRY CLEAN",
 ]);
-
-// Product State
-const currentProduct = ref<Item | null>(null);
-const isLoadingProduct = ref(false);
-const productError = ref<string | null>(null);
 
 // Helper to get param string from route param or query
 const getRouteParam = (param: string | string[] | undefined): string => {
@@ -63,19 +70,17 @@ const { items: womanItems } = storeToRefs(womanStore);
 
 // Try to find product from woman store by ID
 const getProductFromWomanStore = (): Item | null => {
-  if (womanItems.value && productId.value) {
-    const found = womanItems.value.find((item) => item.id === productId.value);
-    return found || null;
-  }
-  return null;
+  const found = womanItems.value.find((item) => item.id === productId.value);
+  return (found as unknown as Item) ?? null;
 };
 
+// Get unique sizes from variants
 const uniqueSizes = computed(() => {
-  if (!currentProduct.value) return [];
+  if (!currentProduct.value?.variants) return [];
 
   const sizes = currentProduct.value.variants.map((v) => v.size);
-
   const uniqueMap = new Map<string, (typeof sizes)[0]>();
+
   sizes.forEach((size) => {
     if (size && !uniqueMap.has(size.id)) {
       uniqueMap.set(size.id, size);
@@ -84,6 +89,87 @@ const uniqueSizes = computed(() => {
 
   return Array.from(uniqueMap.values());
 });
+
+// Get unique colors from variants
+const uniqueColors = computed(() => {
+  if (!currentProduct.value?.variants) return [];
+
+  const colors = currentProduct.value.variants.map((v) => v.color);
+  const uniqueMap = new Map<string, (typeof colors)[0]>();
+
+  colors.forEach((color) => {
+    if (color && !uniqueMap.has(color.id)) {
+      uniqueMap.set(color.id, color);
+    }
+  });
+
+  return Array.from(uniqueMap.values());
+});
+
+const currentVariant = computed(() => {
+  if (!currentProduct.value?.variants || !selectedVariantId.value) {
+    return currentProduct.value?.variants?.[0] || null;
+  }
+
+  return (
+    currentProduct.value.variants.find(
+      (v) => v.id === selectedVariantId.value
+    ) || currentProduct.value.variants[0]
+  );
+});
+
+const selectVariantByColor = (colorId: string) => {
+  selectedColorId.value = colorId;
+
+  // Check if current size is still available with this color
+  if (selectedSizeId.value) {
+    const variantExists = currentProduct.value?.variants.some(
+      (v) => v.color.id === colorId && v.size.id === selectedSizeId.value
+    );
+
+    if (!variantExists) {
+      selectedSizeId.value = null; // Reset size if combination doesn't exist
+    }
+  }
+};
+
+// Updated selectVariant function to properly handle variant selection
+const selectVariant = (variantId: string) => {
+  selectedVariantId.value = variantId;
+
+  // Find the selected variant and update color/size references
+  const variant = currentProduct.value?.variants.find(
+    (v) => v.id === variantId
+  );
+  if (variant) {
+    selectedColorId.value = variant.color.id;
+    selectedSizeId.value = variant.size.id;
+
+    // Update the variant index for thumbnail display
+    const index = currentProduct.value?.variants.findIndex(
+      (v) => v.id === variantId
+    );
+    if (index !== -1) {
+      selectedVariantIndex.value = index || 0;
+    }
+  }
+};
+
+// Update size selection function
+const selectVariantBySize = (sizeId: string) => {
+  selectedSizeId.value = sizeId;
+
+  // Check if current color is still available with this size
+  if (selectedColorId.value) {
+    const variantExists = currentProduct.value?.variants.some(
+      (v) => v.size.id === sizeId && v.color.id === selectedColorId.value
+    );
+
+    if (!variantExists) {
+      selectedColorId.value = null; // Reset color if combination doesn't exist
+    }
+  }
+};
 
 const fetchProductData = async () => {
   const id = productId.value;
@@ -153,30 +239,181 @@ const fetchProductData = async () => {
   }
 };
 
-// Computed price display
+const availableSizes = computed(() => {
+  if (!currentProduct.value?.variants) return [];
+
+  let filteredVariants = currentProduct.value.variants;
+
+  // If a color is selected, filter variants by that color
+  if (selectedColorId.value) {
+    filteredVariants = filteredVariants.filter(
+      (v) => v.color.id === selectedColorId.value
+    );
+  }
+
+  const sizes = filteredVariants.map((v) => v.size);
+  const uniqueMap = new Map<string, (typeof sizes)[0]>();
+
+  sizes.forEach((size) => {
+    if (size && !uniqueMap.has(size.id)) {
+      uniqueMap.set(size.id, size);
+    }
+  });
+
+  return Array.from(uniqueMap.values());
+});
+
+const availableColors = computed(() => {
+  if (!currentProduct.value?.variants) return [];
+
+  let filteredVariants = currentProduct.value.variants;
+
+  // If a size is selected, filter variants by that size
+  if (selectedSizeId.value) {
+    filteredVariants = filteredVariants.filter(
+      (v) => v.size.id === selectedSizeId.value
+    );
+  }
+
+  const colors = filteredVariants.map((v) => v.color);
+  const uniqueMap = new Map<string, (typeof colors)[0]>();
+
+  colors.forEach((color) => {
+    if (color && !uniqueMap.has(color.id)) {
+      uniqueMap.set(color.id, color);
+    }
+  });
+
+  return Array.from(uniqueMap.values());
+});
+
+// Computed price display based on current variant
 const displayPrice = computed(() => {
-  if (!currentProduct.value?.variants?.length) {
+  if (!currentVariant.value) {
     return { final: "0.00", original: "0.00", hasDiscount: false };
   }
-  const variant = currentProduct.value.variants[0];
+
+  const variant = currentVariant.value;
   const finalPrice = parseFloat(
-    String(variant.final_price ?? variant.price ?? "0")
+    String(variant.final_price || variant.price || "0")
   ).toFixed(2);
-  const originalPrice = parseFloat(String(variant.price ?? "0")).toFixed(2);
+  const originalPrice = parseFloat(String(variant.price || "0")).toFixed(2);
+
+  const finalPriceNum = parseFloat(String(variant.final_price || "0"));
+  const originalPriceNum = parseFloat(String(variant.price || "0"));
+
   return {
     final: finalPrice,
     original: originalPrice,
-    hasDiscount:
-      !!variant.final_price &&
-      parseFloat(String(variant.final_price)) <
-        parseFloat(String(variant.price ?? "0")),
+    hasDiscount: !!variant.final_price && finalPriceNum < originalPriceNum,
   };
 });
 
-// If you want to display brand name later
-// const brandName = computed(() => currentProduct.value?.brand?.name || "Unknown Brand");
+// Get brand name
+const brandName = computed(
+  () => currentProduct.value?.brand?.name || "Unknown Brand"
+);
 
 const isDevelopment = computed(() => process.env.NODE_ENV === "development");
+
+// Updated addToCart function with cart store integration
+const addToCart = async () => {
+  if (!currentProduct.value || !currentVariant.value) {
+    console.warn("No item available to add to cart");
+    return;
+  }
+
+  if (currentVariant.value.quantity === 0) {
+    console.warn("Item is out of stock");
+    return;
+  }
+
+  if (quantity.value > currentVariant.value.quantity) {
+    console.warn("Requested quantity exceeds available stock");
+    return;
+  }
+
+  const cartPayload = {
+    item_variant_id: currentVariant.value.id,
+    quantity: quantity.value,
+  };
+
+  try {
+    await cartStore.addToCart(cartPayload);
+
+    if (cartStore.error) {
+      console.error("Failed to add to cart:", cartStore.error);
+      // You can show a toast notification here
+    } else {
+      console.log("Successfully added to cart");
+      // You can show a success toast notification here
+      // Optional: Reset quantity after successful add
+      quantity.value = 1;
+    }
+  } catch (error) {
+    console.error("Error adding to cart:", error);
+  }
+};
+
+const buyNow = async () => {
+  // if (!currentProduct.value || !currentVariant.value) {
+  //   console.warn("No item available for purchase");
+  //   return;
+  // }
+
+  // // Add to cart first
+  // await addToCart();
+
+  // Only proceed to checkout if add to cart was successful
+  if (!cartStore.error) {
+    router.push("/cart"); // or wherever your checkout page is
+  }
+};
+
+const submitReview = async () => {
+  if (rating.value <= 0) {
+    errors.value = "Please provide a rating.";
+    return;
+  }
+  if (!comment.value.trim()) {
+    errors.value = "Please write a comment.";
+    return;
+  }
+  isSubmitting.value = true;
+  errors.value = null;
+
+  try {
+    await reviewStore.submitReview({
+      item_id: currentProduct.value?.id ?? "",
+      rating: rating.value.toString(),
+      comment: comment.value,
+    });
+    // Reset form
+    rating.value = 0;
+    comment.value = "";
+  } catch (e) {
+    errors.value = "Failed to submit review. Please try again.";
+  } finally {
+    isSubmitting.value = false;
+  }
+};
+// Computed to check if add to cart button should be disabled
+const isAddToCartDisabled = computed(() => {
+  return (
+    !currentVariant.value ||
+    currentVariant.value.quantity === 0 ||
+    quantity.value > currentVariant.value.quantity ||
+    cartStore.loading
+  );
+});
+
+// Computed to get the button text based on loading state
+const addToCartButtonText = computed(() => {
+  if (cartStore.loading) return "ADDING...";
+  if (!currentVariant.value) return "SELECT VARIANT";
+  if (currentVariant.value.quantity === 0) return "OUT OF STOCK";
+  return "ADD TO CART";
+});
 
 // Watch productId changes to refetch product
 watch(
@@ -186,6 +423,20 @@ watch(
       currentProduct.value = null;
       productError.value = null;
       await fetchProductData();
+    }
+  },
+  { immediate: true }
+);
+
+// Watch for product changes to reset selected variant
+watch(
+  currentProduct,
+  (newProduct) => {
+    if (newProduct?.variants?.length) {
+      selectedVariantId.value = newProduct.variants[0].id; // Select first variant by default
+      selectedColorId.value = newProduct.variants[0].color.id;
+      selectedSizeId.value = newProduct.variants[0].size.id;
+      selectedVariantIndex.value = 0;
     }
   },
   { immediate: true }
@@ -203,37 +454,12 @@ onMounted(async () => {
 
   if (productId.value) {
     await fetchProductData();
+    // Fetch product-specific reviews
+    await reviewStore.fetchReviews({ itemId: productId.value });
   } else {
     productError.value = "No product ID found in route";
   }
 });
-
-const addToCart = () => {
-  if (!currentProduct.value) {
-    console.warn("No item available to add to cart");
-    return;
-  }
-
-  const cartItem = {
-    id: currentProduct.value.id,
-    quantity: quantity.value,
-    variant: currentProduct.value.variants?.[0] ?? null,
-  };
-
-  console.log("Adding to cart:", cartItem);
-  // TODO: Integrate your cart store here, e.g.
-  // cartStore.addToCart(cartItem);
-};
-
-const buyNow = () => {
-  if (!currentProduct.value) {
-    console.warn("No item available for purchase");
-    return;
-  }
-
-  addToCart();
-  router.push("/checkout");
-};
 </script>
 
 <template>
@@ -270,65 +496,57 @@ const buyNow = () => {
       <v-container fluid>
         <v-container max-width="1400px">
           <v-row>
-            <!-- left  -->
-            <v-col cols="12" sm="3" md="2" class="mb:5 md:mb-4">
+            <!-- left thumbnail images -->
+            <v-col cols="12" sm="3" md="2" class="hidden md:block mb-5 md:mb-4">
               <div class="flex md:flex-col justify-start items-center h-full">
                 <v-card
                   class="w-[110px] h-[130px] md:h-52 md:w-[175px] md:mb-5 cursor-pointer hover:shadow-lg transition-shadow"
                   v-for="(variant, index) in currentProduct.variants"
                   :key="variant.id"
+                  @click="selectVariant(variant.id)"
+                  :class="{
+                    'border-2 border-primary': selectedVariantId === variant.id,
+                  }"
                 >
                   <img
                     :src="
                       variant.image ||
                       'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                     "
-                    class="rounded w-full"
+                    class="rounded w-full h-full object-cover"
                     :alt="`${currentProduct.name} variant ${index + 1}`"
                   />
                 </v-card>
               </div>
             </v-col>
 
-            <!-- middle -->
+            <!-- middle main image -->
             <v-col cols="12" sm="9" md="5" class="mb-4">
               <div class="h-100">
-                <v-carousel
-                  class="h-100"
-                  show-arrows
-                  hide-delimiter-background
-                  hide-delimiters
-                  :interval="5000"
-                  cycle
-                >
-                  <v-carousel-item
-                    v-for="variant in currentProduct.variants"
-                    :key="variant.id"
-                    class="h-100"
-                  >
-                    <v-img
-                      :src="
-                        variant.image ||
-                        'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
-                      "
-                      class="h-[450px] md:h-[740px] object-cover rounded"
-                      cover
-                    />
-                  </v-carousel-item>
-                </v-carousel>
+                <v-card class="h-100">
+                  <v-img
+                    :src="
+                      currentVariant?.image ||
+                      'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
+                    "
+                    :height="$vuetify.display.mdAndUp ? '788px' : '450px'"
+                    class="rounded"
+                    cover
+                  />
+                </v-card>
               </div>
             </v-col>
 
-            <!-- right  -->
+            <!-- right product info -->
             <v-col cols="12" sm="12" md="5">
               <div class="border-b-[2px]">
                 <p class="text-[35px] font-bold">
                   {{ currentProduct.name }}
                 </p>
 
-                <!-- rating  -->
-                <div>
-                  <v-rating v-model="rating" readonly>
+                <!-- rating -->
+                <div v-if="reviews.length > 0 && reviews[0]">
+                  <v-rating v-model="reviews[0].rating" readonly>
                     <template v-slot:item="props">
                       <v-icon
                         size="25"
@@ -338,7 +556,7 @@ const buyNow = () => {
                             : 'grey-lighten-1'
                         "
                       >
-                        {{ props.isFilled ? "noto:star" : "uim:star" }}
+                        {{ props.isFilled ? "mdi-star" : "mdi-star-outline" }}
                       </v-icon>
                     </template>
                   </v-rating>
@@ -358,13 +576,13 @@ const buyNow = () => {
                 </div>
               </div>
 
-              <!-- brand  -->
+              <!-- brand -->
               <div class="flex justify-between">
                 <div class="flex justify-between items-center">
                   <p class="font-bold mr-3 text-[20px]">Brand:</p>
                   <div class="w-32 border-2 rounded border-blue-400 p-2">
                     <p class="text-center font-semibold">
-                      {{ currentProduct.brand.name }}
+                      {{ brandName }}
                     </p>
                   </div>
                 </div>
@@ -408,73 +626,81 @@ const buyNow = () => {
                 </div>
               </div>
 
-              <!-- item variants -->
-              <div class="">
-                <p class="font-bold mb-5">
-                  {{ currentProduct.variants.length }} Colors Available :
+              <!-- Variants Section -->
+              <div class="my-4">
+                <p class="font-bold mb-3">
+                  {{ currentProduct.variants.length }} Variants Available:
                 </p>
-                <div class="flex flex-wrap gap-2">
+                <div class="flex gap-5 overflow-x-auto no-scrollbar">
                   <v-card
-                    class="relative mb-2 w-[120px] cursor-pointer hover:shadow-lg transition-shadow"
                     v-for="variant in currentProduct.variants"
                     :key="variant.id"
+                    class="relative mb-2 w-[180px] flex-shrink-0 cursor-pointer hover:shadow-lg transition-shadow"
+                    @click="selectVariant(variant.id)"
+                    :class="{
+                      'border-2 border-primary':
+                        selectedVariantId === variant.id,
+                    }"
                   >
+                    <!-- Variant Info Badge -->
                     <div
-                      class="absolute z-10 px-2 rounded text-[12px] right-1 top-1"
-                      :style="{ backgroundColor: variant.color?.hex_code }"
+                      class="absolute rounded-full z-10 px-2 py-1 text-[12px] left-1 top-2 bg-opacity-70 font-bold"
+                      :style="{
+                        backgroundColor: variant.color.hex_code,
+                        color:
+                          variant.color.name.toLowerCase() === 'black'
+                            ? '#ffffff'
+                            : '#000000',
+                      }"
                     >
-                      {{ variant.color?.name || "Default" }}
+                      {{ variant.color.name }}
                     </div>
-                    <img
+
+                    <div
+                      class="absolute z-10 px-2 py-1 rounded-full text-[12px] left-1 top-10 bg-opacity-70 font-bold"
+                      :style="{
+                        backgroundColor: variant.color.hex_code,
+                        color:
+                          variant.color.name.toLowerCase() === 'black'
+                            ? '#ffffff'
+                            : '#000000',
+                      }"
+                    >
+                      {{ variant.size.name }}
+                    </div>
+
+                    <!-- Stock Badge -->
+                    <div
+                      class="absolute z-10 px-2 py-1 rounded-full text-[12px] right-1 top-2 border-2 bg-blue-400 border-blue-500 text-white"
+                    >
+                      {{ variant.quantity }} in stock
+                    </div>
+
+                    <!-- Out of Stock Overlay -->
+                    <div
+                      v-if="variant.quantity === 0"
+                      class="absolute inset-0 bg-gray-500 bg-opacity-50 flex items-center justify-center z-20 rounded"
+                    >
+                      <p class="text-white font-bold">OUT OF STOCK</p>
+                    </div>
+
+                    <v-img
                       :src="
                         variant.image ||
                         'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                       "
-                      class="rounded w-full"
-                      :alt="`${currentProduct.name} in ${
-                        variant.color?.name || 'default color'
-                      }`"
+                      cover
+                      position="top"
+                      class="w-full h-[250px] md:h-[250px] lg:h-[300px] rounded"
+                      :alt="`${currentProduct.name} - ${variant.color.name} ${variant.size.name}`"
                     />
                   </v-card>
                 </div>
               </div>
 
-              <!-- size  -->
+              <!-- share -->
               <div class="flex items-center my-4">
-                <p class="mr-2 font-semibold">Size :</p>
-                <v-item-group
-                  v-model="selectedSizeId"
-                  mandatory
-                  selected-class="bg-primary"
-                >
-                  <v-container>
-                    <v-row>
-                      <v-col v-for="size in uniqueSizes" :key="size.id">
-                        <v-item v-slot="{ selectedClass, toggle }">
-                          <v-card
-                            :class="[
-                              'd-flex text-center justify-center cursor-pointer',
-                              selectedClass,
-                            ]"
-                            variant="outlined"
-                            @click="toggle"
-                          >
-                            <div class="text-center px-2 py-1">
-                              <p class="uppercase text-[14px] p-2">
-                                {{ size.name }}
-                              </p>
-                            </div>
-                          </v-card>
-                        </v-item>
-                      </v-col>
-                    </v-row>
-                  </v-container>
-                </v-item-group>
-              </div>
-
-              <!-- share  -->
-              <div class="flex items-center my-4">
-                <p class="mr-2 font-semibold">Share :</p>
+                <p class="mr-2 font-semibold">Share:</p>
                 <div class="d-flex text-[#1576F5]">
                   <v-btn
                     v-for="icon in icons"
@@ -488,7 +714,7 @@ const buyNow = () => {
                 </div>
               </div>
 
-              <!-- btn  -->
+              <!-- buttons -->
               <div class="my-3">
                 <div class="d-flex justify-between align-center ga-2 mb-3">
                   <!-- Quantity Selector -->
@@ -507,7 +733,13 @@ const buyNow = () => {
 
                     <p class="text-center w-8">{{ quantity }}</p>
 
-                    <v-btn variant="text" size="small" @click="increase" icon>
+                    <v-btn
+                      variant="text"
+                      size="small"
+                      @click="increase"
+                      :disabled="quantity >= (currentVariant?.quantity || 0)"
+                      icon
+                    >
                       <v-icon>mdi-plus</v-icon>
                     </v-btn>
                   </div>
@@ -518,12 +750,20 @@ const buyNow = () => {
                     class="text-white px-10 w-[55%] md:w-[65%]"
                     rounded="lg"
                     size="large"
+                    @click="addToCart"
+                    :disabled="isAddToCartDisabled"
+                    :loading="cartStore.loading"
                   >
-                    ADD TO CART
+                    {{ addToCartButtonText }}
                   </v-btn>
 
                   <!-- Favorite Button -->
-                  <v-btn icon variant="outlined" rounded="lg">
+                  <v-btn
+                    icon
+                    variant="outlined"
+                    rounded="lg"
+                    @click="isLiked = !isLiked"
+                  >
                     <v-icon :color="isLiked ? 'red' : 'grey'">
                       {{ isLiked ? "line-md:heart-filled" : "line-md:heart" }}
                     </v-icon>
@@ -536,18 +776,33 @@ const buyNow = () => {
                   color="primary"
                   rounded="lg"
                   @click="buyNow"
+                  :disabled="isAddToCartDisabled"
+                  :loading="cartStore.loading"
                 >
                   BUY NOW
                 </v-btn>
               </div>
+
+              <!-- Cart Error Display -->
+              <v-alert
+                v-if="cartStore.error"
+                type="error"
+                dismissible
+                class="mt-3"
+                @click:close="cartStore.error = null"
+              >
+                {{ cartStore.error }}
+              </v-alert>
             </v-col>
           </v-row>
         </v-container>
-        <!-- description  -->
+
+        <!-- Rest of your template remains the same -->
+        <!-- description tabs -->
         <v-card variant="text">
           <v-tabs align-tabs="center" v-model="tab">
-            <v-tab value="description">description</v-tab>
-            <v-tab value="review">review</v-tab>
+            <v-tab value="description">Description</v-tab>
+            <v-tab value="review">Review</v-tab>
           </v-tabs>
 
           <v-card-text>
@@ -557,10 +812,13 @@ const buyNow = () => {
                 <v-row class="justify-center mt-3">
                   <v-col cols="12" md="4" class="flex justify-center">
                     <div class="w-[200px] md:w-[400px] md:mb-2">
-                      <img
-                        :src="currentProduct.variants[1].image"
+                      <v-img
+                        :src="
+                          currentVariant?.image ||
+                          'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
+                        "
                         class="rounded"
-                        alt=""
+                        alt="Product description image"
                       />
                     </div>
                   </v-col>
@@ -582,16 +840,16 @@ const buyNow = () => {
                       </div>
                       <v-row class="my-2">
                         <v-col cols="4" class="text-[18px]">
-                          <p>Weight</p>
-                          <p>Dimensions</p>
+                          <p>Season</p>
+                          <p>category</p>
                           <p>Color</p>
                           <p>Size</p>
                         </v-col>
                         <v-col class="text-[18px] text-gray-500">
-                          <p>: 500 g</p>
-                          <p>: 70 × 500 × 700 cm</p>
-                          <p>: {{ currentProduct.variants[0].color.name }}</p>
-                          <p>: {{ currentProduct.variants[0].size.name }}</p>
+                          <p>: {{ currentProduct.season.name }}</p>
+                          <p>: {{ currentProduct.category.name }}</p>
+                          <p>: {{ currentVariant?.color.name }}</p>
+                          <p>: {{ currentVariant?.size.name }}</p>
                         </v-col>
                       </v-row>
                     </div>
@@ -620,53 +878,71 @@ const buyNow = () => {
                   </v-col>
                 </v-row>
               </v-tabs-window-item>
-              <!-- review  -->
+
+              <!-- review -->
               <v-tabs-window-item value="review">
                 <v-row class="justify-center my-3">
                   <v-col cols="12" md="5">
-                    <v-card class="mx-auto border mb-4" v-for="n in 3" :key="n">
-                      <v-card-title>
-                        <div class="flex justify-between">
-                          <div class="flex">
-                            <v-avatar size="x-large">
-                              <img
-                                src="/images/da.jpg"
-                                class="object-cover"
-                                alt=""
-                              />
-                            </v-avatar>
-                            <div class="ml-3">
-                              <p class="font-bold text-[20px]">Dada</p>
-                              <p class="text-[12px] text-gray-500">
-                                5 hour ago
-                              </p>
+                    <div class="h-[350px] overflow-y-auto pr-2">
+                      <div
+                        class="flex justify-center items-center"
+                        v-if="reviews.length === 0"
+                      >
+                        <div class="">
+                          <img class="w-60" src="images/no_data.gif" alt="" />
+                          <p class="text-center">Be the first to comment</p>
+                        </div>
+                      </div>
+                      <v-card
+                        v-else
+                        class="mx-auto border mb-4"
+                        v-for="review in reviews"
+                        :key="review.id"
+                      >
+                        <v-card-title>
+                          <div class="flex justify-between">
+                            <div class="flex">
+                              <v-avatar size="x-large">
+                                <img
+                                  src="/images/profile.webp"
+                                  class="object-cover"
+                                  alt="User avatar"
+                                />
+                              </v-avatar>
+                              <div class="ml-3">
+                                <p class="font-bold text-[20px]">
+                                  {{ review.customer.full_name }}
+                                </p>
+                                <p class="text-[12px] text-gray-500">
+                                  {{ timeAgo(review.created_at) }}
+                                </p>
+                              </div>
+                            </div>
+                            <div class="text-center">
+                              <v-rating v-model="review.rating" readonly>
+                                <template v-slot:item="props">
+                                  <v-icon
+                                    size="20"
+                                    :color="
+                                      props.isFilled
+                                        ? colors[props.index]
+                                        : 'grey-lighten-1'
+                                    "
+                                  >
+                                    {{
+                                      props.isFilled ? "noto:star" : "uim:star"
+                                    }}
+                                  </v-icon>
+                                </template>
+                              </v-rating>
                             </div>
                           </div>
-                          <div class="text-center">
-                            <v-rating v-model="rating">
-                              <template v-slot:item="props">
-                                <v-icon
-                                  size="20"
-                                  :color="
-                                    props.isFilled
-                                      ? colors[props.index]
-                                      : 'grey-lighten-1'
-                                  "
-                                >
-                                  {{
-                                    props.isFilled ? "noto:star" : "uim:star"
-                                  }}
-                                </v-icon>
-                              </template>
-                            </v-rating>
-                          </div>
-                        </div>
-                      </v-card-title>
-                      <v-card-text class="!text-[18px] my-3"
-                        >I'm really happy with this shirt , it looks so good,
-                        and I don't regret buying it at all.</v-card-text
-                      >
-                    </v-card>
+                        </v-card-title>
+                        <v-card-text class="!text-[18px] my-3">
+                          {{ review.comment }}
+                        </v-card-text>
+                      </v-card>
+                    </div>
                   </v-col>
                   <v-col cols="12" md="5">
                     <p class="font-bold text-[25px]">Be the first to review</p>
@@ -674,10 +950,10 @@ const buyNow = () => {
                       Your email address will not be published. Required fields
                       are marked *
                     </p>
-                    <!-- rating  -->
+                    <!-- rating -->
                     <div class="flex items-center">
                       <p class="font-bold mr-2">
-                        Your rating <span class="text-red">*</span> :
+                        Your rating <span class="text-red">*</span>:
                       </p>
                       <div class="text-center">
                         <v-rating v-model="rating">
@@ -696,19 +972,35 @@ const buyNow = () => {
                         </v-rating>
                       </div>
                     </div>
-                    <!-- remark  -->
+                    <!-- review textarea -->
                     <div class="">
                       <v-textarea
                         label="Your review *"
                         variant="outlined"
+                        v-model="comment"
                       ></v-textarea>
+
                       <p class="text-gray-500 text-[12px]">
                         <span class="text-red">*</span> You have to be logged in
-                        to be able review the products .
+                        to be able to review the products.
                       </p>
                     </div>
                     <div class="mt-4">
-                      <v-btn rounded class="px-5" color="primary">submit</v-btn>
+                      <v-btn
+                        rounded
+                        class="px-5"
+                        color="primary"
+                        :loading="submittingReview"
+                        :disabled="submittingReview"
+                        @click="submitReview"
+                      >
+                        Submit
+                      </v-btn>
+
+                      <!-- Show error message -->
+                      <p v-if="reviewError" class="text-red-600 mt-2">
+                        {{ reviewError }}
+                      </p>
                     </div>
                   </v-col>
                 </v-row>
@@ -716,11 +1008,13 @@ const buyNow = () => {
             </v-tabs-window>
           </v-card-text>
         </v-card>
-        <!-- brand  -->
+
+        <!-- brand component -->
         <div class="w-full">
           <Brand />
         </div>
-        <!-- product relate  -->
+
+        <!-- related products -->
         <div class="mt-10 mb-3">
           <p class="text-center font-bold text-[25px]">Products Related</p>
         </div>
@@ -750,4 +1044,12 @@ const buyNow = () => {
   </div>
 </template>
 
-<style scoped></style>
+<style scoped>
+.v-card {
+  transition: all 0.3s ease;
+}
+
+.v-card:hover {
+  transform: translateY(-2px);
+}
+</style>

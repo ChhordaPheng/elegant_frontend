@@ -1,14 +1,7 @@
 {
-    "management": "Managements",
-    "my_account": "My Account",
-    "daily_report": "Daily Reports",
-    "bet_report": "Bet Reports",
-    "logout": "Log Out",
-    "deposit_withdraw": "Deposits/Withdraws",
-    "how_to_use": "How to use",
-    "member":"Member",
-    "promotion": "Promotion",
-    "home":"Home",
-    "commission": "Commission",
-    "account": "Account"
+    "home": "Home",
+    "women": "Women",
+    "men": "Men",
+    "about_us": "About us",
+    "contact_us": "Contact us"
 }

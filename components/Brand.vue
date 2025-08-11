@@ -1,34 +1,19 @@
 <script setup lang="ts">
-const brands = [
-  {
-    id: 1,
-    image: "/brands/inamore.png",
-  },
-  {
-    id: 2,
-    image: "/brands/mable.png",
-  },
-  {
-    id: 3,
-    image: "/brands/ruelala.png",
-  },
-  {
-    id: 4,
-    image: "/brands/SMKFLWR.webp",
-  },
-  {
-    id: 5,
-    image: "/brands/zara.webp",
-  },
-];
+const brandStore = useBrandStore()
+const { brands } = storeToRefs(brandStore)
+
+onMounted(async () => {
+  await brandStore.fetchBrands()
+})
 </script>
+
 <template>
   <div class="overflow-hidden w-full">
     <div class="brands-scroll-track flex">
       <v-img
-        v-for="(brand, index) in brands.concat(brands)"
-        :key="index"
-        :src="brand.image"
+        v-for="brand in brands"
+        :key="brand.id"
+        :src="brand.logo_url"
         height="80"
         width="200"
         class="mx-4"

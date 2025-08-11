@@ -20,12 +20,20 @@ const isLarge = computed(() => lgAndUp.value);
 const priceRange = ref([50, 120]);
 const selected = ref("Blue");
 const selectedSizes = ref<number[]>([]);
-const selectedBrands = ref<number[]>([]);
+const selectedBrand = ref<string | null>(null);
 const router = useRouter();
+const currentProduct = ref<any>(null);
+const currentVariant = ref<any>(null);
+const quantity = ref<number>(1);
+const snackbar = ref(false);
+const text = ref(""); // message for snackbar
 
 // Store
+const cartStore = useCartStore();
 const womanStore = useWomanIteStore();
 const womanItems = storeToRefs(womanStore);
+const brandStore = useBrandStore();
+const { brands } = storeToRefs(brandStore);
 
 // In your woman page, update the quickView function:
 const quickView = (productId: string | number) => {
@@ -43,10 +51,76 @@ const addToFavorites = (productId: string | number) => {
   // You might want to call a store method or API here
 };
 
+// Core add to cart logic
+const handleAddToCart = async () => {
+  if (!currentProduct.value || !currentVariant.value) {
+    text.value = "No item available to add to cart.";
+    snackbar.value = true;
+    return;
+  }
+
+  if (currentVariant.value.quantity === 0) {
+    text.value = "Item is out of stock.";
+    snackbar.value = true;
+    return;
+  }
+
+  if (quantity.value > currentVariant.value.quantity) {
+    text.value = "Requested quantity exceeds available stock.";
+    snackbar.value = true;
+    return;
+  }
+
+  const cartPayload = {
+    item_variant_id: currentVariant.value.id,
+    quantity: quantity.value,
+  };
+
+  try {
+    const cartPayload = {
+      item_variant_id: currentVariant.value.id,
+      quantity: quantity.value,
+    };
+    await cartStore.addToCart(cartPayload);
+
+    if (cartStore.error) {
+      text.value = cartStore.error || "Failed to add to cart.";
+    } else {
+      text.value = "Item successfully added to cart!";
+      quantity.value = 1;
+    }
+  } catch (error) {
+    text.value = "Something went wrong while adding to cart.";
+  } finally {
+    snackbar.value = true;
+  }
+};
+
 // Optional: Add to cart function
-const addToCart = (productId: string | number) => {
-  console.log("Added to cart:", productId);
-  // You might want to call a store method or API here
+const addToCart = (variantId: string) => {
+  // Find the product containing this variant
+  const product = womanItems.items.value.find((item) =>
+    item.variants?.some((v) => v.id === variantId)
+  );
+
+  if (!product) {
+    console.warn("No product found for variant", variantId);
+    return;
+  }
+
+  // Find the variant itself
+  const variant = product.variants.find((v) => v.id === variantId);
+
+  if (!variant) {
+    console.warn("Variant not found", variantId);
+    return;
+  }
+
+  currentProduct.value = product;
+  currentVariant.value = variant;
+  quantity.value = 1;
+
+  handleAddToCart();
 };
 
 // Static data
@@ -68,14 +142,6 @@ const sizes = [
   { id: 4, name: "l" },
   { id: 5, name: "xl" },
   { id: 6, name: "2xl" },
-];
-
-const brands = [
-  { id: 1, name: "Inamore", image: "/brands/inamore.png" },
-  { id: 2, name: "Mable", image: "/brands/mable.png" },
-  { id: 3, name: "Ruelala", image: "/brands/ruelala.png" },
-  { id: 4, name: "SMKFLWR", image: "/brands/SMKFLWR.webp" },
-  { id: 5, name: "Zara", image: "/brands/zara.webp" },
 ];
 
 // Computed properties for active filters
@@ -112,17 +178,17 @@ const activeFilters = computed(() => {
     }
   });
 
-  // Brand filters
-  selectedBrands.value.forEach((brandId) => {
-    const brand = brands.find((b) => b.id === brandId);
+  // Brand filters - Fixed to use brands from store
+  if (selectedBrand.value) {
+    const brand = brands.value?.find((b) => b.id === selectedBrand.value);
     if (brand) {
       filters.push({
         type: "brand",
         label: brand.name,
-        value: brandId,
+        value: brand.id,
       });
     }
-  });
+  }
 
   return filters;
 });
@@ -141,7 +207,7 @@ const resetSizes = () => {
 };
 
 const resetBrands = () => {
-  selectedBrands.value = [];
+  selectedBrand.value = null;
 };
 
 const clearAllFilters = () => {
@@ -166,9 +232,9 @@ const removeFilter = (filter: any) => {
       );
       break;
     case "brand":
-      selectedBrands.value = selectedBrands.value.filter(
-        (id) => id !== filter.value
-      );
+      if (selectedBrand.value === filter.value) {
+        selectedBrand.value = null;
+      }
       break;
   }
 };
@@ -183,19 +249,14 @@ const toggleSize = (sizeId: number) => {
   }
 };
 
-// Handle brand selection
-const toggleBrand = (brandId: number) => {
-  const index = selectedBrands.value.indexOf(brandId);
-  if (index > -1) {
-    selectedBrands.value.splice(index, 1);
-  } else {
-    selectedBrands.value.push(brandId);
-  }
+// Handle brand selection - Fixed to use proper brand ID
+const toggleBrand = (brandId: string) => {
+  selectedBrand.value = selectedBrand.value === brandId ? null : brandId;
 };
 
 // Lifecycle
 onMounted(async () => {
-  await womanStore.fetchWomanItems();
+  await Promise.all([womanStore.fetchWomanItems(), brandStore.fetchBrands()]);
 });
 </script>
 
@@ -203,10 +264,14 @@ onMounted(async () => {
   <div>
     <!-- Banner -->
     <div
-      class="banner w-100 d-flex flex-col justify-center items-center h-[400px]"
+      class="banner w-full flex flex-col justify-center items-center min-h-[300px] md:h-[400px] px-4"
     >
-      <p class="text-white text-[40px] font-medium">Clothes</p>
-      <div class="mx-auto max-w-screen-lg my-5">
+      <p
+        class="text-white text-[24px] sm:text-[32px] md:text-[40px] font-medium"
+      >
+        Clothes
+      </p>
+      <div class="mx-auto w-full max-w-screen-lg my-5">
         <v-slide-group class="bg-transparent">
           <v-slide-group-item
             v-for="n in 25"
@@ -214,7 +279,7 @@ onMounted(async () => {
             v-slot="{ isSelected, toggle }"
           >
             <div
-              class="flex flex-col justify-center items-center mr-5"
+              class="flex flex-col justify-center items-center mr-3 sm:mr-5"
               @click="activeIndex = n"
             >
               <div
@@ -225,11 +290,11 @@ onMounted(async () => {
               >
                 <img
                   src="/images/daa.jpg"
-                  class="w-40 rounded-full border-white border-2"
+                  class="w-20 sm:w-28 md:w-32 lg:w-40 rounded-full border-white border-2"
                   alt="category"
                 />
               </div>
-              <p class="text-white mt-3">Shoes</p>
+              <p class="text-white mt-2 text-sm md:text-base">Shoes</p>
             </div>
           </v-slide-group-item>
         </v-slide-group>
@@ -343,7 +408,7 @@ onMounted(async () => {
                 </v-row>
               </v-container>
 
-              <!-- Brand Filter -->
+              <!-- Brand Filter - Fixed to use brands from store -->
               <div class="flex justify-between items-center border-b-2 my-5">
                 <p class="uppercase font-bold text-[25px]">brands</p>
                 <v-btn
@@ -355,7 +420,7 @@ onMounted(async () => {
                 </v-btn>
               </div>
               <v-container>
-                <v-row>
+                <v-row v-if="brands">
                   <v-col
                     v-for="brand in brands"
                     :key="brand.id"
@@ -365,17 +430,24 @@ onMounted(async () => {
                     <v-card
                       :class="[
                         'd-flex align-center justify-center',
-                        selectedBrands.includes(brand.id)
-                          ? 'selected-card'
-                          : '',
+                        selectedBrand === brand.id ? 'selected-card' : '',
                       ]"
-                      variant="outlined"
                       @click="toggleBrand(brand.id)"
                     >
                       <div class="flex h-16 w-16 justify-center items-center">
-                        <img :src="brand.image" :alt="brand.name" />
+                        <img
+                          :src="brand.logo_url || '/brands/mable.png'"
+                          :alt="brand.name"
+                          class="max-w-full max-h-full object-contain"
+                        />
                       </div>
                     </v-card>
+                    <!-- <p class="text-center mt-2 text-sm">{{ brand.name }}</p> -->
+                  </v-col>
+                </v-row>
+                <v-row v-else>
+                  <v-col cols="12">
+                    <p class="text-center text-gray-500">Loading brands...</p>
                   </v-col>
                 </v-row>
               </v-container>
@@ -531,9 +603,12 @@ onMounted(async () => {
                         >
                           <!-- Product Image -->
                           <img
-                            src="https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg"
+                            :src="
+                              womanitem.variants[0].image ||
+                              'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
+                            "
                             :alt="womanitem.name"
-                            class="w-full h-auto cursor-pointer"
+                            class="w-full cursor-pointer h-[400px] object-cover"
                             @click="quickView(womanitem.id)"
                           />
 
@@ -585,6 +660,9 @@ onMounted(async () => {
                                       v-bind="props"
                                       icon
                                       class="bg-white text-black"
+                                      @click="
+                                        addToCart(womanitem.variants[0].id)
+                                      "
                                     >
                                       <v-icon icon="pepicons-pencil:cart" />
                                     </v-btn>
@@ -595,6 +673,27 @@ onMounted(async () => {
                           </div>
                         </div>
                       </v-hover>
+
+                      <!-- snackbar add to cart  -->
+                      <v-snackbar
+                        v-model="snackbar"
+                        :timeout="3000"
+                        location="top right"
+                        color="success"
+                        class="text-white"
+                      >
+                        {{ text }}
+
+                        <template v-slot:actions>
+                          <v-btn
+                            variant="text"
+                            class="text-white"
+                            @click="snackbar = false"
+                          >
+                            Close
+                          </v-btn>
+                        </template>
+                      </v-snackbar>
 
                       <!-- Product Info -->
                       <div class="text-center my-5">
@@ -690,7 +789,44 @@ onMounted(async () => {
                 </div>
               </div>
 
-              <!-- Other mobile filters would go here... -->
+              <!-- Brand Filter for Mobile -->
+              <div class="flex justify-between items-center border-b-2 my-5">
+                <p class="uppercase font-bold text-[25px]">brands</p>
+                <v-btn
+                  variant="text"
+                  class="uppercase !font-bold text-[15px] text-gray-500"
+                  @click="resetBrands"
+                >
+                  reset
+                </v-btn>
+              </div>
+              <v-container>
+                <v-row v-if="brands">
+                  <v-col
+                    v-for="brand in brands"
+                    :key="brand.id"
+                    cols="12"
+                    md="4"
+                  >
+                    <v-card
+                      :class="[
+                        'd-flex align-center justify-center',
+                        selectedBrand === brand.id ? 'selected-card' : '',
+                      ]"
+                      @click="toggleBrand(brand.id)"
+                    >
+                      <div class="flex h-16 w-16 justify-center items-center">
+                        <img
+                          :src="brand.logo_url || '/brands/mable.png'"
+                          :alt="brand.name"
+                          class="max-w-full max-h-full object-contain"
+                        />
+                      </div>
+                    </v-card>
+                    <!-- <p class="text-center mt-2 text-sm">{{ brand.name }}</p> -->
+                  </v-col>
+                </v-row>
+              </v-container>
             </div>
           </v-container>
         </v-navigation-drawer>
@@ -726,79 +862,117 @@ onMounted(async () => {
             </div>
 
             <!-- Mobile Products Grid -->
-            <div class="d-flex flex-wrap justify-center">
+            <div class="d-flex flex-wrap">
               <v-card
                 v-for="womanitem in womanItems.items.value"
                 :key="womanitem.id"
                 class="ma-2 w-[280px]"
                 variant="text"
               >
-                <!-- Mobile product content (same structure as desktop) -->
+                <!-- Mobile product content -->
                 <div v-if="womanitem.variants && womanitem.variants.length > 0">
-                  <div class="relative w-fit group">
-                    <!-- Image -->
-                    <img
-                      src="https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg"
-                      :alt="womanitem.name"
-                      class="w-full h-auto"
-                    />
+                  <v-hover v-slot="{ isHovering, props }">
+                    <div v-bind="props" class="relative w-full cursor-pointer">
+                      <!-- Product Image -->
+                      <img
+                        :src="
+                          womanitem.variants[0].image ||
+                          'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
+                        "
+                        :alt="womanitem.name"
+                        class="w-full h-auto cursor-pointer"
+                        @click="quickView(womanitem.id)"
+                      />
 
-                    <!-- Buttons Container -->
-                    <div class="absolute top-3 right-2 text-center">
-                      <p
-                        class="bg-red px-4 rounded text-[13px] mb-2 text-white"
+                      <!-- Animated Buttons on Hover -->
+                      <div
+                        class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-6"
                       >
-                        New
-                      </p>
-                      <p
-                        class="bg-orange text-white rounded text-[13px] mb-2 px-2"
-                      >
-                        Hot
-                      </p>
-                      <p
-                        v-if="womanitem.variants[0]?.discount"
-                        class="bg-red text-white rounded text-[13px] px-2"
-                      >
-                        -{{ womanitem.variants[0].discount?.value }}% OFF
-                      </p>
+                        <!-- Favorite (slide from left) -->
+                        <transition name="slide-left">
+                          <div v-if="isHovering">
+                            <v-tooltip text="Add to Favorites">
+                              <template #activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon
+                                  class="bg-white text-black"
+                                >
+                                  <v-icon icon="akar-icons:heart" />
+                                </v-btn>
+                              </template>
+                            </v-tooltip>
+                          </div>
+                        </transition>
+
+                        <!-- Quick View (slide from bottom) -->
+                        <transition name="slide-up">
+                          <div v-if="isHovering">
+                            <v-tooltip text="Quick View">
+                              <template #activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon
+                                  class="bg-white text-black"
+                                  @click.stop="quickView(womanitem.id)"
+                                >
+                                  <v-icon icon="carbon:image-copy" />
+                                </v-btn>
+                              </template>
+                            </v-tooltip>
+                          </div>
+                        </transition>
+
+                        <!-- Add to Cart (slide from right) -->
+                        <transition name="slide-right">
+                          <div v-if="isHovering">
+                            <v-tooltip text="Add to Cart">
+                              <template #activator="{ props }">
+                                <v-btn
+                                  v-bind="props"
+                                  icon
+                                  class="bg-white text-black"
+                                  @click="addToCart(womanitem.variants[0].id)"
+                                >
+                                  <v-icon icon="pepicons-pencil:cart" />
+                                </v-btn>
+                              </template>
+                            </v-tooltip>
+                          </div>
+                        </transition>
+                      </div>
                     </div>
+                  </v-hover>
 
-                    <!-- Action Buttons -->
-                    <div
-                      class="absolute inset-0 flex items-end justify-between p-4 w-[65%] mx-auto"
+                  <!-- Product Info -->
+                  <div class="text-center my-5">
+                    <p
+                      class="font-bold text-[20px] cursor-pointer hover:text-blue-500 transition-colors"
+                      @click="quickView(womanitem.id)"
                     >
-                      <v-tooltip text="Add to Favorites" location="top">
-                        <template v-slot:activator="{ props }">
-                          <v-btn
-                            v-bind="props"
-                            icon="mynaui:heart"
-                            size="small"
-                            @click="addToFavorites(womanitem.id)"
-                          ></v-btn>
-                        </template>
-                      </v-tooltip>
-
-                      <v-tooltip text="Add to Cart" location="top">
-                        <template v-slot:activator="{ props }">
-                          <v-btn
-                            v-bind="props"
-                            icon="pepicons-pencil:cart"
-                            size="small"
-                            @click="addToCart(womanitem.id)"
-                          ></v-btn>
-                        </template>
-                      </v-tooltip>
-
-                      <v-tooltip text="Quick View" location="top">
-                        <template v-slot:activator="{ props }">
-                          <v-btn
-                            v-bind="props"
-                            icon="carbon:image-copy"
-                            size="small"
-                            @click="quickView(womanitem.id)"
-                          ></v-btn>
-                        </template>
-                      </v-tooltip>
+                      {{ womanitem.name }}
+                    </p>
+                    <p class="text-blue-700 font-bold uppercase my-1">
+                      {{ womanitem.brand.name }}
+                    </p>
+                    <div class="d-flex justify-center">
+                      <Icon icon="noto:star" width="20" height="20" />
+                      <div v-for="i in 4" :key="i">
+                        <Icon
+                          icon="uim:star"
+                          class="!text-gray-400"
+                          width="20"
+                          height="20"
+                        />
+                      </div>
+                    </div>
+                    <div class="flex justify-center items-center mt-2">
+                      <p class="text-red mr-2">
+                        ${{ womanitem.variants[0].final_price }} USD
+                      </p>
+                      <p class="line-through text-gray-500">
+                        ${{ womanitem.variants[0].price }} USD
+                      </p>
                     </div>
                   </div>
                 </div>
@@ -808,6 +982,23 @@ onMounted(async () => {
         </v-main>
       </template>
     </v-app>
+
+    <!-- Global snackbar for mobile -->
+    <v-snackbar
+      v-model="snackbar"
+      :timeout="3000"
+      location="top right"
+      color="success"
+      class="text-white"
+    >
+      {{ text }}
+
+      <template v-slot:actions>
+        <v-btn variant="text" class="text-white" @click="snackbar = false">
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </div>
 </template>
 

@@ -1,10 +1,13 @@
-import type { User, UserResponse } from "~/types/profile/profile";
+import type { AddressRequest, AddressResponse, User, UserResponse, ChangePasswordRequest, ChangePasswordResponse, GetAddressResponse, DeleteAddressResponse } from "~/types/profile/profile";
 
 export const useProfileStore = defineStore("userProfileStore", {
   state: () => ({
     userProfile: null as User | null,
     loading: false,
     error: "" as string | null,
+    passwordChanging: false,
+    passwordChangeSuccess: false,
+    passwordChangeMessage: "",
   }),
 
   actions: {
@@ -13,16 +16,10 @@ export const useProfileStore = defineStore("userProfileStore", {
       this.error = null;
 
       try {
-        // // const token = useCookie("accessToken")?.value;
-        // if (!token) {
-        //   throw new Error("Access token is missing.");
-        // }
-
         const { data } = await useFetchDataApi<UserResponse>("/profile", {
           method: "GET",
         });
 
-        // If your API returns error info inside data, handle it here
         if (!data.value || (data.value as any).error) {
           throw new Error(((data.value as any).error?.message) || "Failed to fetch user.");
         }
@@ -37,6 +34,97 @@ export const useProfileStore = defineStore("userProfileStore", {
         this.userProfile = null;
       } finally {
         this.loading = false;
+      }
+    },
+
+    async changePassword(payload: ChangePasswordRequest) {
+      this.passwordChanging = true;
+      this.passwordChangeSuccess = false;
+      this.passwordChangeMessage = "";
+
+      try {
+        const { data } = await useFetchDataApi<ChangePasswordResponse>("/change-password", {
+          method: "POST",
+          body: payload,
+        });
+
+        if (!data.value || data.value.status_code !== 200 || !data.value.success) {
+          throw new Error(data.value?.message || "Failed to change password.");
+        }
+
+        this.passwordChangeSuccess = true;
+        this.passwordChangeMessage = data.value.message;
+      } catch (err: any) {
+        this.passwordChangeMessage = err.message || "Password change failed.";
+      } finally {
+        this.passwordChanging = false;
+      }
+    },
+
+    async addAdress(payload: AddressRequest) {
+      try {
+        const { data } = await useFetchDataApi<AddressResponse>("/addresses", {
+          method: "POST",
+          body: payload,
+        });
+
+        if (!data.value || !data.value.success) {
+          throw new Error(data.value?.message || "Failed to add address.");
+        }
+
+        return data.value.data; // Return the added address
+      } catch (err: any) {
+        throw new Error(err.message || "Failed to add address.");
+      }
+    },
+
+    async getAddress() {
+      this.loading = true;
+
+      try {
+        const response = await useFetchDataApi<GetAddressResponse>("/addresses");
+        if (response.data.value && response.data.value.success) {
+          return response.data.value.data;
+        } else {
+          console.log("Failed to fetch addresses:", response.data.value?.message);
+        }
+      } catch (error) {
+        return error;
+      } finally {
+        this.loading = false;
+      }
+    },
+
+    async updateAddress(payload: AddressRequest, addressID: string) {
+      try {
+        const { data } = await useFetchDataApi<AddressResponse>(`/addresses/${addressID}`, {
+          method: "PUT",
+          body: payload,
+        });
+
+        if (!data.value || !data.value.success) {
+          throw new Error(data.value?.message || "Failed to update address.");
+        }
+
+        return data.value.data; // Return the updated address
+      } catch (err: any) {
+        throw new Error(err.message || "Failed to update address.");
+      }
+    },
+
+    async deleteAddress(addressID: string) {
+      try {
+        const response = await useFetchDataApi<DeleteAddressResponse>(`/addresses/${addressID}`, {
+          method: "DELETE",
+        });
+
+        if (!response.data.value || !response.data.value.success) {
+          throw new Error(response.data.value?.message || "Failed to delete address.");
+        }
+
+        return response.data.value.message; // Return the success message
+      } catch (err: any) {
+        throw new Error(err.message || "Failed to delete address.");
       }
     },
   },

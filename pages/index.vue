@@ -8,38 +8,76 @@ definePageMeta({
 const tab = ref("newArrival");
 const bannerStore = useBannerStore();
 const { banners } = storeToRefs(bannerStore);
-// const rmBanners = ref([
-//   {
-//     id: 1,
-//     img: "images/da_rm_bg.png",
-//   },
-//   {
-//     id: 2,
-//     img: "images/da_rm_bg.png",
-//   },
-//   {
-//     id: 3,
-//     img: "images/da_rm_bg.png",
-//   },
-// ]);
 
-// const banners = ref([
-//   {
-//     id: 1,
-//     img: "images/da.jpg",
-//   },
-//   {
-//     id: 2,
-//     img: "images/da.jpg",
-//   },
-//   {
-//     id: 3,
-//     img: "images/da.jpg",
-//   },
-// ]);
+// Countdown duration (in seconds), e.g., 3 days
+const duration = ref(3 * 24 * 60 * 60); // 3 days in seconds
+
+const times = ref([
+  { num: "00", date: "Days" },
+  { num: "00", date: "Hours" },
+  { num: "00", date: "Mins" },
+  { num: "00", date: "Secs" },
+]);
+
+const bannerss = [
+  {
+    id: 1,
+    img: "https://i.pinimg.com/1200x/7d/aa/1f/7daa1f177aaa14d718a0a39642101a3a.jpg",
+  },
+  {
+    id: 2,
+    img: "https://i.pinimg.com/736x/d0/e8/f3/d0e8f3f3fd3f705fb4d2266f4c16c53d.jpg",
+  },
+  {
+    id: 3,
+    img: "https://i.pinimg.com/736x/da/ec/38/daec385e61b0a599fa9d69eb2313614b.jpg",
+  },
+  {
+    id: 4,
+    img: "https://i.pinimg.com/736x/fa/b6/12/fab612e5d91cb9d9d56fb2ff26b51fbc.jpg",
+  },
+];
+
+// Duplicate banners to make it loop visually
+const bannersLoop = [...bannerss];
+
+const defaultImage = "https://via.placeholder.com/200x150";
+let timer = Number;
+
+const updateTimes = () => {
+  let remaining = duration.value;
+
+  const days = Math.floor(remaining / (24 * 3600));
+  remaining %= 24 * 3600;
+  const hours = Math.floor(remaining / 3600);
+  remaining %= 3600;
+  const minutes = Math.floor(remaining / 60);
+  const seconds = remaining % 60;
+
+  times.value = [
+    { num: String(days).padStart(2, "0"), date: "Days" },
+    { num: String(hours).padStart(2, "0"), date: "Hours" },
+    { num: String(minutes).padStart(2, "0"), date: "Mins" },
+    { num: String(seconds).padStart(2, "0"), date: "Secs" },
+  ];
+};
 
 onMounted(async () => {
   await bannerStore.fetchBanners();
+  updateTimes();
+
+  timer = window.setInterval(() => {
+    if (duration.value > 0) {
+      duration.value--;
+      updateTimes();
+    } else {
+      clearInterval(timer);
+    }
+  }, 1000);
+});
+
+onUnmounted(() => {
+  clearInterval(timer);
 });
 </script>
 
@@ -47,27 +85,32 @@ onMounted(async () => {
   <div>
     <!-- banner  -->
     <div>
-      <div class="banner bg-[#E0F0FF] h-[710px] relative overflow-hidden">
-        <!-- Background circle -->
+      <div
+        class="banner bg-[#E0F0FF] min-h-[400px] md:h-[710px] relative overflow-hidden"
+      >
+        <!-- Background circle - hidden on mobile -->
         <div
-          class="absolute top-[-100px] right-[-400px] w-[1000px] h-[1000px] rounded-full bg-white clip-half-circle"
+          class="hidden md:block absolute top-[-100px] right-[-400px] w-[1000px] h-[1000px] rounded-full bg-white clip-half-circle"
         ></div>
 
         <!-- Main Row -->
-        <v-row class="z-500 px-4" align="center" justify="center">
-          <!-- Column 1: Right-side Carousel -->
-          <v-col cols="12" md="4" class="flex justify-center mb-6 md:mb-0">
+        <v-row class="z-500 px-2 md:px-4 items-center">
+          <!-- Column 1: Left-side Carousel -->
+          <v-col cols="12" md="4" class="flex justify-center mb-4 md:mb-0">
             <v-carousel
               :show-arrows="false"
               hide-delimiter-background
               hide-delimiters
               :interval="5000"
               cycle
-              class="w-full max-w-[405px] h-auto"
+              class="w-full max-w-[300px] md:max-w-[405px] h-auto"
             >
               <v-carousel-item v-for="banner in banners" :key="banner.id">
                 <img
-                  :src="banner.big_image"
+                  :src="
+                    banner.big_image ||
+                    'https://i.pinimg.com/736x/71/d8/c3/71d8c399c2de74a2281e0ab46dadef85.jpg'
+                  "
                   alt="banner"
                   class="w-full object-cover"
                 />
@@ -75,11 +118,11 @@ onMounted(async () => {
             </v-carousel>
           </v-col>
 
-          <!-- Column 2: Text Content -->
+          <!-- Column 2: Text Content (stays in middle) -->
           <v-col
             cols="12"
             md="4"
-            class="flex flex-col justify-center text-center h-[900px]"
+            class="flex flex-col justify-center text-center py-8 md:h-[900px]"
           >
             <v-carousel
               :show-arrows="false"
@@ -89,28 +132,42 @@ onMounted(async () => {
               cycle
             >
               <v-carousel-item v-for="banner in banners" :key="banner.id">
-                <p class="text-red text-4xl font-bold">
-                  {{ banner.discount }} % SALE
-                </p>
-                <p class="font-bold text-[40px] md:text-[70px]">
-                  {{ banner.title }}
-                </p>
-                <p class="my-5 px-2 md:px-6">
-                  {{ banner.description }}
-                </p>
-                <div class="flex justify-center gap-3 mt-2">
-                  <v-btn size="large" class="!font-bold">Shop Now</v-btn>
-                  <v-btn size="large" class="bg-blue !text-white !font-bold"
-                    >New Arrival</v-btn
+                <div
+                  class="h-full flex flex-col justify-center items-center text-center px-4"
+                >
+                  <p class="text-red text-2xl md:text-4xl font-bold mb-2">
+                    {{ banner.discount }} % SALE
+                  </p>
+                  <p
+                    class="font-bold text-3xl md:text-[40px] lg:text-[70px] my-2 lg:my-16 leading-tight lg:leading-[70px]"
                   >
+                    {{ banner.title }}
+                  </p>
+
+                  <p class="my-3 md:my-5 px-4 md:px-6 text-sm md:text-base">
+                    {{ banner.description }}
+                  </p>
+                  <div
+                    class="flex flex-col sm:flex-row justify-center gap-3 mt-4"
+                  >
+                    <v-btn size="large" class="!font-bold w-full sm:w-auto"
+                      >Shop Now</v-btn
+                    >
+                    <v-btn
+                      size="large"
+                      class="bg-blue !text-white !font-bold w-full sm:w-auto"
+                    >
+                      New Arrival
+                    </v-btn>
+                  </div>
                 </div>
               </v-carousel-item>
             </v-carousel>
           </v-col>
 
-          <!-- Column 3: Card with Carousel -->
+          <!-- Column 3: Right-side Card with Carousel -->
           <v-col cols="12" md="4" class="flex justify-center">
-            <v-card elevation="3" class="w-full max-w-[300px]">
+            <v-card elevation="3" class="w-full max-w-[250px] md:max-w-[300px]">
               <v-carousel
                 :show-arrows="false"
                 hide-delimiter-background
@@ -120,8 +177,11 @@ onMounted(async () => {
                 class="h-auto"
               >
                 <v-carousel-item v-for="banner in banners" :key="banner.id">
-                  <v-img
-                    :src="banner.small_image"
+                  <img
+                    :src="
+                      banner.small_image ||
+                      'https://i.pinimg.com/736x/16/6a/ef/166aef267fcefb91f60f330f1531e0fd.jpg'
+                    "
                     class="rounded-sm w-full h-auto !border-4 border-gray-400"
                     cover
                     alt=""
@@ -134,55 +194,48 @@ onMounted(async () => {
       </div>
     </div>
 
-    <!-- promotin  -->
-    <v-container fluid class="bg-[#F3F4F5] h-[150px] flex items-center">
-      <v-row class="justify-evenly">
-        <v-col class="ml-5">
-          <p>EXCLUSIVE DISCOUNTS THIS WEEK</p>
-          <p class="font-bold text-[25px] mt-3">
+    <!-- promotion -->
+    <v-container
+      fluid
+      class="bg-[#F3F4F5] min-h-[120px] md:h-[150px] flex items-center py-4"
+    >
+      <v-row class="justify-center items-center w-full">
+        <v-col cols="12" md="8" class="md:text-left">
+          <p class="text-xs md:text-sm mb-2">EXCLUSIVE DISCOUNTS THIS WEEK</p>
+          <p class="font-bold text-lg md:text-[25px]">
             DON'T MISS <span class="text-red">70% OFF</span> ALL SALE! NO CODE
             NEEDED!
           </p>
         </v-col>
 
-        <v-col cols="4" class="">
-          <div class="flex items-center justify-evenly">
-            <v-btn size="64" icon>
-              <div class="">
-                <p class="font-bold">129</p>
-                <p class="capitalize text-[10px] pt-1">Days</p>
-              </div>
-            </v-btn>
-
-            <v-btn size="64" icon>
-              <div class="">
-                <p class="font-bold">13</p>
-                <p class="capitalize text-[10px] pt-1">Hours</p>
-              </div>
-            </v-btn>
-
-            <v-btn size="64" icon>
-              <div class="">
-                <p class="font-bold">09</p>
-                <p class="capitalize text-[10px] pt-1">Mins</p>
-              </div>
-            </v-btn>
-
-            <v-btn height="64" min-width="64" icon class="p-0">
-              <div class="text-center">
-                <p class="font-bold text-[20px] leading-none">46</p>
-                <p class="capitalize text-[10px] pt-1 leading-none">Secs</p>
-              </div>
-            </v-btn>
+        <v-col cols="12" md="4" class="flex justify-center">
+          <div
+            class="flex items-center justify-center gap-2 md:gap-4 flex-wrap"
+          >
+            <div v-for="(time, index) in times" :key="index" class="mx-1">
+              <v-btn height="48" min-width="48" icon class="p-0 text-center">
+                <div class="text-center">
+                  <p class="font-bold text-sm md:text-[20px] leading-none">
+                    {{ time.num }}
+                  </p>
+                  <p
+                    class="capitalize text-[8px] md:text-[10px] pt-1 leading-none"
+                  >
+                    {{ time.date }}
+                  </p>
+                </div>
+              </v-btn>
+            </div>
 
             <v-btn
-              height="54"
+              height="44"
               rounded="full"
-              class="bg-primary text-white rounded-xl px-4"
+              class="bg-primary text-white rounded-xl px-3 ml-2"
+              size="small"
             >
-              <div class="flex items-center gap-2">
-                <span>Learn more</span>
-                <Icon icon="system-uicons:upward" width="21" height="21" />
+              <div class="flex items-center gap-1">
+                <span class="text-xs md:text-sm">Learn more</span>
+                <Icon icon="system-uicons:upward" width="16" height="16" />
               </div>
             </v-btn>
           </div>
@@ -191,15 +244,21 @@ onMounted(async () => {
     </v-container>
 
     <!-- recommendation -->
-    <div class="mt-10">
+    <div class="mt-6 md:mt-10 px-2 md:px-0">
       <v-card variant="text">
-        <v-tabs v-model="tab" align-tabs="center">
-          <v-tab value="newArrival" class="font-bold">New Arrivals</v-tab>
-          <v-tab value="bestSeller">Best Sellers</v-tab>
-          <v-tab value="topTrending">Top Trending</v-tab>
+        <v-tabs v-model="tab" align-tabs="center" class="overflow-x-auto">
+          <v-tab value="newArrival" class="font-bold text-sm md:text-base"
+            >New Arrivals</v-tab
+          >
+          <v-tab value="bestSeller" class="text-sm md:text-base"
+            >Best Sellers</v-tab
+          >
+          <v-tab value="topTrending" class="text-sm md:text-base"
+            >Top Trending</v-tab
+          >
         </v-tabs>
 
-        <v-card-text>
+        <v-card-text class="px-2 md:px-4">
           <v-tabs-window v-model="tab">
             <v-tabs-window-item value="newArrival">
               <NewArrival />
@@ -218,36 +277,42 @@ onMounted(async () => {
     </div>
 
     <!-- brand  -->
-    <div class="w-full">
+    <div class="w-full px-2 md:px-0">
       <Brand />
     </div>
 
-    <!-- men and women recommand -->
-    <div class="my-20 text-center">
-      <p class="text-gray-400 uppercase text-[15px] mb-5">
+    <!-- men and women recommend -->
+    <div class="mb-6 md:mb-10 text-center px-4">
+      <p class="text-gray-400 uppercase text-xs md:text-[15px] mb-3 md:mb-5">
         love at first sight
       </p>
-      <p class="font-bold uppercase text-[35px]">gotta have this</p>
+      <p class="font-bold uppercase text-2xl md:text-[35px]">gotta have this</p>
     </div>
 
-    <div class="h-[500px]">
+    <div class="min-h-[400px] md:h-[500px] mb-8">
       <v-container>
-        <v-row class="">
-          <v-col cols="6">
+        <v-row class="justify-center">
+          <v-col cols="12" md="6" class="mb-4 md:mb-0">
             <div class="relative flex justify-center">
-              <div class="absolute z-10 top-64 left-20">
-                <p class="font-bold text-[20px]">
+              <div class="absolute z-10 top-32 md:top-64 left-4 md:left-20">
+                <p
+                  class="font-bold text-lg md:text-[20px] text-black md:text-black"
+                >
                   Discover Your <br />
                   Style
                 </p>
-                <a href="#" class="underline">SeeMore</a>
+                <a href="#" class="underline text-black md:text-black"
+                  >SeeMore</a
+                >
               </div>
-              <div class="absolute z-10 top-[70px] left-[200px]">
+              <div
+                class="hidden md:block absolute z-10 top-[70px] left-[200px]"
+              >
                 <p class="text-rotate text-[15px] text-gray-400">
                   SALE UP TO 30% OFF
                 </p>
               </div>
-              <div class="w-72 h-auto absolute">
+              <div class="w-64 md:w-72 h-auto relative">
                 <v-carousel
                   class=""
                   :show-arrows="false"
@@ -261,14 +326,19 @@ onMounted(async () => {
                     v-for="banner in banners"
                     :key="banner.id"
                   >
-                    <div class="relative w-72">
+                    <div class="relative w-64 md:w-72">
                       <v-img
-                        :src="banner.img"
-                        class="rounded-sm w-72 h-auto"
+                        :src="
+                          banner.img ||
+                          'https://i.pinimg.com/1200x/1d/b8/10/1db810bc7ff9f5aa2f21fe7b35059901.jpg'
+                        "
+                        class="rounded-sm w-64 md:w-72 h-auto"
                         cover
                         alt=""
                       ></v-img>
-                      <div class="absolute top-0 left-0 text-white pa-4">
+                      <div
+                        class="absolute top-0 left-0 text-white pa-2 md:pa-4"
+                      >
                         $6.000 USD
                       </div>
                     </div>
@@ -277,16 +347,20 @@ onMounted(async () => {
               </div>
             </div>
           </v-col>
-          <v-col cols="6">
-            <div class="relative flex justify-center mt-14">
-              <div class="absolute z-10 top-20 left-16">
-                <p class="font-bold text-[20px]">
+          <v-col cols="12" md="6">
+            <div class="relative flex justify-center mt-8 md:mt-14">
+              <div class="absolute z-10 top-16 md:top-20 left-4 md:left-16">
+                <p
+                  class="font-bold text-lg md:text-[20px] text-black md:text-black"
+                >
                   Redefine Your <br />
                   Look
                 </p>
-                <a href="#" class="underline">SeeMore</a>
+                <a href="#" class="underline text-black md:text-black"
+                  >SeeMore</a
+                >
               </div>
-              <div class="w-72 h-auto absolute">
+              <div class="w-64 md:w-72 h-auto relative">
                 <v-carousel
                   class=""
                   :show-arrows="false"
@@ -300,14 +374,19 @@ onMounted(async () => {
                     v-for="banner in banners"
                     :key="banner.id"
                   >
-                    <div class="relative w-72">
+                    <div class="relative w-64 md:w-72">
                       <v-img
-                        :src="banner.img"
-                        class="rounded-sm w-72 h-64"
+                        :src="
+                          banner.img ||
+                          'https://i.pinimg.com/1200x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
+                        "
+                        class="rounded-sm w-64 md:w-72 bg-top"
                         cover
                         alt=""
                       ></v-img>
-                      <div class="absolute top-0 right-0 text-white pa-4">
+                      <div
+                        class="absolute top-0 right-0 text-white pa-2 md:pa-4"
+                      >
                         $6.000 USD
                       </div>
                     </div>
@@ -321,157 +400,209 @@ onMounted(async () => {
     </div>
 
     <!-- super sell  -->
-    <div class="relative">
+    <div class="relative mb-20 md:mb-0">
       <div
-        class="banner-discount bg-gray-500 h-[550px] flex flex-col text-white uppercase text-center pt-24"
+        class="banner-discount bg-gray-500 min-h-[400px] md:h-[550px] flex flex-col text-white uppercase text-center pt-16 md:pt-24 px-4"
       >
-        <p class="text-[20px]">BESTSELLERS</p>
-        <p class="text-6xl my-3">Super Sale! Up To</p>
-        <span class="text-6xl my-3"> 80% Off </span>
-        <v-btn variant="text" class="!underline">shop now</v-btn>
+        <p class="text-base md:text-[20px]">BESTSELLERS</p>
+        <p class="text-4xl md:text-6xl my-2 md:my-3">Super Sale! Up To</p>
+        <span class="text-4xl md:text-6xl my-2 md:my-3"> 80% Off </span>
+        <v-btn variant="text" class="!underline w-auto">shop now</v-btn>
       </div>
 
       <!-- season  -->
       <div
-        class="h-[400px] absolute z-10 -bottom-[250px] flex items-center justify-center w-full"
+        class="min-h-[200px] absolute z-10 -bottom-[250px] flex items-center justify-center w-full"
       >
-        <v-container class="h-full">
-          <v-row class="h-full">
-            <!-- col 1  -->
-            <v-col cols="3" class="">
-              <v-carousel
-                class="jump_box_up h-70 mt-16"
-                :show-arrows="false"
-                hide-delimiter-background
-                hide-delimiters
-                :interval="5000"
-                cycle
+        <div class="">
+          <v-slide-group class="py-4" show-arrows center-active>
+            <v-slide-group-item
+              v-for="(banner, index) in bannersLoop"
+              :key="index"
+            >
+              <v-card
+                class="mx-2 overflow-hidden jump_box"
+                max-width="200"
+                variant="flat"
+                :class="index % 2 === 0 ? 'jump_box_up' : 'jump_box_down'"
               >
-                <v-carousel-item
+                <img
+                  :src="banner.img || defaultImage"
                   cover
-                  v-for="banner in banners"
-                  :key="banner.id"
+                  class="rounded-md h-48 md:h-auto"
+                />
+                <div
+                  class="absolute top-0 left-0 text-white pa-2 font-bold text-shadow-lg"
                 >
-                  <div class="relative w-72">
-                    <v-img
-                      :src="banner.img"
-                      class="rounded-sm w-72 h-auto"
-                      cover
-                      alt=""
-                    ></v-img>
-                    <div class="absolute top-0 left-0 text-white pa-4">
-                      $6.000 USD
-                    </div>
-                  </div>
-                </v-carousel-item>
-              </v-carousel>
-            </v-col>
-            <!-- col 2 -->
-            <v-col cols="3">
-              <v-carousel
-                class="jump_box_down"
-                :show-arrows="false"
-                hide-delimiter-background
-                hide-delimiters
-                :interval="5000"
-                cycle
-              >
-                <v-carousel-item
-                  cover
-                  v-for="banner in banners"
-                  :key="banner.id"
+                  $6,000 USD
+                </div>
+              </v-card>
+            </v-slide-group-item>
+          </v-slide-group>
+        </div>
+
+        <!-- //// test -->
+        <div
+          class="min-h-[300px] md:h-[400px] absolute z-10 -bottom-[150px] md:-bottom-[250px] flex items-center justify-center w-full"
+        >
+          <v-container class="h-full">
+            <v-row class="h-full justify-center">
+              <!-- Mobile: 2x2 grid, Desktop: 4 columns -->
+              <!-- col 1  -->
+              <v-col cols="6" md="3" class="px-1 md:px-2">
+                <v-carousel
+                  class="jump_box_up h-48 md:h-70 mt-8 md:mt-16"
+                  :show-arrows="false"
+                  hide-delimiter-background
+                  hide-delimiters
+                  :interval="5000"
+                  cycle
                 >
-                  <div class="relative w-72">
-                    <v-img
-                      :src="banner.img"
-                      class="rounded-sm w-72 h-auto"
-                      cover
-                      alt=""
-                    ></v-img>
-                    <div class="absolute top-0 left-0 text-white pa-4">
-                      $6.000 USD
+                  <v-carousel-item
+                    cover
+                    v-for="banner in banners"
+                    :key="banner.id"
+                  >
+                    <div class="relative w-full">
+                      <v-img
+                        :src="
+                          banner.img ||
+                          'https://i.pinimg.com/1200x/7d/aa/1f/7daa1f177aaa14d718a0a39642101a3a.jpg'
+                        "
+                        class="rounded-sm w-full h-48 md:h-auto"
+                        cover
+                        alt=""
+                      ></v-img>
+                      <div
+                        class="absolute top-0 left-0 text-white pa-2 md:pa-4 text-sh shadow-2xl text-shadow-lg"
+                      >
+                        $6.000 USD
+                      </div>
                     </div>
-                  </div>
-                </v-carousel-item>
-              </v-carousel>
-            </v-col>
-            <!-- col 3  -->
-            <v-col cols="3" class="mt-16">
-              <v-carousel
-                class="jump_box_up"
-                :show-arrows="false"
-                hide-delimiter-background
-                hide-delimiters
-                :interval="5000"
-                cycle
-              >
-                <v-carousel-item
-                  cover
-                  v-for="banner in banners"
-                  :key="banner.id"
+                  </v-carousel-item>
+                </v-carousel>
+              </v-col>
+              <!-- col 2 -->
+              <v-col cols="6" md="3" class="px-1 md:px-2">
+                <v-carousel
+                  class="jump_box_down h-48 md:h-auto"
+                  :show-arrows="false"
+                  hide-delimiter-background
+                  hide-delimiters
+                  :interval="5000"
+                  cycle
                 >
-                  <div class="relative w-72">
-                    <v-img
-                      :src="banner.img"
-                      class="rounded-sm w-72 h-auto"
-                      cover
-                      alt=""
-                    ></v-img>
-                    <div class="absolute top-0 left-0 text-white pa-4">
-                      $6.000 USD
+                  <v-carousel-item
+                    cover
+                    v-for="banner in banners"
+                    :key="banner.id"
+                  >
+                    <div class="relative w-full">
+                      <v-img
+                        :src="
+                          banner.img ||
+                          'https://i.pinimg.com/736x/d0/e8/f3/d0e8f3f3fd3f705fb4d2266f4c16c53d.jpg'
+                        "
+                        class="rounded-sm w-full h-48 md:h-auto"
+                        cover
+                        alt=""
+                      ></v-img>
+                      <div
+                        class="absolute top-0 left-0 text-white pa-2 md:pa-4"
+                      >
+                        $6.000 USD
+                      </div>
                     </div>
-                  </div>
-                </v-carousel-item>
-              </v-carousel>
-            </v-col>
-            <!-- col 4  -->
-            <v-col cols="3" class="mt-5">
-              <v-carousel
-                class="jump_box_down"
-                :show-arrows="false"
-                hide-delimiter-background
-                hide-delimiters
-                :interval="5000"
-                cycle
-              >
-                <v-carousel-item
-                  cover
-                  v-for="banner in banners"
-                  :key="banner.id"
+                  </v-carousel-item>
+                </v-carousel>
+              </v-col>
+              <!-- col 3  -->
+              <v-col cols="6" md="3" class="px-1 md:px-2">
+                <v-carousel
+                  class="jump_box_up h-48 md:h-auto mt-8 md:mt-16"
+                  :show-arrows="false"
+                  hide-delimiter-background
+                  hide-delimiters
+                  :interval="5000"
+                  cycle
                 >
-                  <div class="relative w-72">
-                    <v-img
-                      :src="banner.img"
-                      class="rounded-sm w-72 h-auto"
-                      cover
-                      alt=""
-                    ></v-img>
-                    <div class="absolute top-0 left-0 text-white pa-4">
-                      $6.000 USD
+                  <v-carousel-item
+                    cover
+                    v-for="banner in banners"
+                    :key="banner.id"
+                  >
+                    <div class="relative w-full">
+                      <v-img
+                        :src="
+                          banner.img ||
+                          'https://i.pinimg.com/736x/da/ec/38/daec385e61b0a599fa9d69eb2313614b.jpg'
+                        "
+                        class="rounded-sm w-full h-48 md:h-auto"
+                        cover
+                        alt=""
+                      ></v-img>
+                      <div
+                        class="absolute top-0 left-0 text-white pa-2 md:pa-4"
+                      >
+                        $6.000 USD
+                      </div>
                     </div>
-                  </div>
-                </v-carousel-item>
-              </v-carousel>
-            </v-col>
-          </v-row>
-        </v-container>
+                  </v-carousel-item>
+                </v-carousel>
+              </v-col>
+              <!-- col 4  -->
+              <v-col cols="6" md="3" class="px-1 md:px-2">
+                <v-carousel
+                  class="jump_box_down h-48 md:h-auto mt-2 md:mt-5"
+                  :show-arrows="false"
+                  hide-delimiter-background
+                  hide-delimiters
+                  :interval="5000"
+                  cycle
+                >
+                  <v-carousel-item
+                    cover
+                    v-for="banner in banners"
+                    :key="banner.id"
+                  >
+                    <div class="relative w-full">
+                      <v-img
+                        :src="
+                          banner.img ||
+                          'https://i.pinimg.com/736x/fa/b6/12/fab612e5d91cb9d9d56fb2ff26b51fbc.jpg'
+                        "
+                        class="rounded-sm w-full h-48 md:h-auto"
+                        cover
+                        alt=""
+                      ></v-img>
+                      <div
+                        class="absolute top-0 left-0 text-white pa-2 md:pa-4"
+                      >
+                        $6.000 USD
+                      </div>
+                    </div>
+                  </v-carousel-item>
+                </v-carousel>
+              </v-col>
+            </v-row>
+          </v-container>
+        </div>
       </div>
     </div>
 
     <!-- instagram -->
-    <div class="mt-[450px]">
+    <div class="mt-[200px] md:mt-[450px]">
       <v-container>
         <v-row>
           <v-col
             cols="12"
             md="4"
-            sm="12"
-            class="flex flex-col items-center justify-center"
+            class="flex flex-col items-center justify-center text-center md:text-left mb-6 md:mb-0"
           >
-            <div class="">
-              <p class="text-[50px]">Our Instagram</p>
-              <p class="text-[25px]">@elegant_chic</p>
-              <p class="text-gray-400 mt-10">
+            <div class="px-4 md:px-0">
+              <p class="text-3xl md:text-[50px] mb-2">Our Instagram</p>
+              <p class="text-xl md:text-[25px] mb-4">@elegant_chic</p>
+              <p class="text-gray-400 text-sm md:text-base leading-relaxed">
                 Find everyday essentials and true style for both men and
                 women.Stay up to date with the latest trends. Follow us for
                 fresh style inspiration. Tag us and get featured @elegant_chic
@@ -479,7 +610,7 @@ onMounted(async () => {
               <v-btn
                 color="primary"
                 rounded
-                class="!font-bold mt-10"
+                class="!font-bold mt-6 md:mt-10 w-full md:w-auto"
                 size="large"
               >
                 follow us
@@ -487,8 +618,10 @@ onMounted(async () => {
               </v-btn>
             </div>
           </v-col>
-          <v-col cols="12" md="8" sm="12">
-            <p class="text-end text-gray-500">Check out latest trends</p>
+          <v-col cols="12" md="8">
+            <p class="text-center md:text-end text-gray-500 mb-4">
+              Check out latest trends
+            </p>
             <div class="photo-grid">
               <div class="photo-item photo-1 placeholder">
                 <img
@@ -521,7 +654,7 @@ onMounted(async () => {
 
               <div class="photo-item photo-5 placeholder">
                 <img
-                  src="https://i.pinimg.com/736x/1d/b8/10/1db810bc7ff9f5aa2f21fe7b35059901.jpg"
+                  src="https://i.pinimg.com/736x/f9/c7/ca/f9c7ca0aac9d3e99afc8f1557b2cec1f.jpg"
                   alt="trend"
                 />
               </div>
@@ -539,77 +672,79 @@ onMounted(async () => {
     </div>
 
     <!-- service  -->
-    <div class="">
-      <v-container fluid class="bg-[#F5F5F5]">
+    <div class="mt-8">
+      <v-container fluid class="bg-[#F5F5F5] py-8 md:py-12">
         <v-row>
           <v-col
-            lg="3"
-            md="3"
+            cols="12"
             sm="6"
-            class="text-center flex flex-col justify-center items-center px-2"
+            lg="3"
+            class="text-center flex flex-col justify-center items-center px-4 mb-6 md:mb-0"
           >
             <Icon
-              class="text-gray-400"
+              class="text-gray-400 mb-3"
               icon="hugeicons:delivery-truck-02"
-              width="70"
-              height="70"
+              width="50"
+              height="50"
             />
-            <p class="font-bold text-[20px] my-2">Free Shipping</p>
-            <p class="text-gray-500">
+            <p class="font-bold text-lg md:text-[20px] mb-2">Free Shipping</p>
+            <p class="text-gray-500 text-sm md:text-base">
               We offer free shipping for new customers on orders over $50.
             </p>
           </v-col>
           <v-col
-            lg="3"
-            md="3"
+            cols="12"
             sm="6"
-            class="text-center flex flex-col justify-center items-center px-2"
+            lg="3"
+            class="text-center flex flex-col justify-center items-center px-4 mb-6 md:mb-0"
           >
             <Icon
-              class="text-gray-400"
+              class="text-gray-400 mb-3"
               icon="tdesign:location"
-              width="70"
-              height="70"
+              width="50"
+              height="50"
             />
-            <p class="font-bold text-[20px] my-2">
+            <p class="font-bold text-lg md:text-[20px] mb-2">
               25 Provinces/Cities Delivered
             </p>
-            <p class="text-gray-500">
+            <p class="text-gray-500 text-sm md:text-base">
               Experience fast, reliable, and free delivery right to your
               doorstep every time, on time.
             </p>
           </v-col>
           <v-col
-            lg="3"
-            md="3"
+            cols="12"
             sm="6"
-            class="text-center flex flex-col justify-center items-center px-2"
+            lg="3"
+            class="text-center flex flex-col justify-center items-center px-4 mb-6 md:mb-0"
           >
             <Icon
-              class="text-gray-400"
+              class="text-gray-400 mb-3"
               icon="fa-solid:box-open"
-              width="70"
-              height="70"
+              width="50"
+              height="50"
             />
-            <p class="font-bold text-[20px] my-2">Returns</p>
-            <p class="text-gray-500">
+            <p class="font-bold text-lg md:text-[20px] mb-2">Returns</p>
+            <p class="text-gray-500 text-sm md:text-base">
               We do not offer refunds, but exchanges items in our store.
             </p>
           </v-col>
           <v-col
-            lg="3"
-            md="3"
+            cols="12"
             sm="6"
-            class="text-center flex flex-col justify-center items-center p-3 my-3"
+            lg="3"
+            class="text-center flex flex-col justify-center items-center px-4"
           >
             <Icon
-              class="text-gray-400"
+              class="text-gray-400 mb-3"
               icon="tdesign:service-filled"
-              width="70"
-              height="70"
+              width="50"
+              height="50"
             />
-            <p class="font-bold text-[20px] my-2">24/7 Customer Service</p>
-            <p class="text-gray-500">
+            <p class="font-bold text-lg md:text-[20px] mb-2">
+              24/7 Customer Service
+            </p>
+            <p class="text-gray-500 text-sm md:text-base">
               Excited to share our new product with you! designed to bring
               exceptional value
             </p>
@@ -624,23 +759,29 @@ onMounted(async () => {
 .text-rotate {
   transform: translateX(180px) rotate(90deg);
 }
+
 .banner-discount {
   background-image: url("/public/banners/discount.jpg");
   background-position: top center;
+  background-size: cover;
 }
+
 .jump_box_up,
 .jump_box_down {
   animation: jump_box_up 8s infinite;
 }
+
 .jump_box_down {
   animation: jump_box_down 8s infinite;
 }
+
 .photo-grid {
   display: grid;
   grid-template-columns: 235px 250px 235px;
   grid-template-rows: 200px 250px 200px;
   gap: 15px;
   padding: 20px;
+  justify-content: center;
 }
 
 .photo-item {
@@ -694,6 +835,7 @@ onMounted(async () => {
   grid-column: 3;
   grid-row: 2 / 4;
 }
+
 @keyframes jump_box_up {
   0% {
     transform: translateY(0);
@@ -705,6 +847,7 @@ onMounted(async () => {
     transform: translateY(0);
   }
 }
+
 @keyframes jump_box_down {
   0% {
     transform: translateY(0px);
@@ -717,10 +860,27 @@ onMounted(async () => {
   }
 }
 
+/* Mobile Responsive Styles */
+@media (max-width: 960px) {
+  .text-rotate {
+    display: none;
+  }
+
+  .banner {
+    padding-top: 2rem;
+    padding-bottom: 2rem;
+  }
+
+  .jump_box_up,
+  .jump_box_down {
+    animation: none; /* Disable animations on mobile for better performance */
+  }
+}
+
 @media (max-width: 768px) {
   .photo-grid {
     grid-template-columns: 1fr 1fr;
-    grid-template-rows: repeat(3, 200px);
+    grid-template-rows: repeat(3, 150px);
     gap: 10px;
     padding: 10px;
   }
@@ -749,12 +909,18 @@ onMounted(async () => {
     grid-column: 2;
     grid-row: 3;
   }
+
+  .banner {
+    min-height: 500px;
+  }
 }
 
 @media (max-width: 480px) {
   .photo-grid {
     grid-template-columns: 1fr;
-    grid-template-rows: repeat(6, 200px);
+    grid-template-rows: repeat(6, 180px);
+    gap: 8px;
+    padding: 8px;
   }
 
   .photo-1,
@@ -783,6 +949,26 @@ onMounted(async () => {
   }
   .photo-6 {
     grid-row: 6;
+  }
+
+  .banner {
+    min-height: 400px;
+  }
+
+  .banner-discount {
+    min-height: 350px;
+    padding-top: 3rem;
+  }
+}
+
+/* Extra small screens */
+@media (max-width: 360px) {
+  .photo-grid {
+    grid-template-rows: repeat(6, 160px);
+  }
+
+  .banner {
+    min-height: 350px;
   }
 }
 </style>
