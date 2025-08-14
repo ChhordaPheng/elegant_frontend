@@ -324,6 +324,15 @@ onBeforeUnmount(() => {
             variant="elevated"
             :disabled="isNavigating"
           />
+          <!-- favorite button -->
+          <v-btn
+            :size="btnSize"
+            :density="btnDensity"
+            icon="solar:heart-linear"
+            variant="elevated"
+            :disabled="isNavigating"
+             @click="handleNavigation('/favorite', null)"
+          />
 
           <!-- Cart button -->
           <v-btn
@@ -404,7 +413,8 @@ onBeforeUnmount(() => {
             <!-- Show Welcome message and Logout when authenticated -->
             <template v-else>
               <div class="auth-btn text-sm">
-                Hi, {{ userProfile?.last_name || "User" }}
+                <!-- Hi, {{ userProfile?.last_name || "User" }} -->
+                {{ userProfile?.last_name || "User" }}
               </div>
 
               <button

@@ -5,8 +5,6 @@ export function useClipboard() {
     const snackbarText = ref('');
 
     const copyAccountNumber = (accountNumber: string) => {
-        console.log("Account number:", accountNumber);
-
         if (navigator.clipboard && navigator.clipboard.writeText) {
             navigator.clipboard.writeText(accountNumber)
                 .then(() => {

@@ -116,7 +116,6 @@ const handlerRegister = async () => {
       // After successful registration, copy phone number to OTP store and show OTP dialog
       otpStore.otpRequest.phone_number = registerStore.user.phone_number;
       dialog.value = true;
-      console.log("Registration successful, showing OTP dialog");
     }
   } catch (error: any) {
     if (error?.response?.data?.errors) {

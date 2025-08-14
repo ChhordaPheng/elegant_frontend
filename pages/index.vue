@@ -8,16 +8,11 @@ definePageMeta({
 const tab = ref("newArrival");
 const bannerStore = useBannerStore();
 const { banners } = storeToRefs(bannerStore);
+const promotionStore = usePromotionStore();
+const { promotions } = storeToRefs(promotionStore);
 
-// Countdown duration (in seconds), e.g., 3 days
-const duration = ref(3 * 24 * 60 * 60); // 3 days in seconds
-
-const times = ref([
-  { num: "00", date: "Days" },
-  { num: "00", date: "Hours" },
-  { num: "00", date: "Mins" },
-  { num: "00", date: "Secs" },
-]);
+// Auto-fetch timer
+let fetchTimer = null;
 
 const bannerss = [
   {
@@ -40,44 +35,39 @@ const bannerss = [
 
 // Duplicate banners to make it loop visually
 const bannersLoop = [...bannerss];
-
 const defaultImage = "https://via.placeholder.com/200x150";
-let timer = Number;
 
-const updateTimes = () => {
-  let remaining = duration.value;
+// Function to start auto-fetching promotion data
+const startAutoFetch = (intervalSeconds = 30) => {
+  // Clear existing timer if any
+  if (fetchTimer) {
+    clearInterval(fetchTimer);
+  }
 
-  const days = Math.floor(remaining / (24 * 3600));
-  remaining %= 24 * 3600;
-  const hours = Math.floor(remaining / 3600);
-  remaining %= 3600;
-  const minutes = Math.floor(remaining / 60);
-  const seconds = remaining % 60;
-
-  times.value = [
-    { num: String(days).padStart(2, "0"), date: "Days" },
-    { num: String(hours).padStart(2, "0"), date: "Hours" },
-    { num: String(minutes).padStart(2, "0"), date: "Mins" },
-    { num: String(seconds).padStart(2, "0"), date: "Secs" },
-  ];
+  // Set up periodic fetching
+  fetchTimer = setInterval(async () => {
+    try {
+      await promotionStore.fetchPromotion();
+    } catch (error) {
+      console.error("Error fetching promotion:", error);
+    }
+  }, intervalSeconds * 1000);
 };
 
 onMounted(async () => {
   await bannerStore.fetchBanners();
-  updateTimes();
+  await promotionStore.fetchPromotion();
 
-  timer = window.setInterval(() => {
-    if (duration.value > 0) {
-      duration.value--;
-      updateTimes();
-    } else {
-      clearInterval(timer);
-    }
-  }, 1000);
+  // Start auto-fetching promotion data every 30 seconds
+  startAutoFetch(30);
 });
 
 onUnmounted(() => {
-  clearInterval(timer);
+  // Clean up the timer when component is unmounted
+  if (fetchTimer) {
+    clearInterval(fetchTimer);
+    fetchTimer = null;
+  }
 });
 </script>
 
@@ -147,9 +137,7 @@ onUnmounted(() => {
                   <p class="my-3 md:my-5 px-4 md:px-6 text-sm md:text-base">
                     {{ banner.description }}
                   </p>
-                  <div
-                    class="flex flex-col sm:flex-row justify-center gap-3 mt-4"
-                  >
+                  <div class="flex flex-col sm:flex-row justify-center gap-3 mt-4">
                     <v-btn size="large" class="!font-bold w-full sm:w-auto"
                       >Shop Now</v-btn
                     >
@@ -194,34 +182,72 @@ onUnmounted(() => {
       </div>
     </div>
 
-    <!-- promotion -->
+    <!-- promotion with auto-fetched countdown -->
     <v-container
       fluid
       class="bg-[#F3F4F5] min-h-[120px] md:h-[150px] flex items-center py-4"
     >
       <v-row class="justify-center items-center w-full">
         <v-col cols="12" md="8" class="md:text-left">
-          <p class="text-xs md:text-sm mb-2">EXCLUSIVE DISCOUNTS THIS WEEK</p>
+          <p class="text-xs md:text-sm mb-2">{{ promotions?.title || "Loading..." }}</p>
           <p class="font-bold text-lg md:text-[25px]">
-            DON'T MISS <span class="text-red">70% OFF</span> ALL SALE! NO CODE
-            NEEDED!
+            {{ promotions?.description || "Loading promotion..." }}
           </p>
         </v-col>
 
         <v-col cols="12" md="4" class="flex justify-center">
-          <div
-            class="flex items-center justify-center gap-2 md:gap-4 flex-wrap"
-          >
-            <div v-for="(time, index) in times" :key="index" class="mx-1">
+          <div class="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
+            <!-- Days (only show if > 0) -->
+            <div class="mx-1" v-if="promotions?.countdown?.days > 0">
               <v-btn height="48" min-width="48" icon class="p-0 text-center">
                 <div class="text-center">
                   <p class="font-bold text-sm md:text-[20px] leading-none">
-                    {{ time.num }}
+                    {{ String(promotions.countdown.days).padStart(2, "0") }}
                   </p>
-                  <p
-                    class="capitalize text-[8px] md:text-[10px] pt-1 leading-none"
-                  >
-                    {{ time.date }}
+                  <p class="capitalize text-[8px] md:text-[10px] pt-1 leading-none">
+                    Days
+                  </p>
+                </div>
+              </v-btn>
+            </div>
+
+            <!-- Hours -->
+            <div class="mx-1">
+              <v-btn height="48" min-width="48" icon class="p-0 text-center">
+                <div class="text-center">
+                  <p class="font-bold text-sm md:text-[20px] leading-none">
+                    {{ String(promotions?.countdown?.hours || 0).padStart(2, "0") }}
+                  </p>
+                  <p class="capitalize text-[8px] md:text-[10px] pt-1 leading-none">
+                    Hours
+                  </p>
+                </div>
+              </v-btn>
+            </div>
+
+            <!-- Minutes -->
+            <div class="mx-1">
+              <v-btn height="48" min-width="48" icon class="p-0 text-center">
+                <div class="text-center">
+                  <p class="font-bold text-sm md:text-[20px] leading-none">
+                    {{ String(promotions?.countdown?.minutes || 0).padStart(2, "0") }}
+                  </p>
+                  <p class="capitalize text-[8px] md:text-[10px] pt-1 leading-none">
+                    Mins
+                  </p>
+                </div>
+              </v-btn>
+            </div>
+
+            <!-- Seconds -->
+            <div class="mx-1">
+              <v-btn height="48" min-width="48" icon class="p-0 text-center">
+                <div class="text-center">
+                  <p class="font-bold text-sm md:text-[20px] leading-none">
+                    {{ String(promotions?.countdown?.seconds || 0).padStart(2, "0") }}
+                  </p>
+                  <p class="capitalize text-[8px] md:text-[10px] pt-1 leading-none">
+                    Secs
                   </p>
                 </div>
               </v-btn>
@@ -242,7 +268,6 @@ onUnmounted(() => {
         </v-col>
       </v-row>
     </v-container>
-
     <!-- recommendation -->
     <div class="mt-6 md:mt-10 px-2 md:px-0">
       <v-card variant="text">
@@ -250,12 +275,8 @@ onUnmounted(() => {
           <v-tab value="newArrival" class="font-bold text-sm md:text-base"
             >New Arrivals</v-tab
           >
-          <v-tab value="bestSeller" class="text-sm md:text-base"
-            >Best Sellers</v-tab
-          >
-          <v-tab value="topTrending" class="text-sm md:text-base"
-            >Top Trending</v-tab
-          >
+          <v-tab value="bestSeller" class="text-sm md:text-base">Best Sellers</v-tab>
+          <v-tab value="topTrending" class="text-sm md:text-base">Top Trending</v-tab>
         </v-tabs>
 
         <v-card-text class="px-2 md:px-4">
@@ -295,22 +316,14 @@ onUnmounted(() => {
           <v-col cols="12" md="6" class="mb-4 md:mb-0">
             <div class="relative flex justify-center">
               <div class="absolute z-10 top-32 md:top-64 left-4 md:left-20">
-                <p
-                  class="font-bold text-lg md:text-[20px] text-black md:text-black"
-                >
+                <p class="font-bold text-lg md:text-[20px] text-black md:text-black">
                   Discover Your <br />
                   Style
                 </p>
-                <a href="#" class="underline text-black md:text-black"
-                  >SeeMore</a
-                >
+                <a href="#" class="underline text-black md:text-black">SeeMore</a>
               </div>
-              <div
-                class="hidden md:block absolute z-10 top-[70px] left-[200px]"
-              >
-                <p class="text-rotate text-[15px] text-gray-400">
-                  SALE UP TO 30% OFF
-                </p>
+              <div class="hidden md:block absolute z-10 top-[70px] left-[200px]">
+                <p class="text-rotate text-[15px] text-gray-400">SALE UP TO 30% OFF</p>
               </div>
               <div class="w-64 md:w-72 h-auto relative">
                 <v-carousel
@@ -321,11 +334,7 @@ onUnmounted(() => {
                   :interval="5000"
                   cycle
                 >
-                  <v-carousel-item
-                    cover
-                    v-for="banner in banners"
-                    :key="banner.id"
-                  >
+                  <v-carousel-item cover v-for="banner in banners" :key="banner.id">
                     <div class="relative w-64 md:w-72">
                       <v-img
                         :src="
@@ -336,9 +345,7 @@ onUnmounted(() => {
                         cover
                         alt=""
                       ></v-img>
-                      <div
-                        class="absolute top-0 left-0 text-white pa-2 md:pa-4"
-                      >
+                      <div class="absolute top-0 left-0 text-white pa-2 md:pa-4">
                         $6.000 USD
                       </div>
                     </div>
@@ -350,15 +357,11 @@ onUnmounted(() => {
           <v-col cols="12" md="6">
             <div class="relative flex justify-center mt-8 md:mt-14">
               <div class="absolute z-10 top-16 md:top-20 left-4 md:left-16">
-                <p
-                  class="font-bold text-lg md:text-[20px] text-black md:text-black"
-                >
+                <p class="font-bold text-lg md:text-[20px] text-black md:text-black">
                   Redefine Your <br />
                   Look
                 </p>
-                <a href="#" class="underline text-black md:text-black"
-                  >SeeMore</a
-                >
+                <a href="#" class="underline text-black md:text-black">SeeMore</a>
               </div>
               <div class="w-64 md:w-72 h-auto relative">
                 <v-carousel
@@ -369,11 +372,7 @@ onUnmounted(() => {
                   :interval="5000"
                   cycle
                 >
-                  <v-carousel-item
-                    cover
-                    v-for="banner in banners"
-                    :key="banner.id"
-                  >
+                  <v-carousel-item cover v-for="banner in banners" :key="banner.id">
                     <div class="relative w-64 md:w-72">
                       <v-img
                         :src="
@@ -384,9 +383,7 @@ onUnmounted(() => {
                         cover
                         alt=""
                       ></v-img>
-                      <div
-                        class="absolute top-0 right-0 text-white pa-2 md:pa-4"
-                      >
+                      <div class="absolute top-0 right-0 text-white pa-2 md:pa-4">
                         $6.000 USD
                       </div>
                     </div>
@@ -411,181 +408,31 @@ onUnmounted(() => {
       </div>
 
       <!-- season  -->
-      <div
-        class="min-h-[200px] absolute z-10 -bottom-[250px] flex items-center justify-center w-full"
-      >
-        <div class="">
-          <v-slide-group class="py-4" show-arrows center-active>
-            <v-slide-group-item
-              v-for="(banner, index) in bannersLoop"
-              :key="index"
-            >
-              <v-card
-                class="mx-2 overflow-hidden jump_box"
-                max-width="200"
-                variant="flat"
-                :class="index % 2 === 0 ? 'jump_box_up' : 'jump_box_down'"
-              >
-                <img
-                  :src="banner.img || defaultImage"
-                  cover
-                  class="rounded-md h-48 md:h-auto"
-                />
-                <div
-                  class="absolute top-0 left-0 text-white pa-2 font-bold text-shadow-lg"
-                >
-                  $6,000 USD
+      <div class="relative">
+        <div class="min-h-[300px] absolute z-10 top-[-200px] flex justify-center w-full">
+          <div class="relative">
+            <v-slide-group class="h-full" show-arrows center-active>
+              <v-slide-group-item v-for="(banner, index) in bannersLoop" :key="index">
+                <div class="relative h-[400px] flex items-center">
+                  <div
+                    class="mx-2 jump_box"
+                    :class="index % 2 === 0 ? 'jump_box_up' : 'jump_box_down'"
+                  >
+                    <img
+                      :src="banner.img || defaultImage"
+                      cover
+                      class="rounded-md h-48 md:h-auto w-64"
+                    />
+                    <div
+                      class="absolute top-0 left-0 text-white pa-2 font-bold text-shadow-lg"
+                    >
+                      $6,000 USD
+                    </div>
+                  </div>
                 </div>
-              </v-card>
-            </v-slide-group-item>
-          </v-slide-group>
-        </div>
-
-        <!-- //// test -->
-        <div
-          class="min-h-[300px] md:h-[400px] absolute z-10 -bottom-[150px] md:-bottom-[250px] flex items-center justify-center w-full"
-        >
-          <v-container class="h-full">
-            <v-row class="h-full justify-center">
-              <!-- Mobile: 2x2 grid, Desktop: 4 columns -->
-              <!-- col 1  -->
-              <v-col cols="6" md="3" class="px-1 md:px-2">
-                <v-carousel
-                  class="jump_box_up h-48 md:h-70 mt-8 md:mt-16"
-                  :show-arrows="false"
-                  hide-delimiter-background
-                  hide-delimiters
-                  :interval="5000"
-                  cycle
-                >
-                  <v-carousel-item
-                    cover
-                    v-for="banner in banners"
-                    :key="banner.id"
-                  >
-                    <div class="relative w-full">
-                      <v-img
-                        :src="
-                          banner.img ||
-                          'https://i.pinimg.com/1200x/7d/aa/1f/7daa1f177aaa14d718a0a39642101a3a.jpg'
-                        "
-                        class="rounded-sm w-full h-48 md:h-auto"
-                        cover
-                        alt=""
-                      ></v-img>
-                      <div
-                        class="absolute top-0 left-0 text-white pa-2 md:pa-4 text-sh shadow-2xl text-shadow-lg"
-                      >
-                        $6.000 USD
-                      </div>
-                    </div>
-                  </v-carousel-item>
-                </v-carousel>
-              </v-col>
-              <!-- col 2 -->
-              <v-col cols="6" md="3" class="px-1 md:px-2">
-                <v-carousel
-                  class="jump_box_down h-48 md:h-auto"
-                  :show-arrows="false"
-                  hide-delimiter-background
-                  hide-delimiters
-                  :interval="5000"
-                  cycle
-                >
-                  <v-carousel-item
-                    cover
-                    v-for="banner in banners"
-                    :key="banner.id"
-                  >
-                    <div class="relative w-full">
-                      <v-img
-                        :src="
-                          banner.img ||
-                          'https://i.pinimg.com/736x/d0/e8/f3/d0e8f3f3fd3f705fb4d2266f4c16c53d.jpg'
-                        "
-                        class="rounded-sm w-full h-48 md:h-auto"
-                        cover
-                        alt=""
-                      ></v-img>
-                      <div
-                        class="absolute top-0 left-0 text-white pa-2 md:pa-4"
-                      >
-                        $6.000 USD
-                      </div>
-                    </div>
-                  </v-carousel-item>
-                </v-carousel>
-              </v-col>
-              <!-- col 3  -->
-              <v-col cols="6" md="3" class="px-1 md:px-2">
-                <v-carousel
-                  class="jump_box_up h-48 md:h-auto mt-8 md:mt-16"
-                  :show-arrows="false"
-                  hide-delimiter-background
-                  hide-delimiters
-                  :interval="5000"
-                  cycle
-                >
-                  <v-carousel-item
-                    cover
-                    v-for="banner in banners"
-                    :key="banner.id"
-                  >
-                    <div class="relative w-full">
-                      <v-img
-                        :src="
-                          banner.img ||
-                          'https://i.pinimg.com/736x/da/ec/38/daec385e61b0a599fa9d69eb2313614b.jpg'
-                        "
-                        class="rounded-sm w-full h-48 md:h-auto"
-                        cover
-                        alt=""
-                      ></v-img>
-                      <div
-                        class="absolute top-0 left-0 text-white pa-2 md:pa-4"
-                      >
-                        $6.000 USD
-                      </div>
-                    </div>
-                  </v-carousel-item>
-                </v-carousel>
-              </v-col>
-              <!-- col 4  -->
-              <v-col cols="6" md="3" class="px-1 md:px-2">
-                <v-carousel
-                  class="jump_box_down h-48 md:h-auto mt-2 md:mt-5"
-                  :show-arrows="false"
-                  hide-delimiter-background
-                  hide-delimiters
-                  :interval="5000"
-                  cycle
-                >
-                  <v-carousel-item
-                    cover
-                    v-for="banner in banners"
-                    :key="banner.id"
-                  >
-                    <div class="relative w-full">
-                      <v-img
-                        :src="
-                          banner.img ||
-                          'https://i.pinimg.com/736x/fa/b6/12/fab612e5d91cb9d9d56fb2ff26b51fbc.jpg'
-                        "
-                        class="rounded-sm w-full h-48 md:h-auto"
-                        cover
-                        alt=""
-                      ></v-img>
-                      <div
-                        class="absolute top-0 left-0 text-white pa-2 md:pa-4"
-                      >
-                        $6.000 USD
-                      </div>
-                    </div>
-                  </v-carousel-item>
-                </v-carousel>
-              </v-col>
-            </v-row>
-          </v-container>
+              </v-slide-group-item>
+            </v-slide-group>
+          </div>
         </div>
       </div>
     </div>
@@ -603,9 +450,9 @@ onUnmounted(() => {
               <p class="text-3xl md:text-[50px] mb-2">Our Instagram</p>
               <p class="text-xl md:text-[25px] mb-4">@elegant_chic</p>
               <p class="text-gray-400 text-sm md:text-base leading-relaxed">
-                Find everyday essentials and true style for both men and
-                women.Stay up to date with the latest trends. Follow us for
-                fresh style inspiration. Tag us and get featured @elegant_chic
+                Find everyday essentials and true style for both men and women.Stay up to
+                date with the latest trends. Follow us for fresh style inspiration. Tag us
+                and get featured @elegant_chic
               </p>
               <v-btn
                 color="primary"
@@ -708,8 +555,8 @@ onUnmounted(() => {
               25 Provinces/Cities Delivered
             </p>
             <p class="text-gray-500 text-sm md:text-base">
-              Experience fast, reliable, and free delivery right to your
-              doorstep every time, on time.
+              Experience fast, reliable, and free delivery right to your doorstep every
+              time, on time.
             </p>
           </v-col>
           <v-col
@@ -741,12 +588,10 @@ onUnmounted(() => {
               width="50"
               height="50"
             />
-            <p class="font-bold text-lg md:text-[20px] mb-2">
-              24/7 Customer Service
-            </p>
+            <p class="font-bold text-lg md:text-[20px] mb-2">24/7 Customer Service</p>
             <p class="text-gray-500 text-sm md:text-base">
-              Excited to share our new product with you! designed to bring
-              exceptional value
+              Excited to share our new product with you! designed to bring exceptional
+              value
             </p>
           </v-col>
         </v-row>
@@ -853,7 +698,7 @@ onUnmounted(() => {
     transform: translateY(0px);
   }
   50% {
-    transform: translateY(100px);
+    transform: translateY(20px);
   }
   100% {
     transform: translateY(0px);

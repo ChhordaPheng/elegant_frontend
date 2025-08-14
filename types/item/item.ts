@@ -1,6 +1,7 @@
 export interface ItemResponse {
-  status: string;
+  success: boolean;
   message: string;
+  status_code: string;
   data: Item;
 }
 

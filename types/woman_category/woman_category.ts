@@ -1,14 +1,14 @@
-export interface ItemResponse {
+export interface WomenResponse {
   success: boolean;
   message: string;
   status_code: number;
-  data: Item[];
+  data: Women[];
   page: number;
   per_page: number;
   total: number;
 }
 
-export interface Item {
+export interface Women {
   id: string;
   name: string;
   description: string;

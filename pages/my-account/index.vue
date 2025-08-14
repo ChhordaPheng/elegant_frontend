@@ -50,7 +50,7 @@ const showCard = ref(false);
 const addressLoading = ref(false);
 
 // Avatar image URL, default
-const avatarUrl = ref("images/dada.jpg");
+const avatarUrl = ref("images/profile.png");
 const fileInput = ref<HTMLInputElement | null>(null);
 
 function triggerFileInput() {
@@ -756,7 +756,7 @@ onMounted(async () => {
   bottom: 0;
   height: 4px;
   border-radius: 12px 12px 0 0;
-  background: linear-gradient(45deg, #ff6ec4, #7873f5, #4ade80);
+  background: linear-gradient(45deg, #9e9c9d, #7873f5, #4ade80);
   transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -823,10 +823,10 @@ onMounted(async () => {
 @keyframes pulseGlow {
   0%,
   100% {
-    box-shadow: 0 0 10px rgba(124, 115, 245, 0.3);
+    box-shadow: 0 0 10px rgba(194, 192, 208, 0.3);
   }
   50% {
-    box-shadow: 0 0 20px rgba(124, 115, 245, 0.6);
+    box-shadow: 0 0 20px rgba(158, 158, 164, 0.6);
   }
 }
 </style>

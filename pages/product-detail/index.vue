@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { Item } from "~/types/item/item";
+import { useItemStore } from "../../stores/item/itemStore";
 definePageMeta({ layout: "main-layout" });
 
 // UI States
@@ -20,20 +21,21 @@ const reviewError = ref<string | null>(null);
 const errors = ref<string | null>(null);
 const isSubmitting = ref(false);
 
-// Router
+// Router and Stores - Fixed naming consistency
 const route = useRoute();
 const router = useRouter();
 const cartStore = useCartStore();
 const reviewStore = useReviewStore();
 const { reviews } = storeToRefs(reviewStore);
+const newArrivalStore = useNewArrivalStore();
+const { newArrival } = storeToRefs(newArrivalStore);
+
+// Fixed: Use consistent naming for item store
+const itemStoreYou = useItemStore();
+// const { items } = storeToRefs(itemStoreYou);
 
 const colors = ["green", "purple", "orange", "indigo", "red"];
-const icons = ref([
-  "mdi-facebook",
-  "mdi-twitter",
-  "mdi-linkedin",
-  "mdi-instagram",
-]);
+const icons = ref(["mdi-facebook", "mdi-twitter", "mdi-linkedin", "mdi-instagram"]);
 const notes = ref([
   "MACHINE WASH AT MAX.TEMP. 30° C - NORMAL PROCESS",
   "DO NOT BLEACH",
@@ -57,21 +59,30 @@ function decrease() {
 }
 
 const productId = computed(() => {
-  // Try route param first
   let id = getRouteParam(route.params.id as string | string[]);
-  // If not found, fallback to query param
-  if (!id) id = getRouteParam(route.query.id as string | string[]);
+
+  if (!id) {
+    id = getRouteParam(route.query.id as string | string[]);
+  }
+
   return id || undefined;
 });
 
-// Use your woman store (make sure this store is properly imported)
-const womanStore = useWomanIteStore();
-const { items: womanItems } = storeToRefs(womanStore);
+// Fixed: Try to find product from items store by ID with null safety
+const getProductFromItemsStore = (): Item | null => {
+  // Add null safety checks
+  if (!itemStoreYou.items || !Array.isArray(itemStoreYou.items) || !productId.value) {
+    console.log("Items or productId not available:", {
+      hasItems: !!itemStoreYou.items,
+      isArray: Array.isArray(itemStoreYou.items),
+      itemsLength: itemStoreYou.items?.length || 0,
+      productId: productId.value,
+    });
+    return null;
+  }
 
-// Try to find product from woman store by ID
-const getProductFromWomanStore = (): Item | null => {
-  const found = womanItems.value.find((item) => item.id === productId.value);
-  return (found as unknown as Item) ?? null;
+  const found = itemStoreYou.items.find((item) => item.id === productId.value);
+  return found || null;
 };
 
 // Get unique sizes from variants
@@ -79,7 +90,7 @@ const uniqueSizes = computed(() => {
   if (!currentProduct.value?.variants) return [];
 
   const sizes = currentProduct.value.variants.map((v) => v.size);
-  const uniqueMap = new Map<string, (typeof sizes)[0]>();
+  const uniqueMap = new Map<string, typeof sizes[0]>();
 
   sizes.forEach((size) => {
     if (size && !uniqueMap.has(size.id)) {
@@ -95,7 +106,7 @@ const uniqueColors = computed(() => {
   if (!currentProduct.value?.variants) return [];
 
   const colors = currentProduct.value.variants.map((v) => v.color);
-  const uniqueMap = new Map<string, (typeof colors)[0]>();
+  const uniqueMap = new Map<string, typeof colors[0]>();
 
   colors.forEach((color) => {
     if (color && !uniqueMap.has(color.id)) {
@@ -112,61 +123,50 @@ const currentVariant = computed(() => {
   }
 
   return (
-    currentProduct.value.variants.find(
-      (v) => v.id === selectedVariantId.value
-    ) || currentProduct.value.variants[0]
+    currentProduct.value.variants.find((v) => v.id === selectedVariantId.value) ||
+    currentProduct.value.variants[0]
   );
 });
 
 const selectVariantByColor = (colorId: string) => {
   selectedColorId.value = colorId;
 
-  // Check if current size is still available with this color
   if (selectedSizeId.value) {
     const variantExists = currentProduct.value?.variants.some(
       (v) => v.color.id === colorId && v.size.id === selectedSizeId.value
     );
 
     if (!variantExists) {
-      selectedSizeId.value = null; // Reset size if combination doesn't exist
+      selectedSizeId.value = null;
     }
   }
 };
 
-// Updated selectVariant function to properly handle variant selection
 const selectVariant = (variantId: string) => {
   selectedVariantId.value = variantId;
 
-  // Find the selected variant and update color/size references
-  const variant = currentProduct.value?.variants.find(
-    (v) => v.id === variantId
-  );
+  const variant = currentProduct.value?.variants.find((v) => v.id === variantId);
   if (variant) {
     selectedColorId.value = variant.color.id;
     selectedSizeId.value = variant.size.id;
 
-    // Update the variant index for thumbnail display
-    const index = currentProduct.value?.variants.findIndex(
-      (v) => v.id === variantId
-    );
+    const index = currentProduct.value?.variants.findIndex((v) => v.id === variantId);
     if (index !== -1) {
       selectedVariantIndex.value = index || 0;
     }
   }
 };
 
-// Update size selection function
 const selectVariantBySize = (sizeId: string) => {
   selectedSizeId.value = sizeId;
 
-  // Check if current color is still available with this size
   if (selectedColorId.value) {
     const variantExists = currentProduct.value?.variants.some(
       (v) => v.size.id === sizeId && v.color.id === selectedColorId.value
     );
 
     if (!variantExists) {
-      selectedColorId.value = null; // Reset color if combination doesn't exist
+      selectedColorId.value = null;
     }
   }
 };
@@ -174,6 +174,7 @@ const selectVariantBySize = (sizeId: string) => {
 const fetchProductData = async () => {
   const id = productId.value;
   if (!id) {
+    console.error("❌ No product ID provided");
     productError.value = "No product ID provided";
     return;
   }
@@ -182,54 +183,45 @@ const fetchProductData = async () => {
   productError.value = null;
 
   try {
-    // Check if product is in woman store first
-    const womanProduct = getProductFromWomanStore();
-    if (womanProduct) {
-      currentProduct.value = womanProduct;
+    // First, check if product is in items store
+    const storeProduct = getProductFromItemsStore();
+    if (storeProduct) {
+      currentProduct.value = storeProduct;
       isLoadingProduct.value = false;
       return;
     }
 
-    // Try multiple endpoints until success
-    const possibleEndpoints = [
-      `http://localhost:8000/api/customer/items/${id}`,
-      `http://localhost:8000/api/items/${id}`,
-      `http://localhost:8000/api/customer/api/items/${id}`,
-    ];
+    // Convert ID to string if needed
+    const stringId = String(id);
+    
+    await itemStoreYou.fetchItemById(stringId);
 
-    let fetchSuccess = false;
-
-    for (const endpoint of possibleEndpoints) {
-      try {
-        const response = await $fetch<{ data: Item }>(endpoint);
-        if (response?.data) {
-          currentProduct.value = response.data;
-          fetchSuccess = true;
-          break;
-        }
-      } catch (err) {
-        console.warn(`Failed to fetch from ${endpoint}`, err);
-      }
+    // Check if the store now has the item
+    if (itemStoreYou.item) {
+      currentProduct.value = itemStoreYou.item;
+      return;
     }
 
-    if (!fetchSuccess) {
-      // Fallback to woman store again
-      const fallback = getProductFromWomanStore();
-      if (fallback) {
-        currentProduct.value = fallback;
-      } else {
-        throw new Error("Product not found in any source");
-      }
+    // If store has an error, use that
+    if (itemStoreYou.error) {
+      productError.value = `Failed to load product: ${itemStoreYou.error}`;
+      return;
     }
+
+    // If no item and no error, something went wrong
+    productError.value = "Product not found";
+
   } catch (err: unknown) {
+    console.error("💥 Error in fetchProductData:", err);
+
     if (err instanceof Error) {
       productError.value = `Failed to load product: ${err.message}`;
     } else {
-      productError.value = "Unknown error occurred";
+      productError.value = "Unknown error occurred while fetching product";
     }
 
-    // Try fallback
-    const fallback = getProductFromWomanStore();
+    // Final fallback attempt to store cache
+    const fallback = getProductFromItemsStore();
     if (fallback) {
       currentProduct.value = fallback;
       productError.value = null;
@@ -244,7 +236,6 @@ const availableSizes = computed(() => {
 
   let filteredVariants = currentProduct.value.variants;
 
-  // If a color is selected, filter variants by that color
   if (selectedColorId.value) {
     filteredVariants = filteredVariants.filter(
       (v) => v.color.id === selectedColorId.value
@@ -252,7 +243,7 @@ const availableSizes = computed(() => {
   }
 
   const sizes = filteredVariants.map((v) => v.size);
-  const uniqueMap = new Map<string, (typeof sizes)[0]>();
+  const uniqueMap = new Map<string, typeof sizes[0]>();
 
   sizes.forEach((size) => {
     if (size && !uniqueMap.has(size.id)) {
@@ -268,15 +259,12 @@ const availableColors = computed(() => {
 
   let filteredVariants = currentProduct.value.variants;
 
-  // If a size is selected, filter variants by that size
   if (selectedSizeId.value) {
-    filteredVariants = filteredVariants.filter(
-      (v) => v.size.id === selectedSizeId.value
-    );
+    filteredVariants = filteredVariants.filter((v) => v.size.id === selectedSizeId.value);
   }
 
   const colors = filteredVariants.map((v) => v.color);
-  const uniqueMap = new Map<string, (typeof colors)[0]>();
+  const uniqueMap = new Map<string, typeof colors[0]>();
 
   colors.forEach((color) => {
     if (color && !uniqueMap.has(color.id)) {
@@ -287,7 +275,6 @@ const availableColors = computed(() => {
   return Array.from(uniqueMap.values());
 });
 
-// Computed price display based on current variant
 const displayPrice = computed(() => {
   if (!currentVariant.value) {
     return { final: "0.00", original: "0.00", hasDiscount: false };
@@ -309,14 +296,10 @@ const displayPrice = computed(() => {
   };
 });
 
-// Get brand name
-const brandName = computed(
-  () => currentProduct.value?.brand?.name || "Unknown Brand"
-);
+const brandName = computed(() => currentProduct.value?.brand?.name || "Unknown Brand");
 
 const isDevelopment = computed(() => process.env.NODE_ENV === "development");
 
-// Updated addToCart function with cart store integration
 const addToCart = async () => {
   if (!currentProduct.value || !currentVariant.value) {
     console.warn("No item available to add to cart");
@@ -343,11 +326,7 @@ const addToCart = async () => {
 
     if (cartStore.error) {
       console.error("Failed to add to cart:", cartStore.error);
-      // You can show a toast notification here
     } else {
-      console.log("Successfully added to cart");
-      // You can show a success toast notification here
-      // Optional: Reset quantity after successful add
       quantity.value = 1;
     }
   } catch (error) {
@@ -356,17 +335,8 @@ const addToCart = async () => {
 };
 
 const buyNow = async () => {
-  // if (!currentProduct.value || !currentVariant.value) {
-  //   console.warn("No item available for purchase");
-  //   return;
-  // }
-
-  // // Add to cart first
-  // await addToCart();
-
-  // Only proceed to checkout if add to cart was successful
   if (!cartStore.error) {
-    router.push("/cart"); // or wherever your checkout page is
+    router.push("/cart");
   }
 };
 
@@ -388,7 +358,6 @@ const submitReview = async () => {
       rating: rating.value.toString(),
       comment: comment.value,
     });
-    // Reset form
     rating.value = 0;
     comment.value = "";
   } catch (e) {
@@ -397,7 +366,7 @@ const submitReview = async () => {
     isSubmitting.value = false;
   }
 };
-// Computed to check if add to cart button should be disabled
+
 const isAddToCartDisabled = computed(() => {
   return (
     !currentVariant.value ||
@@ -407,7 +376,6 @@ const isAddToCartDisabled = computed(() => {
   );
 });
 
-// Computed to get the button text based on loading state
 const addToCartButtonText = computed(() => {
   if (cartStore.loading) return "ADDING...";
   if (!currentVariant.value) return "SELECT VARIANT";
@@ -433,7 +401,7 @@ watch(
   currentProduct,
   (newProduct) => {
     if (newProduct?.variants?.length) {
-      selectedVariantId.value = newProduct.variants[0].id; // Select first variant by default
+      selectedVariantId.value = newProduct.variants[0].id;
       selectedColorId.value = newProduct.variants[0].color.id;
       selectedSizeId.value = newProduct.variants[0].size.id;
       selectedVariantIndex.value = 0;
@@ -442,22 +410,37 @@ watch(
   { immediate: true }
 );
 
-// On component mount: fetch woman items if empty, then fetch product data
+// Fixed: Component initialization with proper error handling and store consistency
+// Fixed: Component initialization with proper error handling
 onMounted(async () => {
-  if (!womanItems.value?.length) {
-    try {
-      await womanStore.fetchWomanItems();
-    } catch (err) {
-      console.error("Failed to load woman store items", err);
-    }
-  }
+  try {
+    // Fetch new arrivals first
+    await newArrivalStore.fetchNewArrivals();
 
-  if (productId.value) {
-    await fetchProductData();
-    // Fetch product-specific reviews
-    await reviewStore.fetchReviews({ itemId: productId.value });
-  } else {
-    productError.value = "No product ID found in route";
+    // Get the current product ID from the computed property
+    const currentProductId = productId.value;
+
+    if (currentProductId && currentProductId.trim() !== '') {
+      
+      // Fetch the specific product using the store method
+      await itemStoreYou.fetchItemById(currentProductId);
+
+      // After fetching, set the current product if successful
+      if (itemStoreYou.item && !itemStoreYou.error) {
+        currentProduct.value = itemStoreYou.item;
+      } else if (itemStoreYou.error) {
+        productError.value = itemStoreYou.error;
+      }
+
+      // Fetch product-specific reviews
+      await reviewStore.fetchReviews({ itemId: currentProductId });
+    } else {
+      console.error("❌ No valid product ID found in route");
+      productError.value = "No product ID found in route";
+    }
+  } catch (error) {
+    console.error("💥 Error during component initialization:", error);
+    productError.value = "Failed to initialize component";
   }
 });
 </script>
@@ -466,11 +449,7 @@ onMounted(async () => {
   <div class="">
     <!-- Loading state -->
     <div v-if="isLoadingProduct" class="text-center py-10">
-      <v-progress-circular
-        indeterminate
-        color="primary"
-        size="64"
-      ></v-progress-circular>
+      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
       <p class="mt-4">Loading product details...</p>
     </div>
 
@@ -480,17 +459,13 @@ onMounted(async () => {
         {{ productError }}
       </v-alert>
       <p class="text-gray-600 mb-4">Product ID: {{ productId }}</p>
-      <v-btn color="primary" @click="router.push('/woman')">
-        Back to Products
-      </v-btn>
+      <v-btn color="primary" @click="router.push('/')"> Back to Products </v-btn>
     </div>
 
     <!-- Product content -->
     <div
       v-else-if="
-        currentProduct &&
-        currentProduct.variants &&
-        currentProduct.variants.length > 0
+        currentProduct && currentProduct.variants && currentProduct.variants.length > 0
       "
     >
       <v-container fluid>
@@ -550,11 +525,7 @@ onMounted(async () => {
                     <template v-slot:item="props">
                       <v-icon
                         size="25"
-                        :color="
-                          props.isFilled
-                            ? colors[props.index]
-                            : 'grey-lighten-1'
-                        "
+                        :color="props.isFilled ? colors[props.index] : 'grey-lighten-1'"
                       >
                         {{ props.isFilled ? "mdi-star" : "mdi-star-outline" }}
                       </v-icon>
@@ -564,9 +535,7 @@ onMounted(async () => {
 
                 <!-- Price Display -->
                 <div class="d-flex items-center my-3">
-                  <p class="text-red mr-2 text-[30px]">
-                    ${{ displayPrice.final }} USD
-                  </p>
+                  <p class="text-red mr-2 text-[30px]">${{ displayPrice.final }} USD</p>
                   <p
                     v-if="displayPrice.hasDiscount"
                     class="line-through text-gray-500 text-[15px]"
@@ -594,12 +563,7 @@ onMounted(async () => {
                         v-bind="activatorProps"
                         class="flex flex-col items-center justify-center cursor-pointer"
                       >
-                        <v-btn
-                          class="text-blue"
-                          variant="text"
-                          size="x-large"
-                          icon
-                        >
+                        <v-btn class="text-blue" variant="text" size="x-large" icon>
                           <v-icon size="40">mingcute:t-shirt-fill</v-icon>
                         </v-btn>
                         <p>Size Guide</p>
@@ -638,8 +602,7 @@ onMounted(async () => {
                     class="relative mb-2 w-[180px] flex-shrink-0 cursor-pointer hover:shadow-lg transition-shadow"
                     @click="selectVariant(variant.id)"
                     :class="{
-                      'border-2 border-primary':
-                        selectedVariantId === variant.id,
+                      'border-2 border-primary': selectedVariantId === variant.id,
                     }"
                   >
                     <!-- Variant Info Badge -->
@@ -758,12 +721,7 @@ onMounted(async () => {
                   </v-btn>
 
                   <!-- Favorite Button -->
-                  <v-btn
-                    icon
-                    variant="outlined"
-                    rounded="lg"
-                    @click="isLiked = !isLiked"
-                  >
+                  <v-btn icon variant="outlined" rounded="lg" @click="isLiked = !isLiked">
                     <v-icon :color="isLiked ? 'red' : 'grey'">
                       {{ isLiked ? "line-md:heart-filled" : "line-md:heart" }}
                     </v-icon>
@@ -797,7 +755,6 @@ onMounted(async () => {
           </v-row>
         </v-container>
 
-        <!-- Rest of your template remains the same -->
         <!-- description tabs -->
         <v-card variant="text">
           <v-tabs align-tabs="center" v-model="tab">
@@ -825,9 +782,7 @@ onMounted(async () => {
                   <v-col cols="12" md="5" class="">
                     <div class="">
                       <div class="border-b-2 pb-2 border-gray-300">
-                        <p class="text-[20px] font-bold">
-                          Perfect Quality Wear
-                        </p>
+                        <p class="text-[20px] font-bold">Perfect Quality Wear</p>
                       </div>
                       <p class="py-4 text-gray-500">
                         <span class="pl-5"></span>
@@ -855,9 +810,7 @@ onMounted(async () => {
                     </div>
                     <div class="">
                       <div class="border-b-2 pb-2 border-gray-300">
-                        <p class="text-[20px] font-bold">
-                          Washing Instructions
-                        </p>
+                        <p class="text-[20px] font-bold">Washing Instructions</p>
                       </div>
                       <div>
                         <v-list class="pa-0">
@@ -867,9 +820,7 @@ onMounted(async () => {
                             class="d-flex align-center pa-0"
                             density="compact"
                           >
-                            <v-icon size="large" class="mr-2"
-                              >mdi-circle-small</v-icon
-                            >
+                            <v-icon size="large" class="mr-2">mdi-circle-small</v-icon>
                             <span class="text-gray-600">{{ item }}</span>
                           </v-list-item>
                         </v-list>
@@ -929,9 +880,7 @@ onMounted(async () => {
                                         : 'grey-lighten-1'
                                     "
                                   >
-                                    {{
-                                      props.isFilled ? "noto:star" : "uim:star"
-                                    }}
+                                    {{ props.isFilled ? "noto:star" : "uim:star" }}
                                   </v-icon>
                                 </template>
                               </v-rating>
@@ -947,8 +896,8 @@ onMounted(async () => {
                   <v-col cols="12" md="5">
                     <p class="font-bold text-[25px]">Be the first to review</p>
                     <p class="text-gray-400 my-2">
-                      Your email address will not be published. Required fields
-                      are marked *
+                      Your email address will not be published. Required fields are marked
+                      *
                     </p>
                     <!-- rating -->
                     <div class="flex items-center">
@@ -961,9 +910,7 @@ onMounted(async () => {
                             <v-icon
                               size="20"
                               :color="
-                                props.isFilled
-                                  ? colors[props.index]
-                                  : 'grey-lighten-1'
+                                props.isFilled ? colors[props.index] : 'grey-lighten-1'
                               "
                             >
                               {{ props.isFilled ? "noto:star" : "uim:star" }}
@@ -981,8 +928,8 @@ onMounted(async () => {
                       ></v-textarea>
 
                       <p class="text-gray-500 text-[12px]">
-                        <span class="text-red">*</span> You have to be logged in
-                        to be able to review the products.
+                        <span class="text-red">*</span> You have to be logged in to be
+                        able to review the products.
                       </p>
                     </div>
                     <div class="mt-4">
@@ -1034,12 +981,10 @@ onMounted(async () => {
         Product ID: {{ productId }}
         <br />
         <span v-if="isDevelopment">
-          Woman Store Items: {{ womanItems?.length || 0 }}
+          All Items Store Count: {{ itemStoreYou.items?.length || 0 }}
         </span>
       </v-alert>
-      <v-btn color="primary" @click="router.push('/woman')">
-        Back to Products
-      </v-btn>
+      <v-btn color="primary" @click="router.push('/')"> Back to Products </v-btn>
     </div>
   </div>
 </template>

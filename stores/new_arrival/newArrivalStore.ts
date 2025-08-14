@@ -4,22 +4,23 @@ import type {
     ItemResponse,
 } from '~/types/new_arrival/new_arrival';
 
-export const useNewArrivalStore = defineStore('itemStore', {
+export const useNewArrivalStore = defineStore('newArrivalStore', {
     state: () => ({
         isLoading: false,
-        items: [] as Item[],
+        newArrival: [] as Item[],
         newArrivalCount: 0,
         selectedItem: null as Item | null,
+        hello: "skdadhasjdhakjsdhaskdhaskd"
     }),
 
     getters: {
-        getAllItems: (state) => state.items,
+        getAllItems: (state) => state.newArrival,
         getItemById: (state) => (id: string) =>
-            state.items.find((item) => item.id === id),
+            state.newArrival.find((item) => item.id === id),
         getVariantsByItemId: (state) => (id: string) =>
-            state.items.find((item) => item.id === id)?.variants ?? [],
+            state.newArrival.find((item) => item.id === id)?.variants ?? [],
         getBrands: (state) => {
-            const brands = state.items.map((item) => item.brand);
+            const brands = state.newArrival.map((item) => item.brand);
             return Array.from(new Map(brands.map(b => [b.id, b])).values()); // remove duplicates
         },
     },
@@ -32,22 +33,22 @@ export const useNewArrivalStore = defineStore('itemStore', {
 
                 const fetched = res?.data?.value?.data;
                 if (Array.isArray(fetched)) {
-                    this.items = fetched;
+                    this.newArrival = fetched;
                     this.newArrivalCount = res.data.value.new_arrival;
                 } else {
                     console.warn('Invalid items fetched:', fetched);
-                    this.items = []; // fallback to empty
+                    this.newArrival = []; // fallback to empty
                 }
             } catch (error) {
                 console.error('Failed to fetch items:', error);
-                this.items = []; // fallback on error
+                this.newArrival = []; // fallback on error
             } finally {
                 this.isLoading = false;
             }
         },
 
         setSelectedItem(itemId: string) {
-            this.selectedItem = this.items.find((item) => item.id === itemId) || null;
+            this.selectedItem = this.newArrival.find((item) => item.id === itemId) || null;
         },
 
         clearSelectedItem() {

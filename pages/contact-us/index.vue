@@ -90,9 +90,6 @@ const rules = {
 }
 
 const submitForm = () => {
-  console.log('Submitted:', form.value)
-  alert('Your message has been sent!')
-
   // Reset form
   form.value = {
     name: '',
