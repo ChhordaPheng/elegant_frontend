@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import type { Men, MenResponse } from '~/types/man_category/man_category';
+import type { Kid, KidResponse } from '~/types/kid/kid';
 
 // Define filter interface
 export interface FilterParams {
@@ -15,9 +15,9 @@ export interface FilterParams {
   sort_by?: 'price' | 'name' | 'created_at';
 }
 
-export const useManIteStore = defineStore('useManIteStore', {
+export const useKidIteStore = defineStore('useKidIteStore', {
   state: () => ({
-    men: [] as Men[],
+    kids: [] as Kid[],
     total: 0,
     page: 1,
     perPage: 20,
@@ -29,7 +29,7 @@ export const useManIteStore = defineStore('useManIteStore', {
 
   getters: {
     totalPages: (state) => Math.ceil(state.total / state.perPage),
-    hasItems: (state) => state.men.length > 0,
+    hasItems: (state) => state.kids.length > 0,
     isLoading: (state) => state.loading,
     hasError: (state) => !!state.error,
   },
@@ -56,7 +56,7 @@ export const useManIteStore = defineStore('useManIteStore', {
       return params.toString();
     },
 
-    async fetchManItems(filters: FilterParams = {}) {
+    async fetchKidItems(filters: FilterParams = {}) {
       this.loading = true;
       this.error = null;
 
@@ -66,13 +66,13 @@ export const useManIteStore = defineStore('useManIteStore', {
       try {
         const baseURL = getBaseURL();
         const queryString = this.buildQueryString(filters);
-        const endpoint = `/items/group/men?${queryString}`;
+        const endpoint = `/items/group/kids?${queryString}`;
 
-        const responseRef = await useFetchDataApi<MenResponse>(endpoint);
+        const responseRef = await useFetchDataApi<KidResponse>(endpoint);
         const response = responseRef.data.value;
 
         if (response?.success) {
-          this.men = response.data.map(item => ({
+          this.kids = response.data.map(item => ({
             ...item,
             variants: item.variants?.map(variant => ({
               ...variant,
@@ -101,12 +101,12 @@ export const useManIteStore = defineStore('useManIteStore', {
           this.page = response.page || 1;
         } else {
           this.error = response?.message || 'Unexpected error occurred.';
-          this.men = [];
+          this.kids = [];
         }
       } catch (error: any) {
-        console.error('Error fetching woman items:', error);
+        console.error('Error fetching kid items:', error);
         this.error = error?.data?.message || error?.message || 'Failed to fetch items';
-        this.men = [];
+        this.kids = [];
       } finally {
         this.loading = false;
       }
@@ -116,12 +116,12 @@ export const useManIteStore = defineStore('useManIteStore', {
     async applyFilters(filters: FilterParams) {
       // Reset to page 1 when applying new filters
       const filtersWithPage = { ...filters, page: 1 };
-      await this.fetchManItems(filtersWithPage);
+      await this.fetchKidItems(filtersWithPage);
     },
 
     // Clear items
     clearItems() {
-      this.men = [];
+      this.kids = [];
       this.total = 0;
       this.page = 1;
       this.error = null;
@@ -132,12 +132,12 @@ export const useManIteStore = defineStore('useManIteStore', {
     async setPage(newPage: number) {
       this.page = newPage;
       const filtersWithNewPage = { ...this.currentFilters, page: newPage };
-      await this.fetchManItems(filtersWithNewPage);
+      await this.fetchKidItems(filtersWithNewPage);
     },
 
     // Refresh with current filters
     async refreshWithCurrentFilters() {
-      await this.fetchManItems(this.currentFilters);
+      await this.fetchKidItems(this.currentFilters);
     },
   },
 });

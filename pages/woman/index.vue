@@ -30,6 +30,7 @@ const currentVariant = ref<any>(null);
 const quantity = ref<number>(1);
 const snackbar = ref(false);
 const text = ref(""); // message for snackbar
+const favoriteVariants = ref<Set<string>>(new Set());
 
 // Store
 const cartStore = useCartStore();
@@ -46,6 +47,8 @@ const { sizes } = storeToRefs(sizeStore);
 const priceStore = usePriceStore();
 const { prices } = storeToRefs(priceStore);
 const favoriteStore = useFavoriteStore();
+const topTrendingStore = useTopTrendingStore();
+const { topTrendings } = storeToRefs(topTrendingStore);
 
 // Selected category name - NEW
 const selectedCategoryName = ref("Clothes");
@@ -424,6 +427,7 @@ onMounted(async () => {
     categoryStore.fetchCategories(),
     colorStore.fetchColors(),
     sizeStore.fetchSize(),
+    topTrendingStore.fetchTopTrendings(),
   ]);
 
   // Initial fetch with no filters
@@ -625,22 +629,27 @@ onMounted(async () => {
                 <p class="uppercase font-bold text-[25px]">TRENDING PRODUCTS</p>
               </div>
               <div
-                v-for="n in 3"
-                :key="n"
+                v-for="topTrending in topTrendings"
+                :key="topTrending.id"
                 class="border-b-[1px] border-gray-400 pb-3 mb-3"
               >
                 <v-card variant="text">
-                  <div class="flex">
+                  <div
+                    v-for="variant in topTrending.variants"
+                    :key="variant.id"
+                    class="flex mb-4"
+                  >
                     <div>
                       <img
-                        src="/images/daa.jpg"
+                        :src="variant.image || '/images/daa.jpg'"
                         class="rounded"
-                        width="150px"
+                        width="100px"
                         alt="trending product"
                       />
                     </div>
                     <div class="ml-5 mt-2">
-                      <div class="d-flex items-end">
+                      <!-- Star rating -->
+                      <div class="flex items-end">
                         <Icon icon="noto:star" width="25" height="25" />
                         <div v-for="i in 4" :key="i">
                           <Icon
@@ -650,13 +659,28 @@ onMounted(async () => {
                             height="25"
                           />
                         </div>
-                        <p class="text-gray-500 text-[16px] ml-1">( 0 Reviews )</p>
+                        <p class="text-gray-500 text-[16px] ml-1">
+                          ( {{ topTrending.reviews.length || 0 }} Reviews )
+                        </p>
                       </div>
-                      <p class="font-bold my-3 text-[20px]">White Shirt</p>
-                      <p class="text-blue-700 font-bold uppercase my-1">Zara</p>
-                      <div class="flex item-center my-3">
-                        <p class="line-through text-gray-500 text-[15px]">$70.00 USD</p>
-                        <p class="text-red ml-2 text-[20px]">$60.00 USD</p>
+
+                      <!-- Item info -->
+                      <p class="font-bold my-1 text-[20px]">{{ topTrending.name }}</p>
+                      <p class="text-gray-600 text-[16px] mb-2">
+                        Brand: {{ topTrending.brand.name }}
+                      </p>
+
+                      <!-- Price -->
+                      <p class="text-blue-700 font-bold uppercase my-1">
+                        ${{ variant.price }} USD
+                      </p>
+
+                      <!-- Popularity Score instead of discounted price -->
+                      <div class="flex items-center my-2">
+                        <p class="text-gray-500 text-[15px]">Popularity Score:</p>
+                        <p class="text-red ml-2 text-[20px]">
+                          {{ topTrending.popularity_score }}
+                        </p>
                       </div>
                     </div>
                   </div>
@@ -820,6 +844,11 @@ onMounted(async () => {
                                       icon
                                       @click.stop="
                                         addToFavorites(womanitem.variants[0].id)
+                                      "
+                                      :class="
+                                        favoriteVariants.has(womanitem.variants[0].id)
+                                          ? 'text-red'
+                                          : 'bg-white text-black'
                                       "
                                       class="bg-white text-black"
                                     >
@@ -1175,6 +1204,12 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
+                                  @click.stop="addToFavorites(womanitem.variants[0].id)"
+                                  :class="
+                                    favoriteVariants.has(womanitem.variants[0].id)
+                                      ? 'text-red'
+                                      : 'bg-white text-black'
+                                  "
                                 >
                                   <v-icon icon="akar-icons:heart" size="16" />
                                 </v-btn>

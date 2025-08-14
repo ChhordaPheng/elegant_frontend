@@ -2,6 +2,7 @@
 // Add missing router import
 import { useRouter } from "vue-router";
 
+const favoriteVariants = ref<Set<string>>(new Set());
 const newArrivalStore = useNewArrivalStore();
 const { newArrival } = storeToRefs(newArrivalStore);
 const cartStore = useCartStore();
@@ -13,15 +14,15 @@ const text = ref(""); // message for snackbar
 const router = useRouter(); // Make sure this is properly imported
 const favoriteStore = useFavoriteStore();
 
-const addToFavorites = async (variantId: string) => {
-  try {
-    await favoriteStore.addToFav({ item_variant_id: variantId });
-    text.value = "Item added to favorites!";
-  } catch (error) {
-    text.value = "Failed to add to favorites.";
-  } finally {
-    snackbar.value = true;
+const addToFavorites = (variantId: string) => {
+  if (favoriteVariants.value.has(variantId)) {
+    favoriteVariants.value.delete(variantId);
+    text.value = "Removed from favorites!";
+  } else {
+    favoriteVariants.value.add(variantId);
+    text.value = "Added to favorites!";
   }
+  snackbar.value = true;
 };
 
 // Core add to cart logic
@@ -66,17 +67,15 @@ const handleAddToCart = async () => {
 
 // Enhanced quick view function with better error handling and logging
 const quickView = (productId: string | number) => {
-
   try {
     // Convert to string if needed
     const idString = productId.toString();
-    
+
     // Navigate to product detail page
     router.push({
       path: "/product-detail",
       query: { id: idString },
     });
-    
   } catch (error) {
     console.error("Error during navigation:", error);
     text.value = "Failed to navigate to product detail.";
@@ -86,7 +85,6 @@ const quickView = (productId: string | number) => {
 
 // Enhanced add to cart function with better error handling
 const addToCart = (variantId: string) => {
-  
   // Find the product containing this variant
   const product = newArrival.value.find((item) =>
     item.variants?.some((v) => v.id === variantId)
@@ -157,7 +155,11 @@ onMounted(async () => {
                         v-bind="props"
                         @click.stop="addToFavorites(item.variants[0].id)"
                         icon
-                        class="bg-white text-black"
+                        :class="
+                          favoriteVariants.has(item.variants[0].id)
+                            ? 'text-red'
+                            : 'bg-white text-black'
+                        "
                       >
                         <v-icon icon="akar-icons:heart" />
                       </v-btn>
@@ -223,7 +225,7 @@ onMounted(async () => {
             {{ item.name }}
           </p>
           <p class="text-blue-700 font-bold uppercase my-1">
-            {{ item.brand?.name || 'Unknown Brand' }}
+            {{ item.brand?.name || "Unknown Brand" }}
           </p>
           <div class="d-flex justify-center">
             <Icon icon="noto:star" width="20" height="20" />
@@ -233,10 +235,16 @@ onMounted(async () => {
           </div>
           <div class="flex justify-center items-center mt-2">
             <p class="text-red mr-2">
-              ${{ item.variants?.[0]?.final_price || item.variants?.[0]?.price || '0.00' }} USD
+              ${{
+                item.variants?.[0]?.final_price || item.variants?.[0]?.price || "0.00"
+              }}
+              USD
             </p>
-            <p 
-              v-if="item.variants?.[0]?.final_price && item.variants[0].final_price < item.variants[0].price"
+            <p
+              v-if="
+                item.variants?.[0]?.final_price &&
+                item.variants[0].final_price < item.variants[0].price
+              "
               class="line-through text-gray-500"
             >
               ${{ item.variants[0].price }} USD

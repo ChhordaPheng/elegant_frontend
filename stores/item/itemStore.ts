@@ -16,26 +16,68 @@ export interface SingleItemResponse {
   data: Item;
 }
 
+export interface SearchParams {
+  search?: string;
+  category_id?: string;
+  brand_id?: string;
+  min_price?: number;
+  max_price?: number;
+}
+
 export const useItemStore = defineStore('itemStore', {
   state: () => ({
     item: null as Item | null,
     items: [] as Item[],
+    searchResults: [] as Item[],
     isLoading: false,
+    isSearching: false,
     error: null as string | null,
+    searchError: null as string | null,
+    lastSearchQuery: null as SearchParams | null,
+    currentSearchParams: {} as SearchParams,
   }),
+
+  getters: {
+    // Get filtered items based on current search
+    filteredItems: (state) => {
+      return state.searchResults.length > 0 ? state.searchResults : state.items;
+    },
+  },
 
   actions: {
     // Fetch all items (list)
-    async fetchItems() {
+    async fetchItems(searchParams?: SearchParams) {
       this.isLoading = true;
       this.error = null;
 
       try {
-        const response = await useFetchDataApi<ItemListResponse>("/items");
+        // Build query string for API call
+        let endpoint = "/items";
+        if (searchParams && Object.keys(searchParams).length > 0) {
+          const queryParams = new URLSearchParams();
+          
+          Object.entries(searchParams).forEach(([key, value]) => {
+            if (value !== null && value !== undefined && value !== '') {
+              queryParams.append(key, value.toString());
+            }
+          });
+          
+          if (queryParams.toString()) {
+            endpoint += `?${queryParams.toString()}`;
+          }
+        }
+
+        const response = await useFetchDataApi<ItemListResponse>(endpoint);
         
         if (response.data.value?.status === 'success' && response.data.value.data) {
-          // Fix: Assign the array directly, not wrapped in another array
           this.items = response.data.value.data;
+          
+          // If this was a search, also update search results
+          if (searchParams && Object.keys(searchParams).length > 0) {
+            this.searchResults = response.data.value.data;
+            this.lastSearchQuery = searchParams;
+            this.currentSearchParams = searchParams;
+          }
         } else {
           this.items = [];
           this.error = response.data.value?.message || "Failed to fetch items.";
@@ -46,6 +88,70 @@ export const useItemStore = defineStore('itemStore', {
         console.error('❌ Error in fetchItems:', err);
       } finally {
         this.isLoading = false;
+      }
+    },
+
+    // Dedicated search method
+    async searchItems(searchParams: SearchParams) {
+      this.isSearching = true;
+      this.searchError = null;
+
+      try {
+        // Build query string
+        const queryParams = new URLSearchParams();
+        
+        Object.entries(searchParams).forEach(([key, value]) => {
+          if (value !== null && value !== undefined && value !== '') {
+            queryParams.append(key, value.toString());
+          }
+        });
+
+        const endpoint = `/items${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+        const response = await useFetchDataApi<ItemListResponse>(endpoint);
+        
+        if (response.data.value?.status === 'success' && response.data.value.data) {
+          this.searchResults = response.data.value.data;
+          this.lastSearchQuery = searchParams;
+          this.currentSearchParams = searchParams;
+          this.searchError = null;
+        } else {
+          this.searchResults = [];
+          this.searchError = response.data.value?.message || "No items found.";
+        }
+      } catch (err: any) {
+        this.searchResults = [];
+        this.searchError = err.message || "Search failed.";
+        console.error('❌ Error in searchItems:', err);
+      } finally {
+        this.isSearching = false;
+      }
+    },
+
+    // Clear search results
+    clearSearch() {
+      this.searchResults = [];
+      this.lastSearchQuery = null;
+      this.currentSearchParams = {};
+      this.searchError = null;
+    },
+
+    // Fetch items based on URL query parameters
+    async fetchItemsFromURL(route: any) {
+      const searchParams: SearchParams = {};
+      
+      // Extract search parameters from route query
+      if (route.query.search) searchParams.search = route.query.search;
+      if (route.query.category_id) searchParams.category_id = route.query.category_id;
+      if (route.query.brand_id) searchParams.brand_id = route.query.brand_id;
+      if (route.query.min_price) searchParams.min_price = parseFloat(route.query.min_price);
+      if (route.query.max_price) searchParams.max_price = parseFloat(route.query.max_price);
+
+      // If we have search params, use them
+      if (Object.keys(searchParams).length > 0) {
+        await this.searchItems(searchParams);
+      } else {
+        // Otherwise fetch all items
+        await this.fetchItems();
       }
     },
 

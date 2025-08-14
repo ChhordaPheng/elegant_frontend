@@ -1,14 +1,14 @@
-export interface MenResponse {
+export interface KidResponse {
   success: boolean;
   message: string;
   status_code: number;
-  data: Men[];
+  data: Kid[];
   page: number;
   per_page: number;
   total: number;
 }
 
-export interface Men {
+export interface Kid {
   id: string;
   name: string;
   description: string;

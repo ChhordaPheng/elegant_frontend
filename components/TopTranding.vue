@@ -1,22 +1,166 @@
-<script setup lang="ts"></script>
+<script setup lang="ts">
+// Add missing router import
+import { useRouter } from "vue-router";
+
+const favoriteVariants = ref<Set<string>>(new Set());
+const topTrendingStore = useTopTrendingStore();
+const { topTrendings } = storeToRefs(topTrendingStore);
+const cartStore = useCartStore();
+const currentProduct = ref<any>(null);
+const currentVariant = ref<any>(null);
+const quantity = ref<number>(1);
+const snackbar = ref(false);
+const text = ref(""); // message for snackbar
+const router = useRouter(); // Make sure this is properly imported
+const favoriteStore = useFavoriteStore();
+
+const addToFavorites = (variantId: string) => {
+  if (favoriteVariants.value.has(variantId)) {
+    favoriteVariants.value.delete(variantId);
+    text.value = "Removed from favorites!";
+  } else {
+    favoriteVariants.value.add(variantId);
+    text.value = "Added to favorites!";
+  }
+  snackbar.value = true;
+};
+
+// Core add to cart logic
+const handleAddToCart = async () => {
+  if (!currentProduct.value || !currentVariant.value) {
+    text.value = "No item available to add to cart.";
+    snackbar.value = true;
+    return;
+  }
+
+  if (currentVariant.value.quantity === 0) {
+    text.value = "Item is out of stock.";
+    snackbar.value = true;
+    return;
+  }
+
+  if (quantity.value > currentVariant.value.quantity) {
+    text.value = "Requested quantity exceeds available stock.";
+    snackbar.value = true;
+    return;
+  }
+
+  try {
+    const cartPayload = {
+      item_variant_id: currentVariant.value.id,
+      quantity: quantity.value,
+    };
+    await cartStore.addToCart(cartPayload);
+
+    if (cartStore.error) {
+      text.value = cartStore.error || "Failed to add to cart.";
+    } else {
+      text.value = "Item successfully added to cart!";
+      quantity.value = 1;
+    }
+  } catch (error) {
+    text.value = "Something went wrong while adding to cart.";
+  } finally {
+    snackbar.value = true;
+  }
+};
+
+// Enhanced quick view function with better error handling and logging
+const quickView = (productId: string | number) => {
+  try {
+    // Convert to string if needed
+    const idString = productId.toString();
+
+    // Navigate to product detail page
+    router.push({
+      path: "/product-detail",
+      query: { id: idString },
+    });
+  } catch (error) {
+    console.error("Error during navigation:", error);
+    text.value = "Failed to navigate to product detail.";
+    snackbar.value = true;
+  }
+};
+
+// Enhanced add to cart function with better error handling
+const addToCart = (variantId: string) => {
+  // Find the product containing this variant
+  const product = topTrendings.value.find((item) =>
+    item.variants?.some((v) => v.id === variantId)
+  );
+
+  if (!product) {
+    console.warn("No product found for variant", variantId);
+    text.value = "Product not found.";
+    snackbar.value = true;
+    return;
+  }
+
+  // Find the variant itself
+  const variant = product.variants.find((v) => v.id === variantId);
+
+  if (!variant) {
+    console.warn("Variant not found", variantId);
+    text.value = "Product variant not found.";
+    snackbar.value = true;
+    return;
+  }
+
+  currentProduct.value = product;
+  currentVariant.value = variant;
+  quantity.value = 1;
+
+  handleAddToCart();
+};
+const itemStore = useItemStore();
+const { items } = storeToRefs(itemStore);
+
+// Enhanced mount function with error handling
+onMounted(async () => {
+  try {
+    await topTrendingStore.fetchTopTrendings();
+  } catch (error) {
+    console.error("Error fetching new arrivals:", error);
+    text.value = "Failed to load new arrivals.";
+    snackbar.value = true;
+  }
+});
+</script>
 
 <template>
   <v-slide-group center-active>
-    <v-slide-group-item v-for="n in 10" :key="n" v-slot="{ toggle }">
+    <v-slide-group-item v-for="item in topTrendings" :key="item.id" v-slot="{ toggle }">
       <v-card class="relative w-[360px] mr-5" variant="text">
         <v-hover v-slot="{ isHovering, props }">
           <div v-bind="props" class="relative w-full cursor-pointer">
             <!-- Product Image -->
-            <img src="/images/da.jpg" class="w-full object-cover" />
+            <v-img
+              :src="item.variants?.[0]?.image || '/images/placeholder.jpg'"
+              cover
+              position="top"
+              class="h-[400px] md:h-[420px]"
+              @click="quickView(item.id)"
+              :alt="`${item.name} - Product Image`"
+            />
 
-            <!-- Animated Buttons on Hover (narrow wrapper for better positioning) -->
+            <!-- Animated Buttons on Hover -->
             <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-6">
               <!-- Favorite (slide from left) -->
               <transition name="slide-left">
-                <div v-if="isHovering">
+                <div v-if="isHovering && item.variants?.[0]">
                   <v-tooltip text="Add to Favorites">
                     <template #activator="{ props }">
-                      <v-btn v-bind="props" icon class="bg-white text-black">
+                      <v-btn
+                        v-bind="props"
+                        @click.stop="addToFavorites(item.variants[0].id)"
+                        icon
+                        :class="
+                          favoriteVariants.has(item.variants[0].id)
+                            ? 'text-red'
+                            : 'bg-white text-black'
+                        "
+                      >
                         <v-icon icon="akar-icons:heart" />
                       </v-btn>
                     </template>
@@ -29,7 +173,12 @@
                 <div v-if="isHovering">
                   <v-tooltip text="Quick View">
                     <template #activator="{ props }">
-                      <v-btn v-bind="props" icon class="bg-white text-black">
+                      <v-btn
+                        v-bind="props"
+                        @click.stop="quickView(item.id)"
+                        icon
+                        class="bg-white text-black"
+                      >
                         <v-icon icon="carbon:image-copy" />
                       </v-btn>
                     </template>
@@ -39,10 +188,16 @@
 
               <!-- Add to Cart (slide from right) -->
               <transition name="slide-right">
-                <div v-if="isHovering">
+                <div v-if="isHovering && item.variants?.[0]">
                   <v-tooltip text="Add to Cart">
                     <template #activator="{ props }">
-                      <v-btn v-bind="props" icon class="bg-white text-black">
+                      <v-btn
+                        v-bind="props"
+                        @click.stop="addToCart(item.variants[0].id)"
+                        icon
+                        class="bg-white text-black"
+                        :disabled="!item.variants[0] || item.variants[0].quantity === 0"
+                      >
                         <v-icon icon="pepicons-pencil:cart" />
                       </v-btn>
                     </template>
@@ -50,32 +205,70 @@
                 </div>
               </transition>
             </div>
+
+            <!-- Out of Stock Overlay -->
+            <div
+              v-if="item.variants?.[0]?.quantity === 0"
+              class="absolute inset-0 bg-black bg-opacity-50 flex items-center justify-center"
+            >
+              <p class="text-white font-bold text-lg">OUT OF STOCK</p>
+            </div>
           </div>
         </v-hover>
 
         <!-- Product Info -->
         <div class="text-center my-5">
-          <p class="font-bold text-[20px]">White Shirt</p>
-          <p class="text-blue-700 font-bold uppercase my-1">Zara</p>
+          <p
+            class="font-bold text-[20px] cursor-pointer hover:text-blue-500 transition-colors"
+            @click="quickView(item.id)"
+          >
+            {{ item.name }}
+          </p>
+          <p class="text-blue-700 font-bold uppercase my-1">
+            {{ item.brand?.name || "Unknown Brand" }}
+          </p>
           <div class="d-flex justify-center">
             <Icon icon="noto:star" width="20" height="20" />
             <div v-for="i in 4" :key="i">
-              <Icon
-                icon="uim:star"
-                class="!text-gray-400"
-                width="20"
-                height="20"
-              />
+              <Icon icon="uim:star" class="!text-gray-400" width="20" height="20" />
             </div>
           </div>
           <div class="flex justify-center items-center mt-2">
-            <p class="text-red mr-2">$60.00 USD</p>
-            <p class="line-through text-gray-500">$70.00 USD</p>
+            <p class="text-red mr-2">
+              ${{
+                item.variants?.[0]?.final_price || item.variants?.[0]?.price || "0.00"
+              }}
+              USD
+            </p>
+            <p
+              v-if="
+                item.variants?.[0]?.final_price &&
+                item.variants[0].final_price < item.variants[0].price
+              "
+              class="line-through text-gray-500"
+            >
+              ${{ item.variants[0].price }} USD
+            </p>
           </div>
         </div>
       </v-card>
     </v-slide-group-item>
   </v-slide-group>
+
+  <!-- Global snackbar -->
+  <v-snackbar
+    v-model="snackbar"
+    :timeout="3000"
+    location="top right"
+    color="success"
+    class="text-white"
+  >
+    {{ text }}
+
+    <template v-slot:actions>
+      <v-btn variant="text" class="text-white" @click="snackbar = false"> Close </v-btn>
+    </template>
+  </v-snackbar>
 </template>
 
 <style scoped>

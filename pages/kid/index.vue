@@ -23,6 +23,7 @@ const selected = ref("");
 const selectedSize = ref<string | null>(null); // Changed from array to single selection
 const selectedBrand = ref<string | null>(null);
 const sortSelection = ref("");
+const favoriteVariants = ref<Set<string>>(new Set());
 
 const router = useRouter();
 const currentProduct = ref<any>(null);
@@ -30,12 +31,11 @@ const currentVariant = ref<any>(null);
 const quantity = ref<number>(1);
 const snackbar = ref(false);
 const text = ref(""); // message for snackbar
-const favoriteVariants = ref<Set<string>>(new Set());
 
 // Store
 const cartStore = useCartStore();
-const manStore = useManIteStore();
-const { men } = storeToRefs(manStore);
+const kidStore = useKidIteStore();
+const { kids } = storeToRefs(kidStore);
 const brandStore = useBrandStore();
 const { brands } = storeToRefs(brandStore);
 const categoryStore = useCategoryStore();
@@ -104,7 +104,7 @@ function debounce(func: Function, wait: number) {
 
 // Debounced function to apply filters
 const debouncedApplyFilters = debounce(async () => {
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 }, 500); // 500ms delay
 
 // Watch for filter changes and apply them
@@ -168,10 +168,10 @@ const getCategoryImage = (slug: string) => {
 const handleCategoryClick = async (category: any) => {
   activeIndex.value = category.id;
   selectedCategoryName.value = category.name;
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 };
 
-// In your woman page, update the quickView function:
+// In your kid page, update the quickView function:
 const quickView = (productId: string | number) => {
   router.push({
     path: "/product-detail",
@@ -238,7 +238,7 @@ const handleAddToCart = async () => {
 
 // Optional: Add to cart function
 const addToCart = (variantId: string) => {
-  const product = men.value.find((item) =>
+  const product = kids.value.find((item) =>
     item.variants?.some((v) => v.id === variantId)
   );
 
@@ -311,22 +311,22 @@ const activeFilters = computed(() => {
 // Reset functions - UPDATED to apply filters
 const resetPrice = async () => {
   priceRange.value = [0.03, 209.99]; // Updated to API values
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 };
 
 const resetColor = async () => {
   selected.value = "";
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 };
 
 const resetSizes = async () => {
   selectedSize.value = null; // Updated for single selection
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 };
 
 const resetBrands = async () => {
   selectedBrand.value = null;
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 };
 
 const clearAllFilters = async () => {
@@ -335,7 +335,7 @@ const clearAllFilters = async () => {
   selectedSize.value = null;
   selectedBrand.value = null;
   activeIndex.value = null;
-  await manStore.applyFilters({});
+  await kidStore.applyFilters({});
 };
 
 // Remove individual filter - UPDATED
@@ -356,19 +356,19 @@ const removeFilter = async (filter: any) => {
       }
       break;
   }
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 };
 
 // Handle size selection - UPDATED: Single selection only
 const selectSize = async (sizeId: string) => {
   selectedSize.value = selectedSize.value === sizeId ? null : sizeId;
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 };
 
 // Handle brand selection
 const toggleBrand = async (brandId: string) => {
   selectedBrand.value = selectedBrand.value === brandId ? null : brandId;
-  await manStore.applyFilters(currentFilters.value);
+  await kidStore.applyFilters(currentFilters.value);
 };
 
 // Handle sort change
@@ -391,13 +391,13 @@ const applySorting = async (sortField: string, order: "asc" | "desc" = "asc") =>
     sort_order: order,
   };
 
-  await manStore.applyFilters(filtersWithSort);
+  await kidStore.applyFilters(filtersWithSort);
 };
 
 // Handle pagination
 const handlePageChange = async (newPage: number) => {
   page.value = newPage;
-  await manStore.setPage(newPage);
+  await kidStore.setPage(newPage);
 };
 
 // Handle items per page change
@@ -407,9 +407,9 @@ const handleItemsPerPageChange = async (count: number | string) => {
   let perPage = 20; // default
   if (count === 10) perPage = 10;
   else if (count === 20) perPage = 20;
-  else if (count === "all") perPage = manStore.total || 1000; // Large number for "all"
+  else if (count === "all") perPage = kidStore.total || 1000; // Large number for "all"
 
-  manStore.perPage = perPage;
+  kidStore.perPage = perPage;
 
   const filtersWithPerPage = {
     ...currentFilters.value,
@@ -417,7 +417,7 @@ const handleItemsPerPageChange = async (count: number | string) => {
     page: 1, // Reset to first page
   };
 
-  await manStore.applyFilters(filtersWithPerPage);
+  await kidStore.applyFilters(filtersWithPerPage);
 };
 
 // Lifecycle
@@ -431,7 +431,7 @@ onMounted(async () => {
   ]);
 
   // Initial fetch with no filters
-  await manStore.fetchManItems();
+  await kidStore.fetchKidItems;
 });
 </script>
 
@@ -696,7 +696,7 @@ onMounted(async () => {
                     <v-col>
                       <div class="pl-3">
                         <p>
-                          Clothing ({{ men?.length || 0 }}
+                          Clothing ({{ kids?.length || 0 }}
                           items)
                         </p>
                         <div class="my-3 flex items-center flex-wrap">
@@ -780,7 +780,7 @@ onMounted(async () => {
                   <!-- Products Grid -->
                   <div class="d-flex flex-wrap">
                     <!-- Loading skeleton -->
-                    <div v-if="manStore.isLoading" class="w-full">
+                    <div v-if="kidStore.isLoading" class="w-full">
                       <v-row>
                         <v-col v-for="n in 8" :key="n" cols="12" sm="6" md="3">
                           <v-skeleton-loader type="card" height="400"></v-skeleton-loader>
@@ -790,7 +790,7 @@ onMounted(async () => {
 
                     <!-- No items found -->
                     <div
-                      v-else-if="!manStore.hasItems && !manStore.isLoading"
+                      v-else-if="!kidStore.hasItems && !kidStore.isLoading"
                       class="w-full text-center py-8"
                     >
                       <v-icon
@@ -812,8 +812,8 @@ onMounted(async () => {
                     <!-- Products -->
                     <v-card
                       v-else
-                      v-for="manItem in men"
-                      :key="manItem.id"
+                      v-for="kidItem in kids"
+                      :key="kidItem.id"
                       class="relative w-[280px] mr-5"
                       variant="text"
                     >
@@ -822,12 +822,12 @@ onMounted(async () => {
                           <!-- Product Image -->
                           <img
                             :src="
-                              manItem.variants[0].image ||
+                              kidItem.variants[0].image ||
                               'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                             "
-                            :alt="manItem.name"
+                            :alt="kidItem.name"
                             class="w-full cursor-pointer h-[400px] object-cover"
-                            @click="quickView(manItem.id)"
+                            @click="quickView(kidItem.id)"
                           />
 
                           <!-- Animated Buttons on Hover (narrow wrapper for better positioning) -->
@@ -842,10 +842,10 @@ onMounted(async () => {
                                     <v-btn
                                       v-bind="props"
                                       icon
-                                      @click.stop="addToFavorites(manItem.variants[0].id)"
+                                      @click.stop="addToFavorites(kidItem.variants[0].id)"
                                       class="bg-white text-black"
                                       :class="
-                                        favoriteVariants.has(manItem.variants[0].id)
+                                        favoriteVariants.has(kidItem.variants[0].id)
                                           ? 'text-red'
                                           : 'bg-white text-black'
                                       "
@@ -866,7 +866,7 @@ onMounted(async () => {
                                       v-bind="props"
                                       icon
                                       class="bg-white text-black"
-                                      @click.stop="quickView(manItem.id)"
+                                      @click.stop="quickView(kidItem.id)"
                                     >
                                       <v-icon icon="carbon:image-copy" />
                                     </v-btn>
@@ -884,7 +884,7 @@ onMounted(async () => {
                                       v-bind="props"
                                       icon
                                       class="bg-white text-black"
-                                      @click="addToCart(manItem.variants[0].id)"
+                                      @click="addToCart(kidItem.variants[0].id)"
                                     >
                                       <v-icon icon="pepicons-pencil:cart" />
                                     </v-btn>
@@ -900,12 +900,12 @@ onMounted(async () => {
                       <div class="text-center my-5">
                         <p
                           class="font-bold text-[20px] cursor-pointer hover:text-blue-500 transition-colors"
-                          @click="quickView(manItem.id)"
+                          @click="quickView(kidItem.id)"
                         >
-                          {{ manItem.name }}
+                          {{ kidItem.name }}
                         </p>
                         <p class="text-blue-700 font-bold uppercase my-1">
-                          {{ manItem.brand.name }}
+                          {{ kidItem.brand.name }}
                         </p>
                         <div class="d-flex justify-center">
                           <Icon icon="noto:star" width="20" height="20" />
@@ -920,10 +920,10 @@ onMounted(async () => {
                         </div>
                         <div class="flex justify-center items-center mt-2">
                           <p class="text-red mr-2">
-                            ${{ manItem.variants[0].final_price }} USD
+                            ${{ kidItem.variants[0].final_price }} USD
                           </p>
                           <p class="line-through text-gray-500">
-                            ${{ manItem.variants[0].price }} USD
+                            ${{ kidItem.variants[0].price }} USD
                           </p>
                         </div>
                       </div>
@@ -939,8 +939,8 @@ onMounted(async () => {
                     <v-col cols="8">
                       <v-container class="max-width">
                         <v-pagination
-                          :model-value="manStore.page"
-                          :length="manStore.totalPages"
+                          :model-value="kidStore.page"
+                          :length="kidStore.totalPages"
                           rounded="circle"
                           class="my-4"
                           @update:model-value="handlePageChange"
@@ -1094,7 +1094,7 @@ onMounted(async () => {
         <v-main>
           <v-container>
             <div class="pl-3">
-              <p>Clothing ({{ men?.length || 0 }} items)</p>
+              <p>Clothing ({{ kids?.length || 0 }} items)</p>
               <div class="my-3 flex items-center flex-wrap">
                 <p class="text-[14px] mr-2 mb-2">FILTERS :</p>
                 <div
@@ -1142,7 +1142,7 @@ onMounted(async () => {
             <!-- Mobile Products Grid -->
             <div class="d-flex flex-wrap justify-center">
               <!-- Loading skeleton for mobile -->
-              <div v-if="manStore.isLoading" class="w-full">
+              <div v-if="kidStore.isLoading" class="w-full">
                 <v-row>
                   <v-col v-for="n in 6" :key="n" cols="6">
                     <v-skeleton-loader type="card" height="300"></v-skeleton-loader>
@@ -1152,7 +1152,7 @@ onMounted(async () => {
 
               <!-- No items found for mobile -->
               <div
-                v-else-if="!manStore.hasItems && !manStore.isLoading"
+                v-else-if="!kidStore.hasItems && !kidStore.isLoading"
                 class="w-full text-center py-8"
               >
                 <v-icon
@@ -1170,24 +1170,24 @@ onMounted(async () => {
               <!-- Mobile Products -->
               <v-card
                 v-else
-                v-for="manItem in men"
-                :key="manItem.id"
+                v-for="kidItem in kids"
+                :key="kidItem.id"
                 class="ma-2 w-[160px] sm:w-[180px]"
                 variant="text"
               >
                 <!-- Mobile product content -->
-                <div v-if="manItem.variants && manItem.variants.length > 0">
+                <div v-if="kidItem.variants && kidItem.variants.length > 0">
                   <v-hover v-slot="{ isHovering, props }">
                     <div v-bind="props" class="relative w-full cursor-pointer">
                       <!-- Product Image -->
                       <img
                         :src="
-                          manItem.variants[0].image ||
+                          kidItem.variants[0].image ||
                           'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                         "
-                        :alt="manItem.name"
+                        :alt="kidItem.name"
                         class="w-full h-[200px] sm:h-[250px] cursor-pointer object-cover"
-                        @click="quickView(manItem.id)"
+                        @click="quickView(kidItem.id)"
                       />
 
                       <!-- Animated Buttons on Hover for Mobile -->
@@ -1202,9 +1202,9 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
-                                  @click.stop="addToFavorites(manItem.variants[0].id)"
+                                  @click.stop="addToFavorites(kidItem.variants[0].id)"
                                   :class="
-                                    favoriteVariants.has(manItem.variants[0].id)
+                                    favoriteVariants.has(kidItem.variants[0].id)
                                       ? 'text-red'
                                       : 'bg-white text-black'
                                   "
@@ -1226,7 +1226,7 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
-                                  @click.stop="quickView(manItem.id)"
+                                  @click.stop="quickView(kidItem.id)"
                                 >
                                   <v-icon icon="carbon:image-copy" size="16" />
                                 </v-btn>
@@ -1245,7 +1245,7 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
-                                  @click="addToCart(manItem.variants[0].id)"
+                                  @click="addToCart(kidItem.variants[0].id)"
                                 >
                                   <v-icon icon="pepicons-pencil:cart" size="16" />
                                 </v-btn>
@@ -1261,12 +1261,12 @@ onMounted(async () => {
                   <div class="text-center my-3">
                     <p
                       class="font-bold text-[14px] sm:text-[16px] cursor-pointer hover:text-blue-500 transition-colors line-clamp-2"
-                      @click="quickView(manItem.id)"
+                      @click="quickView(kidItem.id)"
                     >
-                      {{ manItem.name }}
+                      {{ kidItem.name }}
                     </p>
                     <p class="text-blue-700 font-bold uppercase my-1 text-[12px]">
-                      {{ manItem.brand.name }}
+                      {{ kidItem.brand.name }}
                     </p>
                     <div class="d-flex justify-center mb-2">
                       <Icon icon="noto:star" width="16" height="16" />
@@ -1281,10 +1281,10 @@ onMounted(async () => {
                     </div>
                     <div class="flex justify-center items-center">
                       <p class="text-red mr-1 text-[14px] font-bold">
-                        ${{ manItem.variants[0].final_price }}
+                        ${{ kidItem.variants[0].final_price }}
                       </p>
                       <p class="line-through text-gray-500 text-[12px]">
-                        ${{ manItem.variants[0].price }}
+                        ${{ kidItem.variants[0].price }}
                       </p>
                     </div>
                   </div>
@@ -1295,8 +1295,8 @@ onMounted(async () => {
             <!-- Mobile Pagination -->
             <div class="text-center mt-6">
               <v-pagination
-                :model-value="manStore.page"
-                :length="manStore.totalPages"
+                :model-value="kidStore.page"
+                :length="kidStore.totalPages"
                 rounded="circle"
                 class="my-4"
                 total-visible="5"
@@ -1349,7 +1349,7 @@ onMounted(async () => {
 
 .line-clamp-2 {
   display: -webkit-box;
-  /* -webkit-line-clamp: 2; */
+  -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

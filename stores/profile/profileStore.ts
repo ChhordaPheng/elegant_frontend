@@ -1,4 +1,4 @@
-import type { AddressRequest, AddressResponse, User, UserResponse, ChangePasswordRequest, ChangePasswordResponse, GetAddressResponse, DeleteAddressResponse } from "~/types/profile/profile";
+import type { AddressRequest, AddressResponse, User, UserResponse, ChangePasswordRequest, ChangePasswordResponse, GetAddressResponse, DeleteAddressResponse, UpdateProfileRequest, UpdateProfileResponse } from "~/types/profile/profile";
 
 export const useProfileStore = defineStore("userProfileStore", {
   state: () => ({
@@ -125,6 +125,40 @@ export const useProfileStore = defineStore("userProfileStore", {
         return response.data.value.message; // Return the success message
       } catch (err: any) {
         throw new Error(err.message || "Failed to delete address.");
+      }
+    },
+
+    async updateProfile(payload: UpdateProfileRequest) {
+      this.loading = true;
+      this.error = null;
+
+      try {
+        const formData = new FormData();
+        formData.append("_method", "PUT"); // required for Laravel-like PUT override
+        formData.append("first_name", payload.first_name);
+        formData.append("last_name", payload.last_name);
+        formData.append("email", payload.email);
+        formData.append("phone_number", payload.phone_number);
+        if (payload.profile_image) {
+          formData.append("profile_image", payload.profile_image);
+        }
+
+        const { data } = await useFetchDataApi<UpdateProfileResponse>("/profile", {
+          method: "POST", // must be POST for form-data with _method override
+          body: formData,
+        });
+
+        if (!data.value || !data.value.data) {
+          throw new Error(data.value?.message || "Failed to update profile.");
+        }
+
+        this.userProfile = data.value.data; // update store
+        return data.value;
+      } catch (err: any) {
+        this.error = err.message || "Profile update failed.";
+        throw err;
+      } finally {
+        this.loading = false;
       }
     },
   },

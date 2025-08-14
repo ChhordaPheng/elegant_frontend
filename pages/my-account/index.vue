@@ -1,10 +1,15 @@
 <script setup lang="ts">
+import type { UpdateProfileRequest } from "~/types/profile/profile";
+
 const tab = ref<"account" | "password" | "address">("account");
 const snackbarChangePasswordSuccess = ref<boolean>(false);
 const snackbarChangePasswordFail = ref<boolean>(false);
 const snackbarAddressSuccess = ref<boolean>(false);
 const snackbarAddressFail = ref<boolean>(false);
+const snackbarProfileSuccess = ref<boolean>(false);
+const snackbarProfileFail = ref<boolean>(false);
 const addressMessage = ref<string>("");
+const profileMessage = ref<string>("");
 
 const userStore = useProfileStore();
 const { userProfile, loading, passwordChanging } = storeToRefs(userStore);
@@ -20,7 +25,6 @@ const account = ref({
   lastname: "",
   email: "",
   phone_number: "",
-  dob: "",
 });
 
 const password = ref({
@@ -70,6 +74,11 @@ function onFileSelected(event: Event) {
       avatarUrl.value = e.target?.result as string;
     };
     reader.readAsDataURL(files[0]);
+
+    // Immediately trigger save if we're on the account tab
+    if (tab.value === "account") {
+      saveAccount();
+    }
   }
 }
 
@@ -92,10 +101,37 @@ function updateUnderline() {
 watch(tab, () => updateUnderline());
 updateUnderline();
 
-function saveAccount() {
-  console.log("Saving account:", account.value);
-  // TODO: Implement account update functionality
-}
+const saveAccount = async () => {
+  userStore.loading = true;
+  try {
+    const payload: UpdateProfileRequest = {
+      first_name: account.value.firstname,
+      last_name: account.value.lastname,
+      email: account.value.email,
+      phone_number: account.value.phone_number,
+      profile_image: fileInput.value?.files?.[0] ?? undefined,
+    };
+
+    const response = await userStore.updateProfile(payload);
+
+    if (response) {
+      // Update local state with new data
+      if (userProfile.value) {
+        userProfile.value.first_name = account.value.firstname;
+        userProfile.value.last_name = account.value.lastname;
+        userProfile.value.email = account.value.email;
+        userProfile.value.phone_number = account.value.phone_number;
+      }
+
+      // Show success message
+      profileMessage.value = "Profile updated successfully!";
+      snackbarProfileSuccess.value = true;
+    }
+  } catch (error: any) {
+    profileMessage.value = error.message || "Failed to update profile";
+    snackbarProfileFail.value = true;
+  }
+};
 
 const changePassword = async () => {
   if (password.value.new !== password.value.confirm) {
@@ -119,7 +155,8 @@ const changePassword = async () => {
       addressMessage.value = "Password changed successfully!";
       snackbarChangePasswordSuccess.value = true;
     } else {
-      addressMessage.value = userStore.passwordChangeMessage || "Failed to change password";
+      addressMessage.value =
+        userStore.passwordChangeMessage || "Failed to change password";
       snackbarChangePasswordFail.value = true;
     }
   } catch (error: any) {
@@ -167,7 +204,7 @@ function closeAddressDialog() {
 
 const saveAddress = async () => {
   addressLoading.value = true;
-  
+
   try {
     if (editingAddress.value) {
       // Update existing address
@@ -215,7 +252,7 @@ async function handleConfirm() {
 const deleteAddress = async (addressId: string) => {
   const performDelete = async () => {
     addressLoading.value = true;
-    
+
     try {
       const message = await userStore.deleteAddress(addressId);
       addressMessage.value = message || "Address deleted successfully!";
@@ -238,20 +275,6 @@ const deleteAddress = async (addressId: string) => {
   );
 };
 
-// Load all addresses when switching to address tab
-// watch(tab, async (newTab) => {
-//   if (newTab === 'address' && userProfile.value) {
-//     try {
-//       const addresses = await userStore.getAddress();
-//       if (addresses && userProfile.value) {
-//         userProfile.value.addresses = addresses;
-//       }
-//     } catch (error) {
-//       console.error('Failed to fetch addresses:', error);
-//     }
-//   }
-// });
-
 onMounted(async () => {
   await userStore.fetchUserProfile();
   if (userProfile.value) {
@@ -259,6 +282,11 @@ onMounted(async () => {
     account.value.lastname = userProfile.value.last_name;
     account.value.email = userProfile.value.email;
     account.value.phone_number = userProfile.value.phone_number;
+
+    // Initialize avatar with user's profile image if available
+    if (userProfile.value.profile_image) {
+      avatarUrl.value = userProfile.value.profile_image;
+    }
   }
   showCard.value = true;
 });
@@ -274,11 +302,7 @@ onMounted(async () => {
         rounded="xl"
       >
         <!-- Loading Overlay -->
-        <v-overlay
-          v-model="loading"
-          class="align-center justify-center"
-          contained
-        >
+        <v-overlay v-model="loading" class="align-center justify-center" contained>
           <v-progress-circular
             color="primary"
             indeterminate
@@ -381,7 +405,14 @@ onMounted(async () => {
                   class="mb-4"
                 />
 
-                <v-btn type="submit" color="primary" block class="animated-btn">
+                <v-btn
+                  type="submit"
+                  color="primary"
+                  block
+                  class="animated-btn"
+                  :loading="loading"
+                  :disabled="loading"
+                >
                   Save Changes
                 </v-btn>
               </v-form>
@@ -419,10 +450,10 @@ onMounted(async () => {
                   class="mb-6"
                 />
 
-                <v-btn 
-                  type="submit" 
-                  color="primary" 
-                  block 
+                <v-btn
+                  type="submit"
+                  color="primary"
+                  block
                   class="animated-btn"
                   :loading="passwordChanging"
                   :disabled="passwordChanging"
@@ -451,11 +482,7 @@ onMounted(async () => {
                 </div>
 
                 <!-- Address List -->
-                <div
-                  v-if="
-                    userProfile?.addresses && userProfile.addresses.length > 0
-                  "
-                >
+                <div v-if="userProfile?.addresses && userProfile.addresses.length > 0">
                   <v-card
                     v-for="address in userProfile.addresses"
                     :key="address.id"
@@ -508,18 +535,11 @@ onMounted(async () => {
                 </div>
 
                 <!-- Empty State -->
-                <v-card
-                  v-else
-                  class="pa-8 text-center"
-                  elevation="1"
-                  rounded="lg"
-                >
+                <v-card v-else class="pa-8 text-center" elevation="1" rounded="lg">
                   <v-icon size="64" color="grey-lighten-1" class="mb-4">
                     mdi-map-marker-off
                   </v-icon>
-                  <h3 class="text-h6 mb-2 text-grey-darken-1">
-                    No addresses yet
-                  </h3>
+                  <h3 class="text-h6 mb-2 text-grey-darken-1">No addresses yet</h3>
                   <p class="text-body-2 text-grey mb-4">
                     Add your first address to get started with deliveries
                   </p>
@@ -609,9 +629,9 @@ onMounted(async () => {
           >
             Cancel
           </v-btn>
-          <v-btn 
-            color="primary" 
-            @click="saveAddress" 
+          <v-btn
+            color="primary"
+            @click="saveAddress"
             class="animated-btn"
             :loading="addressLoading"
             :disabled="addressLoading"
@@ -636,19 +656,10 @@ onMounted(async () => {
 
         <v-card-actions class="pa-6 pt-2">
           <v-spacer />
-          <v-btn
-            color="grey"
-            variant="outlined"
-            @click="closeConfirmDialog"
-            class="mr-3"
-          >
+          <v-btn color="grey" variant="outlined" @click="closeConfirmDialog" class="mr-3">
             Cancel
           </v-btn>
-          <v-btn 
-            color="error" 
-            @click="handleConfirm"
-            class="animated-btn"
-          >
+          <v-btn color="error" @click="handleConfirm" class="animated-btn">
             Delete
           </v-btn>
         </v-card-actions>
@@ -723,6 +734,42 @@ onMounted(async () => {
           color="white"
           variant="text"
           @click="snackbarAddressFail = false"
+        >
+        </v-btn>
+      </template>
+    </v-snackbar>
+
+    <v-snackbar
+      timeout="3000"
+      color="success"
+      location="top right"
+      v-model="snackbarProfileSuccess"
+    >
+      {{ profileMessage }}
+      <template v-slot:actions>
+        <v-btn
+          icon="mdi-close"
+          color="white"
+          variant="text"
+          @click="snackbarProfileSuccess = false"
+        >
+        </v-btn>
+      </template>
+    </v-snackbar>
+
+    <v-snackbar
+      timeout="3000"
+      color="error"
+      location="top right"
+      v-model="snackbarProfileFail"
+    >
+      {{ profileMessage }}
+      <template v-slot:actions>
+        <v-btn
+          icon="mdi-close"
+          color="white"
+          variant="text"
+          @click="snackbarProfileFail = false"
         >
         </v-btn>
       </template>

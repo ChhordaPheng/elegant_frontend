@@ -10,7 +10,6 @@ export const useNewArrivalStore = defineStore('newArrivalStore', {
         newArrival: [] as Item[],
         newArrivalCount: 0,
         selectedItem: null as Item | null,
-        hello: "skdadhasjdhakjsdhaskdhaskd"
     }),
 
     getters: {

@@ -4,12 +4,14 @@ import { useBannerStore } from "../stores/banner/bannerStore";
 definePageMeta({
   layout: "main-layout",
 });
-
+const router = useRouter();
 const tab = ref("newArrival");
 const bannerStore = useBannerStore();
 const { banners } = storeToRefs(bannerStore);
 const promotionStore = usePromotionStore();
 const { promotions } = storeToRefs(promotionStore);
+const discountStore = useDiscountStore();
+const { discountedItems } = storeToRefs(discountStore);
 
 // Auto-fetch timer
 let fetchTimer = null;
@@ -34,7 +36,18 @@ const bannerss = [
 ];
 
 // Duplicate banners to make it loop visually
-const bannersLoop = [...bannerss];
+const bannersLoop = computed(() =>
+  discountedItems.value.flatMap((item) =>
+    item.variants.map((variant) => ({
+      id: variant.id,
+      image: variant.image,
+      price: variant.price,
+      discounted_price: variant.discounted_price,
+      discount_info: variant.discount_info,
+    }))
+  )
+);
+
 const defaultImage = "https://via.placeholder.com/200x150";
 
 // Function to start auto-fetching promotion data
@@ -54,10 +67,17 @@ const startAutoFetch = (intervalSeconds = 30) => {
   }, intervalSeconds * 1000);
 };
 
+const quickView = (productId) => {
+  router.push({
+    path: "/product-detail",
+    query: { id: productId.toString() },
+  });
+};
+
 onMounted(async () => {
   await bannerStore.fetchBanners();
   await promotionStore.fetchPromotion();
-
+  await discountStore.fetchDiscountedItems();
   // Start auto-fetching promotion data every 30 seconds
   startAutoFetch(30);
 });
@@ -138,10 +158,11 @@ onUnmounted(() => {
                     {{ banner.description }}
                   </p>
                   <div class="flex flex-col sm:flex-row justify-center gap-3 mt-4">
-                    <v-btn size="large" class="!font-bold w-full sm:w-auto"
+                    <v-btn size="large" to="/man" class="!font-bold w-full sm:w-auto"
                       >Shop Now</v-btn
                     >
                     <v-btn
+                    to="/man"
                       size="large"
                       class="bg-blue !text-white !font-bold w-full sm:w-auto"
                     >
@@ -258,6 +279,7 @@ onUnmounted(() => {
               rounded="full"
               class="bg-primary text-white rounded-xl px-3 ml-2"
               size="small"
+              to="/man"
             >
               <div class="flex items-center gap-1">
                 <span class="text-xs md:text-sm">Learn more</span>
@@ -298,7 +320,7 @@ onUnmounted(() => {
     </div>
 
     <!-- brand  -->
-    <div class="w-full px-2 md:px-0">
+    <div class="w-full px-2 md:px-0 my-10">
       <Brand />
     </div>
 
@@ -399,40 +421,74 @@ onUnmounted(() => {
     <!-- super sell  -->
     <div class="relative mb-20 md:mb-0">
       <div
+        v-for="discount in discountedItems"
+        :key="discount.id"
         class="banner-discount bg-gray-500 min-h-[400px] md:h-[550px] flex flex-col text-white uppercase text-center pt-16 md:pt-24 px-4"
       >
-        <p class="text-base md:text-[20px]">BESTSELLERS</p>
-        <p class="text-4xl md:text-6xl my-2 md:my-3">Super Sale! Up To</p>
-        <span class="text-4xl md:text-6xl my-2 md:my-3"> 80% Off </span>
-        <v-btn variant="text" class="!underline w-auto">shop now</v-btn>
+        <p class="text-base md:text-[20px]">{{ discount.discount_details.name }}</p>
+        <p
+          class="text-4xl md:text-6xl my-2 md:my-3 text-center leading-tight md:leading-snug"
+        >
+          {{ discount.discount_details.description }}
+        </p>
+
+        <v-btn to="/man" variant="text" class="!underline w-auto">shop now</v-btn>
       </div>
 
-      <!-- season  -->
+      <!-- discount  -->
       <div class="relative">
-        <div class="min-h-[300px] absolute z-10 top-[-200px] flex justify-center w-full">
-          <div class="relative">
-            <v-slide-group class="h-full" show-arrows center-active>
-              <v-slide-group-item v-for="(banner, index) in bannersLoop" :key="index">
-                <div class="relative h-[400px] flex items-center">
-                  <div
-                    class="mx-2 jump_box"
-                    :class="index % 2 === 0 ? 'jump_box_up' : 'jump_box_down'"
-                  >
-                    <img
-                      :src="banner.img || defaultImage"
-                      cover
-                      class="rounded-md h-48 md:h-auto w-64"
-                    />
-                    <div
-                      class="absolute top-0 left-0 text-white pa-2 font-bold text-shadow-lg"
-                    >
-                      $6,000 USD
-                    </div>
+        <div class="min-h-[300px] absolute z-10 -top-48 flex justify-center w-full">
+          <v-slide-group show-arrows center-active class="h-full">
+            <v-slide-group-item v-for="(banner, index) in bannersLoop" :key="banner.id">
+              <div class="relative h-[400px] flex items-center">
+                <div
+                  class="mx-2 jump_box"
+                  :class="index % 2 === 0 ? 'jump_box_up' : 'jump_box_down'"
+                >
+                  <div class="w-64 h-48 md:h-64 relative overflow-hidden rounded-md">
+                    <v-card class="relative" variant="text">
+                      <div class="relative w-full cursor-pointer">
+                        <!-- Product Image -->
+                        <v-img
+                          :src="banner.image"
+                          cover
+                          position="top"
+                          @click="quickView(discountedItems[0].id)"
+                          :alt="`Product Image - ${banner.id}`"
+                        />
+
+                        <!-- Discount Badge -->
+                        <div
+                          v-if="banner.discount_info?.value"
+                          class="absolute top-4 right-4 bg-red-500 text-white px-2 py-1 rounded-md text-sm font-bold"
+                        >
+                          {{ banner.discount_info.value }} % OFF
+                        </div>
+
+                        <!-- Original Price -->
+                        <div
+                          v-if="banner.price"
+                          :key="banner.id"
+                          class="absolute bottom-4 left-4 line-through text-red px-2 py-1 rounded-md text-sm font-bold"
+                        >
+                          {{ banner.price }} $
+                        </div>
+
+                        <!-- Discounted Price -->
+                        <div
+                          v-if="banner.discounted_price"
+                          :key="banner.id"
+                          class="absolute bottom-10 left-4 text-blue px-2 py-1 rounded-md text-lg font-bold"
+                        >
+                          {{ banner.discounted_price }} $
+                        </div>
+                      </div>
+                    </v-card>
                   </div>
                 </div>
-              </v-slide-group-item>
-            </v-slide-group>
-          </div>
+              </div>
+            </v-slide-group-item>
+          </v-slide-group>
         </div>
       </div>
     </div>
@@ -455,18 +511,20 @@ onUnmounted(() => {
                 and get featured @elegant_chic
               </p>
               <v-btn
-                color="primary"
-                rounded
-                class="!font-bold mt-6 md:mt-10 w-full md:w-auto"
-                size="large"
-              >
-                follow us
-                <Icon icon="system-uicons:upward" width="24" height="24" />
-              </v-btn>
+  color="primary"
+  rounded
+  class="!font-bold mt-6 md:mt-10 w-full md:w-auto"
+  size="large"
+  @click="() => window.open('https://www.instagram.com/daniael57/', '_blank')"
+>
+  follow us
+  <Icon icon="system-uicons:upward" width="24" height="24" />
+</v-btn>
+
             </div>
           </v-col>
           <v-col cols="12" md="8">
-            <p class="text-center md:text-end text-gray-500 mb-4">
+            <p class="text-end md:text-end text-gray-500 mb-4">
               Check out latest trends
             </p>
             <div class="photo-grid">

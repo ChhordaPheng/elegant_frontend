@@ -18,6 +18,7 @@ export interface User {
   otp_verified_for_reset: number;
   full_name: string;
   addresses: any[];
+  profile_image?: string;
   orders: any[];
 }
 
@@ -72,4 +73,18 @@ export interface GetAddressResponse {
 export interface DeleteAddressResponse {
   success: boolean;
   message: string;
+}
+
+// edit profile
+
+export interface UpdateProfileRequest {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone_number: string;
+  profile_image?: File;
+}
+export interface UpdateProfileResponse {
+  message: string;
+  data: User;
 }

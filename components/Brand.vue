@@ -1,23 +1,21 @@
 <script setup lang="ts">
-const brandStore = useBrandStore()
-const { brands } = storeToRefs(brandStore)
+const brandStore = useBrandStore();
+const { brands } = storeToRefs(brandStore);
 
 onMounted(async () => {
-  await brandStore.fetchBrands()
-})
+  await brandStore.fetchBrands();
+});
 </script>
 
 <template>
   <div class="overflow-hidden w-full">
-    <div class="brands-scroll-track flex">
-      <v-img
+    <div class="brands-scroll-track flex w-40 h-40">
+      <img
         v-for="brand in brands"
         :key="brand.id"
         :src="brand.logo_url"
-        height="80"
-        width="200"
-        class="mx-4"
-        cover
+        class="mx-4 w-40 h-36 object-cover"
+        alt="brand logo"
       />
     </div>
   </div>

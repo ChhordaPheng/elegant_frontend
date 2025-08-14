@@ -64,9 +64,7 @@ const selectedAddress = ref<Address | null>(null); // New selected address
 const deliveries = ref<Delivery[]>([]);
 const addresses = ref<Address[]>([]); // New addresses array
 const currentOrder = ref<Order | null>(null);
-const paymentStatus = ref<"pending" | "checking" | "completed" | "failed">(
-  "pending"
-);
+const paymentStatus = ref<"pending" | "checking" | "completed" | "failed">("pending");
 const paymentCheckInterval = ref<NodeJS.Timeout | null>(null);
 
 // Add missing reactive state properties
@@ -78,13 +76,9 @@ const error = ref<string | null>(null);
 const cartItems = computed(() => cartStore.cartData?.items || []);
 const totalSavings = computed(() => cartStore.cartData?.total_savings || 0);
 const subtotal = computed(() => cartStore.cartData?.total_amount || 0);
-const originalSubtotal = computed(
-  () => cartStore.cartData?.original_total_amount || 0
-);
+const originalSubtotal = computed(() => cartStore.cartData?.original_total_amount || 0);
 const deliveryFee = computed(() => {
-  return selectedDelivery.value
-    ? parseFloat(selectedDelivery.value.delivery_fee)
-    : 2;
+  return selectedDelivery.value ? parseFloat(selectedDelivery.value.delivery_fee) : 2;
 });
 const total = computed(() => subtotal.value + deliveryFee.value);
 
@@ -200,13 +194,10 @@ const placeOrder = async () => {
       orderData.address_id = selectedAddress.value.id;
     }
 
-    const response = await useFetchDataApi<{ status: string; data: Order }>(
-      "/orders",
-      {
-        method: "POST",
-        body: orderData,
-      }
-    );
+    const response = await useFetchDataApi<{ status: string; data: Order }>("/orders", {
+      method: "POST",
+      body: orderData,
+    });
 
     if (response.data.value?.status === "success" && response.data) {
       currentOrder.value = response.data.value.data;
@@ -236,7 +227,6 @@ const placeSingleItemOrder = async () => {
 
   try {
     loading.value = true;
-    cartStore.loading = true;
     error.value = null;
 
     const orderData = {
@@ -261,17 +251,18 @@ const placeSingleItemOrder = async () => {
         }),
     };
 
-    const response = await useFetchDataApi<{ status: string; data: Order }>(
-      "/orders",
-      {
-        method: "POST",
-        body: orderData,
-      }
-    );
+    const response = await useFetchDataApi<{ status: string; data: Order }>("/orders", {
+      method: "POST",
+      body: orderData,
+    });
 
     if (response.data.value?.status === "success" && response.data) {
       currentOrder.value = response.data.value.data;
-      // Generate QR code when order is created
+      // Calculate the correct total for single item
+      currentOrder.value.total_amount =
+        form.value.selectedItem.total_price +
+        parseFloat(selectedDelivery.value.delivery_fee);
+
       if (currentOrder.value.qr_string) {
         await generateQRCode(currentOrder.value.qr_string);
       }
@@ -286,7 +277,6 @@ const placeSingleItemOrder = async () => {
     error.value = err.message || "Failed to place order. Please try again.";
   } finally {
     loading.value = false;
-    cartStore.loading = false;
   }
 };
 
@@ -360,7 +350,12 @@ const removeItem = async (itemVariantId: string) => {
 };
 
 const buyNow = (item: any) => {
-  form.value.selectedItem = item;
+  // Create a copy of the item to avoid reactivity issues
+  form.value.selectedItem = {
+    ...item,
+    item_variant: { ...item.item_variant },
+    total_price: item.total_price
+  };
   dialog.value = true;
 };
 
@@ -460,10 +455,7 @@ onUnmounted(() => {
     <v-container class="mt-4">
       <!-- Loading state -->
       <div v-if="isLoading" class="text-center py-8">
-        <v-progress-circular
-          indeterminate
-          color="primary"
-        ></v-progress-circular>
+        <v-progress-circular indeterminate color="primary"></v-progress-circular>
         <p class="mt-2">Loading cart...</p>
       </div>
 
@@ -473,13 +465,11 @@ onUnmounted(() => {
         class="text-center flex items-center justify-center"
       >
         <div class="">
-          <div class="text-center flex items-center justify-center  ">
+          <div class="text-center flex items-center justify-center">
             <img class="w-40" src="images/no_data.gif" alt="" />
           </div>
           <p class="text-xl text-gray-600">Your cart is empty</p>
-          <v-btn color="primary" class="mt-4" :to="'/woman'">
-            Continue Shopping
-          </v-btn>
+          <v-btn color="primary" class="mt-4" :to="'/woman'"> Continue Shopping </v-btn>
         </div>
       </div>
 
@@ -500,8 +490,7 @@ onUnmounted(() => {
             <v-col cols="2" class="flex items-center justify-center">
               <p class="">Total</p>
             </v-col>
-            <v-col cols="2" md="1" class="flex items-center justify-between">
-            </v-col>
+            <v-col cols="2" md="1" class="flex items-center justify-between"> </v-col>
           </v-row>
 
           <v-row
@@ -627,10 +616,7 @@ onUnmounted(() => {
                   Change
                 </v-btn>
               </div>
-              <div
-                v-if="selectedDelivery"
-                class="flex items-center space-x-3 pa-3"
-              >
+              <div v-if="selectedDelivery" class="flex items-center space-x-3 pa-3">
                 <img
                   :src="selectedDelivery.logo"
                   :alt="selectedDelivery.name"
@@ -649,10 +635,7 @@ onUnmounted(() => {
             </v-card>
 
             <!-- Address Selection Preview -->
-            <v-card
-              class="address-preview-card rounded shadow-sm"
-              v-if="selectedAddress"
-            >
+            <!-- <v-card class="address-preview-card rounded shadow-sm" v-if="selectedAddress">
               <div class="address-preview-header">
                 <div class="flex items-center space-x-2">
                   <div class="address-preview-icon">
@@ -676,9 +659,7 @@ onUnmounted(() => {
                 <div class="address-preview-main">
                   <div class="flex items-start space-x-3">
                     <div class="address-avatar">
-                      <v-icon size="20" color="primary"
-                        >mdi-account-circle</v-icon
-                      >
+                      <v-icon size="20" color="primary">mdi-account-circle</v-icon>
                     </div>
                     <div class="flex-1">
                       <h4 class="font-bold text-gray-800">
@@ -687,31 +668,21 @@ onUnmounted(() => {
                       <p class="text-sm text-gray-600 mt-1">
                         {{ formattedAddress }}
                       </p>
-                      <p
-                        class="text-sm text-gray-600"
-                        v-if="selectedAddress.phone"
-                      >
+                      <p class="text-sm text-gray-600" v-if="selectedAddress.phone">
                         <v-icon size="12" class="mr-1">mdi-phone</v-icon>
                         {{ selectedAddress.phone }}
                       </p>
                     </div>
-                    <div
-                      class="address-preview-badge"
-                      v-if="selectedAddress.is_default"
-                    >
+                    <div class="address-preview-badge" v-if="selectedAddress.is_default">
                       <v-icon size="10">mdi-star</v-icon>
                       <span>Default</span>
                     </div>
                   </div>
                 </div>
               </div>
-            </v-card>
+            </v-card> -->
 
-            <v-row
-              class="mt-3"
-              v-for="item in cartItems"
-              :key="item.cart_item_id"
-            >
+            <v-row class="mt-3" v-for="item in cartItems" :key="item.cart_item_id">
               <v-col cols="8">
                 <div class="flex">
                   <v-card width="100" class="me-3 flex-shrink-0">
@@ -724,12 +695,8 @@ onUnmounted(() => {
                   <div>
                     <p>{{ item.item_variant.item.name }}</p>
                     <p class="text-grey">Quantity : {{ item.quantity }}</p>
-                    <p class="text-grey">
-                      Size : {{ item.item_variant.size.name }}
-                    </p>
-                    <p class="text-grey">
-                      Color : {{ item.item_variant.color.name }}
-                    </p>
+                    <p class="text-grey">Size : {{ item.item_variant.size.name }}</p>
+                    <p class="text-grey">Color : {{ item.item_variant.color.name }}</p>
                   </div>
                 </div>
               </v-col>
@@ -810,9 +777,7 @@ onUnmounted(() => {
                 <v-icon size="24" color="white">mdi-map-marker</v-icon>
               </div>
               <div>
-                <h2 class="text-xl font-bold text-white">
-                  Select Shipping Address
-                </h2>
+                <h2 class="text-xl font-bold text-white">Select Shipping Address</h2>
                 <p class="text-blue-100 text-sm">
                   Choose from saved addresses or add new one
                 </p>
@@ -835,12 +800,8 @@ onUnmounted(() => {
                   <v-icon size="32" color="primary">mdi-plus-circle</v-icon>
                 </div>
                 <div class="new-address-text">
-                  <h3 class="font-bold text-lg text-primary">
-                    Add New Address
-                  </h3>
-                  <p class="text-gray-600">
-                    Enter a new shipping address for this order
-                  </p>
+                  <h3 class="font-bold text-lg text-primary">Add New Address</h3>
+                  <p class="text-gray-600">Enter a new shipping address for this order</p>
                 </div>
                 <div class="new-address-arrow">
                   <v-icon color="primary">mdi-chevron-right</v-icon>
@@ -857,9 +818,7 @@ onUnmounted(() => {
                   >
                   Saved Addresses
                 </h3>
-                <span class="text-sm text-gray-500"
-                  >{{ addresses.length }} saved</span
-                >
+                <span class="text-sm text-gray-500">{{ addresses.length }} saved</span>
               </div>
 
               <div class="addresses-grid">
@@ -890,11 +849,7 @@ onUnmounted(() => {
                       <div class="flex items-center space-x-2">
                         <v-icon
                           size="18"
-                          :color="
-                            selectedAddress?.id === address.id
-                              ? 'primary'
-                              : 'gray'
-                          "
+                          :color="selectedAddress?.id === address.id ? 'primary' : 'gray'"
                         >
                           mdi-account-circle
                         </v-icon>
@@ -950,8 +905,7 @@ onUnmounted(() => {
               </div>
               <h3 class="font-bold text-gray-700 mb-2">No saved addresses</h3>
               <p class="text-gray-500 text-center max-w-sm">
-                You don't have any saved addresses yet. Add a new address to get
-                started.
+                You don't have any saved addresses yet. Add a new address to get started.
               </p>
             </div>
           </div>
@@ -964,11 +918,7 @@ onUnmounted(() => {
           <v-card-title class="text-h6 font-bold mb-4">
             <div class="flex justify-between items-center">
               <span>Select Delivery Method</span>
-              <v-btn
-                icon="mdi-close"
-                variant="text"
-                @click="deliveryDialog = false"
-              />
+              <v-btn icon="mdi-close" variant="text" @click="deliveryDialog = false" />
             </div>
           </v-card-title>
 
@@ -1009,11 +959,7 @@ onUnmounted(() => {
           <v-card-title class="text-h6 font-bold">
             <v-row class="mb-2 items-center">
               <p>
-                {{
-                  form.selectedItem
-                    ? "SINGLE ITEM CHECKOUT"
-                    : "SHIPPING ADDRESS"
-                }}
+                {{ form.selectedItem ? "SINGLE ITEM CHECKOUT" : "SHIPPING ADDRESS" }}
               </p>
               <v-spacer></v-spacer>
               <v-btn
@@ -1103,10 +1049,7 @@ onUnmounted(() => {
                 >
                   <div class="address-option-radio">
                     <div
-                      :class="[
-                        'radio-dot',
-                        form.useExistingAddress ? 'active' : '',
-                      ]"
+                      :class="['radio-dot', form.useExistingAddress ? 'active' : '']"
                     ></div>
                   </div>
                   <div class="address-option-content">
@@ -1126,9 +1069,7 @@ onUnmounted(() => {
                       <v-btn
                         v-if="addresses.length > 0"
                         size="small"
-                        :variant="
-                          form.useExistingAddress ? 'elevated' : 'outlined'
-                        "
+                        :variant="form.useExistingAddress ? 'elevated' : 'outlined'"
                         :color="form.useExistingAddress ? 'primary' : 'gray'"
                         @click.stop="openAddressSelection"
                         class="address-select-btn"
@@ -1154,10 +1095,7 @@ onUnmounted(() => {
                 >
                   <div class="address-option-radio">
                     <div
-                      :class="[
-                        'radio-dot',
-                        !form.useExistingAddress ? 'active' : '',
-                      ]"
+                      :class="['radio-dot', !form.useExistingAddress ? 'active' : '']"
                     ></div>
                   </div>
                   <div class="address-option-content">
@@ -1179,9 +1117,7 @@ onUnmounted(() => {
                 <div class="selected-address-content">
                   <div class="flex items-start space-x-3">
                     <div class="selected-address-icon">
-                      <v-icon size="18" color="primary"
-                        >mdi-check-circle</v-icon
-                      >
+                      <v-icon size="18" color="primary">mdi-check-circle</v-icon>
                     </div>
                     <div class="flex-1">
                       <h4 class="font-bold text-gray-800">
@@ -1198,10 +1134,7 @@ onUnmounted(() => {
                         {{ selectedAddress.phone }}
                       </p>
                     </div>
-                    <div
-                      class="selected-address-badge"
-                      v-if="selectedAddress.is_default"
-                    >
+                    <div class="selected-address-badge" v-if="selectedAddress.is_default">
                       <v-icon size="10">mdi-star</v-icon>
                       <span>Default</span>
                     </div>
@@ -1298,9 +1231,7 @@ onUnmounted(() => {
                   width="2"
                   class="mr-2"
                 ></v-progress-circular>
-                {{
-                  form.selectedItem ? "Place Single Item Order" : "Place Order"
-                }}
+                {{ form.selectedItem ? "Place Single Item Order" : "Place Order" }}
               </v-btn>
             </v-form>
           </v-card-text>
@@ -1310,21 +1241,24 @@ onUnmounted(() => {
       <!-- Payment Dialog with QR Code -->
       <v-dialog v-model="paymentDialog" max-width="500px" persistent>
         <v-card class="pa-6 text-center">
-          <v-card-title class="text-h5 font-bold mb-4">
-            Payment Required
-          </v-card-title>
+          <v-card-title class="text-h5 font-bold mb-4"> Payment Required </v-card-title>
 
           <div v-if="currentOrder">
             <!-- Order Summary -->
-            <!-- <v-card class="mb-4 pa-4 bg-gray-50">
-              <p class="font-bold">Order #{{ currentOrder.order_number }}</p>
+            <!-- In your payment dialog template -->
+            <v-card v-if="currentOrder" class="mb-4 pa-4 bg-gray-50">
+              <!-- <p class="font-bold">Order #{{ currentOrder.order_number }}</p> -->
               <p class="text-lg font-bold text-primary">
-                Total: ${{ currentOrder.total_amount }}
+                Total: ${{ currentOrder.total_amount.toFixed(2) }}
               </p>
+              <p v-if="form.selectedItem" class="text-sm text-grey">
+                (Single item purchase)
+              </p>
+              <p v-else class="text-sm text-grey">(Full cart purchase)</p>
               <p class="text-sm text-grey">
                 Delivery: {{ currentOrder.delivery_method }}
               </p>
-            </v-card> -->
+            </v-card>
 
             <!-- QR Code Display -->
             <div class="mb-4">
@@ -1332,9 +1266,7 @@ onUnmounted(() => {
 
               <!-- Real QR Code Display -->
               <div class="flex justify-center mb-4">
-                <div
-                  class="border-2 border-gray-300 p-4 rounded-lg bg-white shadow-lg"
-                >
+                <div class="border-2 border-gray-300 p-4 rounded-lg bg-white shadow-lg">
                   <div
                     v-if="qrCodeDataUrl"
                     class="w-64 h-64 flex items-center justify-center"
@@ -1381,11 +1313,7 @@ onUnmounted(() => {
 
             <!-- Keep all your existing payment status and instructions sections -->
             <div class="mb-4">
-              <v-alert
-                v-if="paymentStatus === 'pending'"
-                type="info"
-                class="mb-2"
-              >
+              <v-alert v-if="paymentStatus === 'pending'" type="info" class="mb-2">
                 <div class="flex items-center">
                   <v-progress-circular
                     indeterminate
@@ -1397,11 +1325,7 @@ onUnmounted(() => {
                 </div>
               </v-alert>
 
-              <v-alert
-                v-if="paymentStatus === 'checking'"
-                type="warning"
-                class="mb-2"
-              >
+              <v-alert v-if="paymentStatus === 'checking'" type="warning" class="mb-2">
                 <div class="flex items-center">
                   <v-progress-circular
                     indeterminate
@@ -1413,22 +1337,14 @@ onUnmounted(() => {
                 </div>
               </v-alert>
 
-              <v-alert
-                v-if="paymentStatus === 'completed'"
-                type="success"
-                class="mb-2"
-              >
+              <v-alert v-if="paymentStatus === 'completed'" type="success" class="mb-2">
                 <div class="flex items-center">
                   <v-icon class="mr-2">mdi-check-circle</v-icon>
                   Payment successful! Redirecting...
                 </div>
               </v-alert>
 
-              <v-alert
-                v-if="paymentStatus === 'failed'"
-                type="error"
-                class="mb-2"
-              >
+              <v-alert v-if="paymentStatus === 'failed'" type="error" class="mb-2">
                 <div class="flex items-center">
                   <v-icon class="mr-2">mdi-alert-circle</v-icon>
                   Payment failed. Please try again.
@@ -1448,8 +1364,7 @@ onUnmounted(() => {
               </ol>
               <div class="mt-3 p-2 bg-yellow-100 rounded">
                 <p class="text-xs text-yellow-800">
-                  <strong>Note:</strong> Payment verification may take up to 30
-                  seconds
+                  <strong>Note:</strong> Payment verification may take up to 30 seconds
                 </p>
               </div>
             </v-card>

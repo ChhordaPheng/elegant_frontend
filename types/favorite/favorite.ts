@@ -11,6 +11,7 @@ export interface FavoriteResponse {
 export interface Favorite {
     id: string;
     added_at: string;
+    is_favorite: boolean;
     item_variant: ItemVariant;
 }
 
@@ -20,6 +21,7 @@ export interface ItemVariant {
     final_price: string;
     quantity: number;
     image: string;
+    is_favorite: boolean;
 }
 
 export interface Pagination {
@@ -49,6 +51,7 @@ export interface AddToFav {
     final_price: string;
     quantity: number;
     image: string;
+    is_favorite: boolean;
 }
 
 // delete the favorite 

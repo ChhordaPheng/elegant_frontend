@@ -1,7 +1,13 @@
 <script setup lang="ts">
 import { ref, watch, onMounted } from "vue";
 import { useI18n } from "vue-i18n";
-import type { Language } from "~/types/language/language";
+
+type Language = {
+  id: number;
+  name: string;
+  flag: string;
+  language_code: string;
+};
 
 const { locale } = useI18n();
 
@@ -25,7 +31,7 @@ function setLanguage(code: string) {
   locale.value = code;
   activeLanguage.value = code;
   selectedLanguage.value = code;
-  localStorage.setItem(LANG_KEY, code); // Save to localStorage
+  localStorage.setItem(LANG_KEY, code);
 }
 
 function changeLanguage(lang: Language) {
@@ -48,41 +54,43 @@ watch(selectedLanguage, (val) => {
 </script>
 
 <template>
-  <p class="mb-4">{{ $t("content.select_language") }}</p>
-  <v-card class="pa-0">
-    <v-card-text class="pa-0" style="padding-bottom: 0 !important">
-      <v-row
+  <p class="mb-4 text-lg font-semibold text-gray-800">
+    {{ $t("content.select_language") }}
+  </p>
+
+  <v-card variant="outlined" class="pa-0 rounded-xl shadow-sm !bg-blue-400">
+    <v-list>
+      <v-list-item
         v-for="language in languages"
         :key="language.id"
-        class="justify-center items-center border-b pa-0 ma-0 cursor-pointer"
-        :class="activeLanguage === language.language_code && 'bg-slate-100'"
+        class="hover:bg-gray-100 transition-all duration-200 rounded-lg my-5"
+        :class="activeLanguage === language.language_code && 'bg-blue-50'"
         @click="changeLanguage(language)"
       >
-        <v-row class="items-center justify-between ma-3 w-full">
-          <v-col cols="3">
-            <v-img
-              class="rounded-[2px] w-[50px] h-[31px]"
-              :src="language.flag"
-              :alt="language.language_code"
-            />
-          </v-col>
-          <v-col>
-            <span class="text-[16px] font-semibold">
-              {{ language.name }}
-            </span>
-          </v-col>
-          <v-col cols="2" class="d-flex justify-end">
-            <v-icon
-              v-if="activeLanguage === language.language_code"
-              color="#1890FF"
-            >
-              mdi-check-circle
-            </v-icon>
-          </v-col>
-        </v-row>
-      </v-row>
-    </v-card-text>
+        <template #prepend>
+          <v-img
+            :src="language.flag"
+            :alt="language.language_code"
+            class="rounded-sm w-[50px] h-[31px] border object-cover"
+          />
+        </template>
+
+        <v-list-item-title class="font-medium ml-3    ">
+          {{ language.name }}
+        </v-list-item-title>
+
+        <template #append>
+          <v-icon v-if="activeLanguage === language.language_code" color="primary">
+            mdi-check-circle
+          </v-icon>
+        </template>
+      </v-list-item>
+    </v-list>
   </v-card>
 </template>
 
-<style scoped></style>
+<style scoped>
+.v-list-item {
+  cursor: pointer;
+}
+</style>

@@ -53,6 +53,7 @@ const menus = [
   { title: "HOME", value: "home", path: "/" },
   { title: "WOMAN", value: "woman", path: "/woman" },
   { title: "MAN", value: "man", path: "/man" },
+  { title: "KID", value: "kid", path: "/kid" },
   { title: "ABOUT US", value: "about_us", path: "/about-us" },
   { title: "CONTACT US", value: "contact_us", path: "/contact-us" },
 ];
@@ -112,8 +113,7 @@ const checkAuthStatus = () => {
 
   try {
     // Get the accessToken cookie (this is what your app uses)
-    const accessToken =
-      getCookie("accessToken") || useCookie("accessToken").value;
+    const accessToken = getCookie("accessToken") || useCookie("accessToken").value;
 
     if (accessToken && accessToken !== "null" && accessToken !== "undefined") {
       // Token exists, user should be authenticated
@@ -301,9 +301,9 @@ onBeforeUnmount(() => {
             <img
               class="w-20 transition-opacity duration-200"
               :class="{ 'opacity-50': isNavigating }"
-              :src="site_info?.site_logo || '/default-logo.png'"
+              :src="site_info?.site_logo"
               alt="Site Logo"
-              @error="$event.target.src = '/default-logo.png'"
+              @error="$event.target.src = '/logo/logo.png'"
             />
           </button>
         </v-col>
@@ -331,7 +331,7 @@ onBeforeUnmount(() => {
             icon="solar:heart-linear"
             variant="elevated"
             :disabled="isNavigating"
-             @click="handleNavigation('/favorite', null)"
+            @click="handleNavigation('/favorite', null)"
           />
 
           <!-- Cart button -->
@@ -430,17 +430,32 @@ onBeforeUnmount(() => {
         </v-col>
       </v-row>
     </v-app-bar>
-    <v-dialog v-model="showLogoutDialog" max-width="400">
-      <v-card>
-        <v-card-title class="text-h6">Confirm Logout</v-card-title>
-        <v-card-text>Are you sure you want to logout?</v-card-text>
-        <v-card-actions class="justify-end">
-          <v-btn color="grey" variant="text" @click="cancelLogout"
-            >Cancel</v-btn
-          >
-          <v-btn color="red" variant="flat" @click="performLogout"
-            >Logout</v-btn
-          >
+    <v-dialog
+      v-model="showLogoutDialog"
+      max-width="420"
+      transition="dialog-bottom-transition"
+    >
+      <v-card class="rounded-xl pa-4" elevation="8">
+        <v-card-title class="text-h6 d-flex align-center">
+          <v-icon color="red" class="mr-2">mdi-logout</v-icon>
+          Confirm Logout
+        </v-card-title>
+
+        <v-card-text class="text-body-2 text-grey-darken-1">
+          Are you sure you want to log out? You’ll need to sign in again to access your
+          account.
+        </v-card-text>
+
+        <v-card-actions class="justify-end mt-2">
+          <v-btn variant="tonal" color="primary   " class="rounded-lg" @click="cancelLogout">
+            <v-icon start>mdi-close</v-icon>
+            Cancel
+          </v-btn>
+
+          <v-btn variant="flat" color="red" class="rounded-lg" @click="performLogout">
+            <v-icon start>mdi-logout</v-icon>
+            Logout
+          </v-btn>
         </v-card-actions>
       </v-card>
     </v-dialog>
@@ -533,11 +548,7 @@ onBeforeUnmount(() => {
       style="z-index: 9999"
       opacity="0.3"
     >
-      <v-progress-circular
-        indeterminate
-        size="64"
-        color="primary"
-      ></v-progress-circular>
+      <v-progress-circular indeterminate size="64" color="primary"></v-progress-circular>
     </v-overlay>
 
     <!-- Main content -->
@@ -549,14 +560,8 @@ onBeforeUnmount(() => {
             <NuxtPage />
           </template>
           <template #fallback>
-            <div
-              class="d-flex align-center justify-center"
-              style="height: 400px"
-            >
-              <v-progress-circular
-                indeterminate
-                color="primary"
-              ></v-progress-circular>
+            <div class="d-flex align-center justify-center" style="height: 400px">
+              <v-progress-circular indeterminate color="primary"></v-progress-circular>
             </div>
           </template>
         </Suspense>
