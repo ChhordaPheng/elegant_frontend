@@ -17,6 +17,8 @@ export interface Item {
   category: Category;
   reviews: Review[];
   season: Season;
+  is_favorite: boolean;
+
 }
 
 export interface Variant {
@@ -34,6 +36,8 @@ export interface Variant {
   color: Color;
   size: Size;
   item: ItemBase;
+  is_favorite: boolean;
+
 }
 
 export interface ItemBase {
@@ -45,7 +49,7 @@ export interface ItemBase {
   brand_id: string;
   created_at: string;
   updated_at: string;
-  discount: any; 
+  discount: any;
 }
 
 export interface Color {

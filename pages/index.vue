@@ -162,7 +162,7 @@ onUnmounted(() => {
                       >Shop Now</v-btn
                     >
                     <v-btn
-                    to="/man"
+                      to="/man"
                       size="large"
                       class="bg-blue !text-white !font-bold w-full sm:w-auto"
                     >
@@ -511,22 +511,21 @@ onUnmounted(() => {
                 and get featured @elegant_chic
               </p>
               <v-btn
-  color="primary"
-  rounded
-  class="!font-bold mt-6 md:mt-10 w-full md:w-auto"
-  size="large"
-  @click="() => window.open('https://www.instagram.com/daniael57/', '_blank')"
->
-  follow us
-  <Icon icon="system-uicons:upward" width="24" height="24" />
-</v-btn>
-
+                color="primary"
+                rounded
+                class="!font-bold mt-6 md:mt-10 w-full md:w-auto"
+                size="large"
+                @click="
+                  () => window.open('https://www.instagram.com/daniael57/', '_blank')
+                "
+              >
+                follow us
+                <Icon icon="system-uicons:upward" width="24" height="24" />
+              </v-btn>
             </div>
           </v-col>
           <v-col cols="12" md="8">
-            <p class="text-end md:text-end text-gray-500 mb-4">
-              Check out latest trends
-            </p>
+            <p class="text-end md:text-end text-gray-500 mb-4">Check out latest trends</p>
             <div class="photo-grid">
               <div class="photo-item photo-1 placeholder">
                 <img

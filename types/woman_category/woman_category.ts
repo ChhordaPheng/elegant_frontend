@@ -20,6 +20,7 @@ export interface Women {
   variants: Variant[];
   brand: Brand;
   category: Category;
+  is_favorite: boolean;
 }
 
 export interface Variant {
@@ -37,6 +38,7 @@ export interface Variant {
   color: Color;
   size: Size;
   discount: Discount;
+  is_favorite: boolean;
 }
 
 export interface Color {

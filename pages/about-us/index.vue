@@ -149,7 +149,7 @@ onMounted(() => {
     </section>
 
     <!-- Team Section -->
-    <section class="section team-section">
+    <!-- <section class="section team-section">
       <v-container>
         <h2
           class="section-title text-center"
@@ -174,7 +174,7 @@ onMounted(() => {
           </v-card>
         </div>
       </v-container>
-    </section>
+    </section> -->
   </div>
 </template>
 

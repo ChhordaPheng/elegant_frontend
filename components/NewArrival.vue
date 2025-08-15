@@ -2,7 +2,6 @@
 // Add missing router import
 import { useRouter } from "vue-router";
 
-const favoriteVariants = ref<Set<string>>(new Set());
 const newArrivalStore = useNewArrivalStore();
 const { newArrival } = storeToRefs(newArrivalStore);
 const cartStore = useCartStore();
@@ -13,6 +12,9 @@ const snackbar = ref(false);
 const text = ref(""); // message for snackbar
 const router = useRouter(); // Make sure this is properly imported
 const favoriteStore = useFavoriteStore();
+
+// Add the missing favoriteVariants reactive set
+const favoriteVariants = ref(new Set<string>());
 
 const addToFavorites = (variantId: string) => {
   if (favoriteVariants.value.has(variantId)) {
@@ -161,7 +163,13 @@ onMounted(async () => {
                             : 'bg-white text-black'
                         "
                       >
-                        <v-icon icon="akar-icons:heart" />
+                        <v-icon
+                          :icon="
+                            favoriteVariants.has(item.variants[0].id)
+                              ? 'mdi-heart'
+                              : 'mdi-heart-outline'
+                          "
+                        />
                       </v-btn>
                     </template>
                   </v-tooltip>

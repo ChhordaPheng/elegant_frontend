@@ -161,7 +161,13 @@ onMounted(async () => {
                             : 'bg-white text-black'
                         "
                       >
-                        <v-icon icon="akar-icons:heart" />
+                        <v-icon
+                          :icon="
+                            favoriteVariants.has(item.variants[0].id)
+                              ? 'mdi-heart'
+                              : 'mdi-heart-outline'
+                          "
+                        />
                       </v-btn>
                     </template>
                   </v-tooltip>

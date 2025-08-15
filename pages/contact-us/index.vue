@@ -32,9 +32,9 @@
               />
 
               <v-text-field
-                v-model="form.subject"
-                label="Subject"
-                prepend-icon="mdi-tag"
+                v-model="form.phone"
+                label="Phone Number"
+                prepend-icon="mdi-phone"
                 :rules="[rules.required]"
                 class="mb-4"
                 variant="outlined"
@@ -62,13 +62,36 @@
                 block
                 class="text-white text-capitalize"
               >
-                Send Message
+                Send to Telegram
               </v-btn>
             </v-form>
           </v-card>
         </v-slide-y-transition>
       </v-col>
     </v-row>
+
+    <!-- Success Snackbar -->
+    <v-snackbar
+      v-model="snackbar.show"
+      :color="snackbar.color"
+      :timeout="4000"
+      location="top"
+      rounded="pill"
+    >
+      <div class="d-flex align-center">
+        <v-icon class="me-2">{{ snackbar.icon }}</v-icon>
+        {{ snackbar.message }}
+      </div>
+      
+      <template v-slot:actions>
+        <v-btn
+          variant="text"
+          @click="snackbar.show = false"
+        >
+          Close
+        </v-btn>
+      </template>
+    </v-snackbar>
   </v-container>
 </template>
 
@@ -80,8 +103,15 @@ const formValid = ref(false)
 const form = ref({
   name: '',
   email: '',
-  subject: '',
+  phone: '',
   message: '',
+})
+
+const snackbar = ref({
+  show: false,
+  message: '',
+  color: 'success',
+  icon: 'mdi-check-circle'
 })
 
 const rules = {
@@ -90,12 +120,55 @@ const rules = {
 }
 
 const submitForm = () => {
-  // Reset form
+  // Create message for Telegram
+  const telegramMessage = `🔔 New Contact Form Submission
+
+👤 Name: ${form.value.name}
+📧 Email: ${form.value.email}
+📱 Phone: ${form.value.phone}
+💬 Message: ${form.value.message}
+
+📅 Sent: ${new Date().toLocaleString()}`
+
+  // Encode the message for URL
+  const encodedMessage = encodeURIComponent(telegramMessage)
+  
+  // Direct Telegram Web URL with pre-filled message
+  const telegramUrl = `https://web.telegram.org/a/#@Pheng_chhorda?text=${encodedMessage}`
+  
+  // Alternative method: Use tg:// protocol for better integration
+  const telegramDeepLink = `https://t.me/Pheng_chhorda?text=${encodedMessage}`
+  
+  // Try to open with Telegram deep link first, fallback to web
+  const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  
+  if (isMobile) {
+    // On mobile, try Telegram app first
+    window.open(telegramDeepLink, '_blank')
+    
+    // Fallback to web version after short delay
+    setTimeout(() => {
+      window.open(telegramUrl, '_blank')
+    }, 1000)
+  } else {
+    // On desktop, open web version directly
+    window.open(telegramUrl, '_blank')
+  }
+
+  // Reset form after successful submission
   form.value = {
     name: '',
     email: '',
-    subject: '',
+    phone: '',
     message: '',
+  }
+  
+  // Show success snackbar
+  snackbar.value = {
+    show: true,
+    message: 'Message prepared! Telegram will open with your message ready to send.',
+    color: 'success',
+    icon: 'mdi-telegram'
   }
 }
 </script>

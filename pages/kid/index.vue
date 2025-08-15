@@ -850,7 +850,13 @@ onMounted(async () => {
                                           : 'bg-white text-black'
                                       "
                                     >
-                                      <v-icon icon="akar-icons:heart" />
+                                      <v-icon
+                                        :icon="
+                                          favoriteVariants.has(kidItem.variants[0].id)
+                                            ? 'mdi-heart'
+                                            : 'mdi-heart-outline'
+                                        "
+                                      />
                                     </v-btn>
                                   </template>
                                 </v-tooltip>
@@ -1209,7 +1215,13 @@ onMounted(async () => {
                                       : 'bg-white text-black'
                                   "
                                 >
-                                  <v-icon icon="akar-icons:heart" size="16" />
+                                  <v-icon
+                                    :icon="
+                                      favoriteVariants.has(kidItem.variants[0].id)
+                                        ? 'mdi-heart'
+                                        : 'mdi-heart-outline'
+                                    "
+                                  />
                                 </v-btn>
                               </template>
                             </v-tooltip>

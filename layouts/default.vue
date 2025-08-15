@@ -301,7 +301,7 @@ onBeforeUnmount(() => {
             <img
               class="w-20 transition-opacity duration-200"
               :class="{ 'opacity-50': isNavigating }"
-              :src="site_info?.site_logo"
+              :src="site_info?.site_logo || '/logo/logo.png'"
               alt="Site Logo"
               @error="$event.target.src = '/logo/logo.png'"
             />
@@ -317,13 +317,13 @@ onBeforeUnmount(() => {
           class="text-center d-flex justify-evenly align-center"
         >
           <!-- Search button -->
-          <v-btn
+          <!-- <v-btn
             :size="btnSize"
             :density="btnDensity"
             icon="line-md:search"
             variant="elevated"
             :disabled="isNavigating"
-          />
+          /> -->
           <!-- favorite button -->
           <v-btn
             :size="btnSize"
@@ -447,7 +447,12 @@ onBeforeUnmount(() => {
         </v-card-text>
 
         <v-card-actions class="justify-end mt-2">
-          <v-btn variant="tonal" color="primary   " class="rounded-lg" @click="cancelLogout">
+          <v-btn
+            variant="tonal"
+            color="primary   "
+            class="rounded-lg"
+            @click="cancelLogout"
+          >
             <v-icon start>mdi-close</v-icon>
             Cancel
           </v-btn>

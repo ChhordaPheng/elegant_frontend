@@ -20,6 +20,9 @@ const submittingReview = ref(false);
 const reviewError = ref<string | null>(null);
 const errors = ref<string | null>(null);
 const isSubmitting = ref(false);
+const favoriteVariants = ref<Set<string>>(new Set());
+const text = ref(""); // message for snackbar
+const snackbar = ref(false);
 
 // Router and Stores - Fixed naming consistency
 const route = useRoute();
@@ -29,6 +32,18 @@ const reviewStore = useReviewStore();
 const { reviews } = storeToRefs(reviewStore);
 const newArrivalStore = useNewArrivalStore();
 const { newArrival } = storeToRefs(newArrivalStore);
+const favoriteStore = useFavoriteStore();
+
+const addToFavorites = (variantId: string) => {
+  if (favoriteVariants.value.has(variantId)) {
+    favoriteVariants.value.delete(variantId);
+    text.value = "Removed from favorites!";
+  } else {
+    favoriteVariants.value.add(variantId);
+    text.value = "Added to favorites!";
+  }
+  snackbar.value = true;
+};
 
 // Fixed: Use consistent naming for item store
 const itemStoreYou = useItemStore();
@@ -193,7 +208,7 @@ const fetchProductData = async () => {
 
     // Convert ID to string if needed
     const stringId = String(id);
-    
+
     await itemStoreYou.fetchItemById(stringId);
 
     // Check if the store now has the item
@@ -210,7 +225,6 @@ const fetchProductData = async () => {
 
     // If no item and no error, something went wrong
     productError.value = "Product not found";
-
   } catch (err: unknown) {
     console.error("💥 Error in fetchProductData:", err);
 
@@ -420,8 +434,7 @@ onMounted(async () => {
     // Get the current product ID from the computed property
     const currentProductId = productId.value;
 
-    if (currentProductId && currentProductId.trim() !== '') {
-      
+    if (currentProductId && currentProductId.trim() !== "") {
       // Fetch the specific product using the store method
       await itemStoreYou.fetchItemById(currentProductId);
 
@@ -721,12 +734,42 @@ onMounted(async () => {
                   </v-btn>
 
                   <!-- Favorite Button -->
-                  <v-btn icon variant="outlined" rounded="lg" @click="isLiked = !isLiked">
-                    <v-icon :color="isLiked ? 'red' : 'grey'">
-                      {{ isLiked ? "line-md:heart-filled" : "line-md:heart" }}
-                    </v-icon>
+                  <v-btn
+                    icon
+                    variant="outlined"
+                    rounded="lg"
+                    :class="
+                      favoriteVariants.has(currentProduct.variants[0].id)
+                        ? 'text-red'
+                        : 'bg-white text-black'
+                    "
+                    @click.stop="addToFavorites(currentProduct.variants[0].id)"
+                  >
+                    <v-icon
+                      :icon="
+                        favoriteVariants.has(currentProduct.variants[0].id)
+                          ? 'mdi-heart'
+                          : 'mdi-heart-outline'
+                      "
+                    />
                   </v-btn>
                 </div>
+                <!-- Global snackbar -->
+                <v-snackbar
+                  v-model="snackbar"
+                  :timeout="3000"
+                  location="top right"
+                  color="success"
+                  class="text-white"
+                >
+                  {{ text }}
+
+                  <template v-slot:actions>
+                    <v-btn variant="text" class="text-white" @click="snackbar = false">
+                      Close
+                    </v-btn>
+                  </template>
+                </v-snackbar>
 
                 <v-btn
                   block

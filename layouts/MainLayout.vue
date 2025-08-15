@@ -317,13 +317,13 @@ onBeforeUnmount(() => {
           class="text-center d-flex justify-evenly align-center"
         >
           <!-- Search button -->
-          <v-btn
+          <!-- <v-btn
             :size="btnSize"
             :density="btnDensity"
             icon="line-md:search"
             variant="elevated"
             :disabled="isNavigating"
-          />
+          /> -->
           <!-- favorite button -->
           <v-btn
             :size="btnSize"
