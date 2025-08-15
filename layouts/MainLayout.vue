@@ -238,10 +238,16 @@ onMounted(async () => {
   } catch (error) {
     console.error("Error fetching site info:", error);
   }
-  const storedLanguage = localStorage.getItem("app_language");
-  if (storedLanguage) {
-    locale.value = storedLanguage;
-  }
+
+  // Load saved language or default to kh
+  const storedLanguage = localStorage.getItem("app_language") || "kh";
+  locale.value = storedLanguage;
+  localStorage.setItem("app_language", storedLanguage); // ensure stored
+});
+
+// Save language when it changes
+watch(locale, (newLang) => {
+  localStorage.setItem("app_language", newLang);
 });
 
 onBeforeUnmount(() => {
