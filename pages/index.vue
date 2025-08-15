@@ -12,6 +12,8 @@ const promotionStore = usePromotionStore();
 const { promotions } = storeToRefs(promotionStore);
 const discountStore = useDiscountStore();
 const { discountedItems } = storeToRefs(discountStore);
+const menStore = useManIteStore();
+const { men } = storeToRefs(menStore);
 
 // Auto-fetch timer
 let fetchTimer = null;
@@ -50,6 +52,27 @@ const bannersLoop = computed(() =>
 
 const defaultImage = "https://via.placeholder.com/200x150";
 
+// Safe image loading for the first men's item
+const firstItemImage = computed(() => {
+  const fallbackImage =
+    "https://i.pinimg.com/736x/6f/1a/f6/6f1af60d4d7765280cd779b92cba05ce.jpg";
+
+  if (!men.value || men.value.length === 0) {
+    return fallbackImage;
+  }
+
+  const firstItem = men.value[0];
+  if (!firstItem?.variants || firstItem.variants.length === 0) {
+    return fallbackImage;
+  }
+
+  const firstVariant = firstItem.variants[0];
+  if (!firstVariant?.image || firstVariant.image.length === 0) {
+    return fallbackImage;
+  }
+
+  return firstVariant.image;
+});
 // Function to start auto-fetching promotion data
 const startAutoFetch = (intervalSeconds = 30) => {
   // Clear existing timer if any
@@ -78,6 +101,7 @@ onMounted(async () => {
   await bannerStore.fetchBanners();
   await promotionStore.fetchPromotion();
   await discountStore.fetchDiscountedItems();
+  await menStore.fetchManItems();
   // Start auto-fetching promotion data every 30 seconds
   startAutoFetch(30);
 });
@@ -158,15 +182,15 @@ onUnmounted(() => {
                     {{ banner.description }}
                   </p>
                   <div class="flex flex-col sm:flex-row justify-center gap-3 mt-4">
-                    <v-btn size="large" to="/man" class="!font-bold w-full sm:w-auto"
-                      >Shop Now</v-btn
-                    >
+                    <v-btn size="large" to="/man" class="!font-bold w-full sm:w-auto">{{
+                      $t("buttons.shop_now")
+                    }}</v-btn>
                     <v-btn
                       to="/man"
                       size="large"
                       class="bg-blue !text-white !font-bold w-full sm:w-auto"
                     >
-                      New Arrival
+                      {{ $t("content.new_arrival") }}
                     </v-btn>
                   </div>
                 </div>
@@ -282,7 +306,7 @@ onUnmounted(() => {
               to="/man"
             >
               <div class="flex items-center gap-1">
-                <span class="text-xs md:text-sm">Learn more</span>
+                <span class="text-xs md:text-sm">{{ $t("buttons.learn_more") }}</span>
                 <Icon icon="system-uicons:upward" width="16" height="16" />
               </div>
             </v-btn>
@@ -294,11 +318,15 @@ onUnmounted(() => {
     <div class="mt-6 md:mt-10 px-2 md:px-0">
       <v-card variant="text">
         <v-tabs v-model="tab" align-tabs="center" class="overflow-x-auto">
-          <v-tab value="newArrival" class="font-bold text-sm md:text-base"
-            >New Arrivals</v-tab
-          >
-          <v-tab value="bestSeller" class="text-sm md:text-base">Best Sellers</v-tab>
-          <v-tab value="topTrending" class="text-sm md:text-base">Top Trending</v-tab>
+          <v-tab value="newArrival" class="!font-bold text-sm md:text-base">{{
+            $t("content.new_arrival")
+          }}</v-tab>
+          <v-tab value="bestSeller" class="!font-bold text-sm md:text-base">{{
+            $t("content.best_seller")
+          }}</v-tab>
+          <v-tab value="topTrending" class="!font-bold text-sm md:text-base">{{
+            $t("content.top_trending")
+          }}</v-tab>
         </v-tabs>
 
         <v-card-text class="px-2 md:px-4">
@@ -432,7 +460,9 @@ onUnmounted(() => {
           {{ discount.discount_details.description }}
         </p>
 
-        <v-btn to="/man" variant="text" class="!underline w-auto">shop now</v-btn>
+        <v-btn to="/man" variant="text" class="!underline w-auto">{{
+          $t("buttons.shop_now")
+        }}</v-btn>
       </div>
 
       <!-- discount  -->
@@ -445,7 +475,7 @@ onUnmounted(() => {
                   class="mx-2 jump_box"
                   :class="index % 2 === 0 ? 'jump_box_up' : 'jump_box_down'"
                 >
-                  <div class="w-64 h-48 md:h-64 relative overflow-hidden rounded-md">
+                  <div class="w-64 h-64 md:h-64 relative overflow-hidden rounded-md">
                     <v-card class="relative" variant="text">
                       <div class="relative w-full cursor-pointer">
                         <!-- Product Image -->
@@ -528,44 +558,55 @@ onUnmounted(() => {
             <p class="text-end md:text-end text-gray-500 mb-4">Check out latest trends</p>
             <div class="photo-grid">
               <div class="photo-item photo-1 placeholder">
-                <img
-                  class="bg-top"
-                  src="https://i.pinimg.com/736x/6f/1a/f6/6f1af60d4d7765280cd779b92cba05ce.jpg"
-                  alt="trend"
-                />
+                <img class="bg-top" :src="firstItemImage" alt="trend" />
               </div>
 
               <div class="photo-item photo-2 placeholder">
                 <img
-                  src="https://i.pinimg.com/736x/08/50/81/0850815065b7978f80fe952d4bfba244.jpg"
+                  :src="
+                    men?.[1]?.variants?.[0]?.image ||
+                    'https://i.pinimg.com/736x/08/50/81/0850815065b7978f80fe952d4bfba244.jpg'
+                  "
                   alt="trend"
                 />
               </div>
 
               <div class="photo-item photo-3 placeholder">
                 <img
-                  src="https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg"
+                  :src="
+                    men?.[2]?.variants?.[0]?.image ||
+                    'https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
+                  "
                   alt="trend"
                 />
               </div>
 
               <div class="photo-item photo-4 placeholder">
                 <img
-                  src="https://i.pinimg.com/736x/19/b5/f9/19b5f9d1937a42c515091c80993584ae.jpg"
+                  :src="
+                    men?.[3]?.variants?.[0]?.image ||
+                    'https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
+                  "
                   alt="trend"
                 />
               </div>
 
               <div class="photo-item photo-5 placeholder">
                 <img
-                  src="https://i.pinimg.com/736x/f9/c7/ca/f9c7ca0aac9d3e99afc8f1557b2cec1f.jpg"
+                  :src="
+                    men?.[4]?.variants?.[0]?.image ||
+                    'https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
+                  "
                   alt="trend"
                 />
               </div>
 
               <div class="photo-item photo-6 placeholder">
                 <img
-                  src="https://i.pinimg.com/736x/51/5e/07/515e0795115fd625cfc797eebc0bd9f4.jpg"
+                  :src="
+                    men?.[5]?.variants?.[0]?.image ||
+                    'https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
+                  "
                   alt="trend"
                 />
               </div>

@@ -11,6 +11,7 @@ import {
 import { useDisplay } from "vuetify";
 import { useRoute, useRouter } from "vue-router";
 import { storeToRefs } from "pinia";
+import { useI18n } from "vue-i18n";
 
 const drawer = ref(false);
 const group = ref(null);
@@ -18,6 +19,7 @@ const dialog = ref(false);
 const showLogoutDialog = ref(false);
 const activeButton = ref("login");
 const display = useDisplay();
+const { locale } = useI18n();
 
 // Safe access to display properties
 const smAndDown = computed(() => display?.smAndDown?.value ?? false);
@@ -50,12 +52,12 @@ const isDevelopment = computed(() => {
 });
 
 const menus = [
-  { title: "HOME", value: "home", path: "/" },
-  { title: "WOMAN", value: "woman", path: "/woman" },
-  { title: "MAN", value: "man", path: "/man" },
-  { title: "KID", value: "kid", path: "/kid" },
-  { title: "ABOUT US", value: "about_us", path: "/about-us" },
-  { title: "CONTACT US", value: "contact_us", path: "/contact-us" },
+  { title: "menu.home", value: "home", path: "/" },
+  { title: "menu.women", value: "woman", path: "/woman" },
+  { title: "menu.men", value: "man", path: "/man" },
+  { title: "menu.kid", value: "kid", path: "/kid" },
+  { title: "menu.about_us", value: "about_us", path: "/about-us" },
+  { title: "menu.contact_us", value: "contact_us", path: "/contact-us" },
 ];
 
 const btnSize = computed(() => (smAndDown.value ? "x-small" : "small"));
@@ -236,6 +238,10 @@ onMounted(async () => {
   } catch (error) {
     console.error("Error fetching site info:", error);
   }
+  const storedLanguage = localStorage.getItem("app_language");
+  if (storedLanguage) {
+    locale.value = storedLanguage;
+  }
 });
 
 onBeforeUnmount(() => {
@@ -286,7 +292,7 @@ onBeforeUnmount(() => {
                 v-if="isNavigating && group === menu.value"
                 class="loading-spinner"
               ></span>
-              {{ menu.title }}
+              {{ $t(menu.title) }}
             </button>
           </div>
         </v-col>
@@ -488,7 +494,7 @@ onBeforeUnmount(() => {
               v-if="isNavigating && group === menu.value"
               class="loading-spinner mr-2"
             ></span>
-            {{ menu.title }}
+            {{ $t(menu.title) }}
           </v-list-item-title>
         </v-list-item>
 

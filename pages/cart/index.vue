@@ -568,7 +568,7 @@ onUnmounted(() => {
 
             <v-col cols="2" md="2" class="flex items-center justify-between">
               <div class="flex flex-col items-center justify-between">
-                <v-btn
+                <!-- <v-btn
                   variant="text"
                   icon
                   :disabled="loading"
@@ -577,7 +577,7 @@ onUnmounted(() => {
                   size="small"
                 >
                   <v-icon size="22">mdi-cart-arrow-down</v-icon>
-                </v-btn>
+                </v-btn> -->
                 <v-btn
                   variant="text"
                   icon
@@ -703,7 +703,7 @@ onUnmounted(() => {
 
               <v-col>
                 <p class="text-grey text-center">${{ item.total_price }}</p>
-                <v-btn
+                <!-- <v-btn
                   size="small"
                   color="primary"
                   variant="outlined"
@@ -712,7 +712,7 @@ onUnmounted(() => {
                   :disabled="loading"
                 >
                   Buy Now
-                </v-btn>
+                </v-btn> -->
               </v-col>
             </v-row>
 
