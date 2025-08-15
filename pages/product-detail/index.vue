@@ -1006,7 +1006,7 @@ onMounted(async () => {
 
         <!-- related products -->
         <div class="mt-10 mb-3">
-          <p class="text-center font-bold text-[25px]">Products Related</p>
+          <p class="text-center font-bold text-[25px]">{{ $t('content.product_you_may_like') }}</p>
         </div>
 
         <!-- recommendation -->

@@ -384,14 +384,14 @@ onUnmounted(() => {
                   :interval="5000"
                   cycle
                 >
-                  <v-carousel-item cover v-for="banner in banners" :key="banner.id">
+                  <v-carousel-item cover>
                     <div class="relative w-64 md:w-72">
                       <v-img
                         :src="
-                          banner.img ||
-                          'https://i.pinimg.com/1200x/1d/b8/10/1db810bc7ff9f5aa2f21fe7b35059901.jpg'
+                          men?.[1]?.variants?.[1]?.image ||
+                          'https://i.pinimg.com/1200x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
                         "
-                        class="rounded-sm w-64 md:w-72 h-auto"
+                        class="rounded-sm w-64 md:w-72 bg-top"
                         cover
                         alt=""
                       ></v-img>
@@ -422,11 +422,11 @@ onUnmounted(() => {
                   :interval="5000"
                   cycle
                 >
-                  <v-carousel-item cover v-for="banner in banners" :key="banner.id">
+                  <v-carousel-item cover v-for="man in men" :key="man.id">
                     <div class="relative w-64 md:w-72">
                       <v-img
                         :src="
-                          banner.img ||
+                          men?.[1]?.variants?.[0]?.image ||
                           'https://i.pinimg.com/1200x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
                         "
                         class="rounded-sm w-64 md:w-72 bg-top"
