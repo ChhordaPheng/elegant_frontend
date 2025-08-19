@@ -4,6 +4,9 @@ export interface BestSellerResponse {
   status_code: number;
   best_sellers: number;
   data: BestSeller[];
+  pagination: Pagination;
+  filters_applied: FiltersApplied;
+  filter_summary: FilterSummary;
 }
 
 export interface BestSeller {
@@ -136,4 +139,62 @@ export interface Season {
   is_active: boolean;
   created_at: string;
   updated_at: string;
+}
+
+export interface FilterParams {
+  page?: number;
+  per_page?: number;
+  brand_id?: string;
+  color_id?: string;
+  size_id?: string;
+  min_price?: number;
+  max_price?: number;
+  category_id?: string;
+  sort_order?: 'asc' | 'desc';
+  sort_by?: 'price' | 'name' | 'created_at';
+}
+
+export interface FilterParams {
+  page?: number;
+  per_page?: number;
+  brand_id?: string;
+  color_id?: string;
+  size_id?: string;
+  min_price?: number;
+  max_price?: number;
+  category_id?: string;
+  sort_order?: 'asc' | 'desc';
+  sort_by?: 'price' | 'name' | 'created_at';
+  show_all?: boolean;
+}
+
+export interface Pagination {
+  current_page: number;
+  per_page: number;
+  total: number;
+  last_page: number;
+  has_more_pages: boolean;
+}
+
+export interface FiltersApplied {
+  brand_id: string;
+  category_id: string;
+  color_id: string;
+  size_id: string;
+  min_price: string;
+  max_price: string;
+  sort_order: string;
+}
+
+export interface FilterSummary {
+  brand: string;
+  category: string;
+  color: string;
+  size: string;
+  price_range: PriceRange;
+}
+
+export interface PriceRange {
+  min: string;
+  max: string;
 }

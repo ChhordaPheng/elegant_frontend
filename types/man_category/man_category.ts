@@ -90,3 +90,16 @@ export interface Category {
   created_at: string;
   updated_at: string;
 }
+
+export interface FilterParams {
+  page?: number;
+  per_page?: number;
+  brand_id?: string;
+  color_id?: string;
+  size_id?: string;
+  min_price?: number;
+  max_price?: number;
+  category_id?: string;
+  sort_order?: 'asc' | 'desc';
+  sort_by?: 'price' | 'name' | 'created_at';
+}

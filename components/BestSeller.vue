@@ -130,8 +130,12 @@ onMounted(async () => {
 
 <template>
   <v-slide-group center-active>
-    <v-slide-group-item v-for="item in bestSellers" :key="item.id" v-slot="{ toggle }">
-      <v-card class="relative w-[360px] mr-5" variant="text">
+    <v-slide-group-item
+      v-for="item in bestSellers.slice(0, 7)"
+      :key="item.id"
+      v-slot="{ toggle }"
+    >
+      <v-card class="relative w-[230px] md:w-[360px] mr-5" variant="text">
         <v-hover v-slot="{ isHovering, props }">
           <div v-bind="props" class="relative w-full cursor-pointer">
             <!-- Product Image -->
@@ -139,7 +143,7 @@ onMounted(async () => {
               :src="item.variants?.[0]?.image || '/images/placeholder.jpg'"
               cover
               position="top"
-              class="h-[400px] md:h-[420px]"
+              class="h-[250px] md:h-[420px]"
               @click="quickView(item.id)"
               :alt="`${item.name} - Product Image`"
             />
@@ -202,7 +206,9 @@ onMounted(async () => {
                         @click.stop="addToCart(item.variants[0].id)"
                         icon
                         class="bg-white text-black"
-                        :disabled="!item.variants[0] || item.variants[0].quantity === 0"
+                        :disabled="
+                          !item.variants[0] || item.variants[0].quantity === 0
+                        "
                       >
                         <v-icon icon="pepicons-pencil:cart" />
                       </v-btn>
@@ -236,13 +242,20 @@ onMounted(async () => {
           <div class="d-flex justify-center">
             <Icon icon="noto:star" width="20" height="20" />
             <div v-for="i in 4" :key="i">
-              <Icon icon="uim:star" class="!text-gray-400" width="20" height="20" />
+              <Icon
+                icon="uim:star"
+                class="!text-gray-400"
+                width="20"
+                height="20"
+              />
             </div>
           </div>
           <div class="flex justify-center items-center mt-2">
             <p class="text-red mr-2">
               ${{
-                item.variants?.[0]?.final_price || item.variants?.[0]?.price || "0.00"
+                item.variants?.[0]?.final_price ||
+                item.variants?.[0]?.price ||
+                "0.00"
               }}
               USD
             </p>
@@ -261,6 +274,10 @@ onMounted(async () => {
     </v-slide-group-item>
   </v-slide-group>
 
+  <div class="flex justify-end">
+    <v-btn variant="outlined" color="primary" to="/best-seller">see more</v-btn>
+  </div>
+
   <!-- Global snackbar -->
   <v-snackbar
     v-model="snackbar"
@@ -272,7 +289,9 @@ onMounted(async () => {
     {{ text }}
 
     <template v-slot:actions>
-      <v-btn variant="text" class="text-white" @click="snackbar = false"> Close </v-btn>
+      <v-btn variant="text" class="text-white" @click="snackbar = false">
+        Close
+      </v-btn>
     </template>
   </v-snackbar>
 </template>

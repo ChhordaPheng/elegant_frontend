@@ -2,7 +2,7 @@
 import { useBannerStore } from "../stores/banner/bannerStore";
 
 definePageMeta({
-  layout: "main-layout",
+  layout: "default",
 });
 const router = useRouter();
 const tab = ref("newArrival");
@@ -14,6 +14,8 @@ const discountStore = useDiscountStore();
 const { discountedItems } = storeToRefs(discountStore);
 const menStore = useManIteStore();
 const { men } = storeToRefs(menStore);
+const womenStore = useWomanIteStore();
+const { women } = storeToRefs(womenStore);
 
 // Auto-fetch timer
 let fetchTimer = null;
@@ -73,6 +75,28 @@ const firstItemImage = computed(() => {
 
   return firstVariant.image;
 });
+
+const firstItemImageWomen = computed(() => {
+  const fallbackImage =
+    "https://i.pinimg.com/736x/6f/1a/f6/6f1af60d4d7765280cd779b92cba05ce.jpg";
+
+  if (!women.value || women.value.length === 0) {
+    return fallbackImage;
+  }
+
+  const firstItem = women.value[0];
+  if (!firstItem?.variants || firstItem.variants.length === 0) {
+    return fallbackImage;
+  }
+
+  const firstVariant = firstItem.variants[0];
+  if (!firstVariant?.image || firstVariant.image.length === 0) {
+    return fallbackImage;
+  }
+
+  return firstVariant.image;
+});
+
 // Function to start auto-fetching promotion data
 const startAutoFetch = (intervalSeconds = 30) => {
   // Clear existing timer if any
@@ -102,6 +126,8 @@ onMounted(async () => {
   await promotionStore.fetchPromotion();
   await discountStore.fetchDiscountedItems();
   await menStore.fetchManItems();
+  await womenStore.fetchWomanItems();
+  await topTrendingStore.fetchTopTrendings(),
   // Start auto-fetching promotion data every 30 seconds
   startAutoFetch(30);
 });
@@ -128,7 +154,7 @@ onUnmounted(() => {
         ></div>
 
         <!-- Main Row -->
-        <v-row class="z-500 px-2 md:px-4 items-center">
+        <v-row class="z-500 px-2 md:px-4 items-center h-100">
           <!-- Column 1: Left-side Carousel -->
           <v-col cols="12" md="4" class="flex justify-center mb-4 md:mb-0">
             <v-carousel
@@ -181,12 +207,17 @@ onUnmounted(() => {
                   <p class="my-3 md:my-5 px-4 md:px-6 text-sm md:text-base">
                     {{ banner.description }}
                   </p>
-                  <div class="flex flex-col sm:flex-row justify-center gap-3 mt-4">
-                    <v-btn size="large" to="/man" class="!font-bold w-full sm:w-auto">{{
-                      $t("buttons.shop_now")
-                    }}</v-btn>
+                  <div
+                    class="flex flex-col sm:flex-row justify-center gap-3 mt-4"
+                  >
                     <v-btn
+                      size="large"
                       to="/man"
+                      class="!font-bold w-full sm:w-auto"
+                      >{{ $t("buttons.shop_now") }}</v-btn
+                    >
+                    <v-btn
+                      to="/new-arrival"
                       size="large"
                       class="bg-blue !text-white !font-bold w-full sm:w-auto"
                     >
@@ -234,14 +265,18 @@ onUnmounted(() => {
     >
       <v-row class="justify-center items-center w-full">
         <v-col cols="12" md="8" class="md:text-left">
-          <p class="text-xs md:text-sm mb-2">{{ promotions?.title || "Loading..." }}</p>
+          <p class="text-xs md:text-sm mb-2">
+            {{ promotions?.title || "Loading..." }}
+          </p>
           <p class="font-bold text-lg md:text-[25px]">
             {{ promotions?.description || "Loading promotion..." }}
           </p>
         </v-col>
 
         <v-col cols="12" md="4" class="flex justify-center">
-          <div class="flex items-center justify-center gap-2 md:gap-4 flex-wrap">
+          <div
+            class="flex items-center justify-center gap-2 md:gap-4 flex-wrap"
+          >
             <!-- Days (only show if > 0) -->
             <div class="mx-1" v-if="promotions?.countdown?.days > 0">
               <v-btn height="48" min-width="48" icon class="p-0 text-center">
@@ -249,7 +284,9 @@ onUnmounted(() => {
                   <p class="font-bold text-sm md:text-[20px] leading-none">
                     {{ String(promotions.countdown.days).padStart(2, "0") }}
                   </p>
-                  <p class="capitalize text-[8px] md:text-[10px] pt-1 leading-none">
+                  <p
+                    class="capitalize text-[8px] md:text-[10px] pt-1 leading-none"
+                  >
                     Days
                   </p>
                 </div>
@@ -261,9 +298,13 @@ onUnmounted(() => {
               <v-btn height="48" min-width="48" icon class="p-0 text-center">
                 <div class="text-center">
                   <p class="font-bold text-sm md:text-[20px] leading-none">
-                    {{ String(promotions?.countdown?.hours || 0).padStart(2, "0") }}
+                    {{
+                      String(promotions?.countdown?.hours || 0).padStart(2, "0")
+                    }}
                   </p>
-                  <p class="capitalize text-[8px] md:text-[10px] pt-1 leading-none">
+                  <p
+                    class="capitalize text-[8px] md:text-[10px] pt-1 leading-none"
+                  >
                     Hours
                   </p>
                 </div>
@@ -275,9 +316,16 @@ onUnmounted(() => {
               <v-btn height="48" min-width="48" icon class="p-0 text-center">
                 <div class="text-center">
                   <p class="font-bold text-sm md:text-[20px] leading-none">
-                    {{ String(promotions?.countdown?.minutes || 0).padStart(2, "0") }}
+                    {{
+                      String(promotions?.countdown?.minutes || 0).padStart(
+                        2,
+                        "0"
+                      )
+                    }}
                   </p>
-                  <p class="capitalize text-[8px] md:text-[10px] pt-1 leading-none">
+                  <p
+                    class="capitalize text-[8px] md:text-[10px] pt-1 leading-none"
+                  >
                     Mins
                   </p>
                 </div>
@@ -289,9 +337,16 @@ onUnmounted(() => {
               <v-btn height="48" min-width="48" icon class="p-0 text-center">
                 <div class="text-center">
                   <p class="font-bold text-sm md:text-[20px] leading-none">
-                    {{ String(promotions?.countdown?.seconds || 0).padStart(2, "0") }}
+                    {{
+                      String(promotions?.countdown?.seconds || 0).padStart(
+                        2,
+                        "0"
+                      )
+                    }}
                   </p>
-                  <p class="capitalize text-[8px] md:text-[10px] pt-1 leading-none">
+                  <p
+                    class="capitalize text-[8px] md:text-[10px] pt-1 leading-none"
+                  >
                     Secs
                   </p>
                 </div>
@@ -306,7 +361,9 @@ onUnmounted(() => {
               to="/man"
             >
               <div class="flex items-center gap-1">
-                <span class="text-xs md:text-sm">{{ $t("buttons.learn_more") }}</span>
+                <span class="text-xs md:text-sm">{{
+                  $t("buttons.learn_more")
+                }}</span>
                 <Icon icon="system-uicons:upward" width="16" height="16" />
               </div>
             </v-btn>
@@ -366,14 +423,22 @@ onUnmounted(() => {
           <v-col cols="12" md="6" class="mb-4 md:mb-0">
             <div class="relative flex justify-center">
               <div class="absolute z-10 top-32 md:top-64 left-4 md:left-20">
-                <p class="font-bold text-lg md:text-[20px] text-black md:text-black">
+                <p
+                  class="font-bold text-lg md:text-[20px] text-black md:text-black"
+                >
                   Discover Your <br />
                   Style
                 </p>
-                <a href="#" class="underline text-black md:text-black">SeeMore</a>
+                <a href="/man" class="underline text-black md:text-black"
+                  >SeeMore</a
+                >
               </div>
-              <div class="hidden md:block absolute z-10 top-[70px] left-[200px]">
-                <p class="text-rotate text-[15px] text-gray-400">SALE UP TO 30% OFF</p>
+              <div
+                class="hidden md:block absolute z-10 top-[70px] left-[200px]"
+              >
+                <p class="text-rotate text-[15px] text-gray-400">
+                  SALE UP TO 30% OFF
+                </p>
               </div>
               <div class="w-64 md:w-72 h-auto relative">
                 <v-carousel
@@ -384,19 +449,25 @@ onUnmounted(() => {
                   :interval="5000"
                   cycle
                 >
-                  <v-carousel-item cover>
+                  <v-carousel-item
+                    cover
+                    v-for="(item, index) in men.slice(0, 3)"
+                    :key="index"
+                  >
                     <div class="relative w-64 md:w-72">
                       <v-img
                         :src="
-                          men?.[1]?.variants?.[1]?.image ||
+                          item?.variants?.[0]?.image ||
                           'https://i.pinimg.com/1200x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
                         "
                         class="rounded-sm w-64 md:w-72 bg-top"
                         cover
                         alt=""
                       ></v-img>
-                      <div class="absolute top-0 left-0 text-white pa-2 md:pa-4">
-                        $6.000 USD
+                      <div
+                        class="absolute top-0 left-0 text-white pa-1 mt-2 ml-2 md:pa-1 !bg-blue-500 rounded-md"
+                      >
+                        ${{ item?.variants?.[0]?.price }} USD
                       </div>
                     </div>
                   </v-carousel-item>
@@ -407,34 +478,50 @@ onUnmounted(() => {
           <v-col cols="12" md="6">
             <div class="relative flex justify-center mt-8 md:mt-14">
               <div class="absolute z-10 top-16 md:top-20 left-4 md:left-16">
-                <p class="font-bold text-lg md:text-[20px] text-black md:text-black">
+                <p
+                  class="font-bold text-lg md:text-[20px] text-black md:text-black"
+                >
                   Redefine Your <br />
                   Look
                 </p>
-                <a href="#" class="underline text-black md:text-black">SeeMore</a>
+                <a href="/woman" class="underline text-black md:text-black"
+                  >SeeMore</a
+                >
+              </div>
+              <div
+                class="hidden md:block absolute z-10 top-[70px] left-[200px]"
+              >
+                <p class="text-rotate text-[15px] text-gray-400">
+                  SALE UP TO 30% OFF
+                </p>
               </div>
               <div class="w-64 md:w-72 h-auto relative">
                 <v-carousel
-                  class=""
                   :show-arrows="false"
                   hide-delimiter-background
                   hide-delimiters
                   :interval="5000"
                   cycle
                 >
-                  <v-carousel-item cover v-for="man in men" :key="man.id">
+                  <v-carousel-item
+                    v-for="(item, index) in women.slice(0, 3)"
+                    :key="index"
+                    cover
+                  >
                     <div class="relative w-64 md:w-72">
                       <v-img
                         :src="
-                          men?.[1]?.variants?.[0]?.image ||
+                          item?.variants?.[0]?.image ||
                           'https://i.pinimg.com/1200x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
                         "
-                        class="rounded-sm w-64 md:w-72 bg-top"
+                        class="rounded-sm w-64 md:w-72 bg-top h-80"
                         cover
                         alt=""
                       ></v-img>
-                      <div class="absolute top-0 right-0 text-white pa-2 md:pa-4">
-                        $6.000 USD
+                      <div
+                        class="absolute top-0 right-0 text-white pa-1 mt-2 ml-2 md:pa-1 !bg-blue-500 rounded-md"
+                      >
+                        ${{ item?.variants?.[0]?.price }} USD
                       </div>
                     </div>
                   </v-carousel-item>
@@ -453,7 +540,9 @@ onUnmounted(() => {
         :key="discount.id"
         class="banner-discount bg-gray-500 min-h-[400px] md:h-[550px] flex flex-col text-white uppercase text-center pt-16 md:pt-24 px-4"
       >
-        <p class="text-base md:text-[20px]">{{ discount.discount_details.name }}</p>
+        <p class="text-base md:text-[20px]">
+          {{ discount.discount_details.name }}
+        </p>
         <p
           class="text-4xl md:text-6xl my-2 md:my-3 text-center leading-tight md:leading-snug"
         >
@@ -467,15 +556,22 @@ onUnmounted(() => {
 
       <!-- discount  -->
       <div class="relative">
-        <div class="min-h-[300px] absolute z-10 -top-48 flex justify-center w-full">
+        <div
+          class="min-h-[300px] absolute z-10 -top-48 flex justify-center w-full"
+        >
           <v-slide-group show-arrows center-active class="h-full">
-            <v-slide-group-item v-for="(banner, index) in bannersLoop" :key="banner.id">
+            <v-slide-group-item
+              v-for="(banner, index) in bannersLoop"
+              :key="banner.id"
+            >
               <div class="relative h-[400px] flex items-center">
                 <div
                   class="mx-2 jump_box"
                   :class="index % 2 === 0 ? 'jump_box_up' : 'jump_box_down'"
                 >
-                  <div class="w-64 h-64 md:h-64 relative overflow-hidden rounded-md">
+                  <div
+                    class="w-64 h-64 md:h-64 relative overflow-hidden rounded-md"
+                  >
                     <v-card class="relative" variant="text">
                       <div class="relative w-full cursor-pointer">
                         <!-- Product Image -->
@@ -524,7 +620,7 @@ onUnmounted(() => {
     </div>
 
     <!-- instagram -->
-    <div class="mt-[200px] md:mt-[450px]">
+    <div class="mt-[50px] md:mt-[200px]">
       <v-container>
         <v-row>
           <v-col
@@ -536,9 +632,9 @@ onUnmounted(() => {
               <p class="text-3xl md:text-[50px] mb-2">Our Instagram</p>
               <p class="text-xl md:text-[25px] mb-4">@elegant_chic</p>
               <p class="text-gray-400 text-sm md:text-base leading-relaxed">
-                Find everyday essentials and true style for both men and women.Stay up to
-                date with the latest trends. Follow us for fresh style inspiration. Tag us
-                and get featured @elegant_chic
+                Find everyday essentials and true style for both men and
+                women.Stay up to date with the latest trends. Follow us for
+                fresh style inspiration. Tag us and get featured @elegant_chic
               </p>
               <v-btn
                 color="primary"
@@ -546,7 +642,11 @@ onUnmounted(() => {
                 class="!font-bold mt-6 md:mt-10 w-full md:w-auto"
                 size="large"
                 @click="
-                  () => window.open('https://www.instagram.com/daniael57/', '_blank')
+                  () =>
+                    window.open(
+                      'https://www.instagram.com/daniael57/',
+                      '_blank'
+                    )
                 "
               >
                 follow us
@@ -555,7 +655,9 @@ onUnmounted(() => {
             </div>
           </v-col>
           <v-col cols="12" md="8">
-            <p class="text-end md:text-end text-gray-500 mb-4">Check out latest trends</p>
+            <p class="text-end md:text-end text-gray-500 mb-4">
+              Check out latest trends
+            </p>
             <div class="photo-grid">
               <div class="photo-item photo-1 placeholder">
                 <img class="bg-top" :src="firstItemImage" alt="trend" />
@@ -653,8 +755,8 @@ onUnmounted(() => {
               25 Provinces/Cities Delivered
             </p>
             <p class="text-gray-500 text-sm md:text-base">
-              Experience fast, reliable, and free delivery right to your doorstep every
-              time, on time.
+              Experience fast, reliable, and free delivery right to your
+              doorstep every time, on time.
             </p>
           </v-col>
           <v-col
@@ -686,10 +788,12 @@ onUnmounted(() => {
               width="50"
               height="50"
             />
-            <p class="font-bold text-lg md:text-[20px] mb-2">24/7 Customer Service</p>
+            <p class="font-bold text-lg md:text-[20px] mb-2">
+              24/7 Customer Service
+            </p>
             <p class="text-gray-500 text-sm md:text-base">
-              Excited to share our new product with you! designed to bring exceptional
-              value
+              Excited to share our new product with you! designed to bring
+              exceptional value
             </p>
           </v-col>
         </v-row>

@@ -533,11 +533,11 @@ onBeforeUnmount(() => {
 
         <!-- Mobile user info when authenticated -->
         <template v-else>
-          <v-list-item class="mobile-menu-item" disabled>
+          <!-- <v-list-item class="mobile-menu-item" disabled>
             <v-list-item-title class="text-gray-600">
               Welcome, {{ safeUser?.name || safeUser?.email || "User" }}
             </v-list-item-title>
-          </v-list-item>
+          </v-list-item> -->
 
           <!-- Mobile logout option -->
           <v-list-item

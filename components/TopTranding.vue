@@ -1,18 +1,28 @@
 <script setup lang="ts">
-// Add missing router import
+import { ref, onMounted } from 'vue';
 import { useRouter } from "vue-router";
+import { storeToRefs } from 'pinia';
 
-const favoriteVariants = ref<Set<string>>(new Set());
+// Import your stores - make sure these imports are correct for your project structure
+
+// Initialize stores
 const topTrendingStore = useTopTrendingStore();
-const { topTrendings } = storeToRefs(topTrendingStore);
 const cartStore = useCartStore();
+const favoriteStore = useFavoriteStore();
+const itemStore = useItemStore();
+const router = useRouter();
+
+// Get reactive references from store
+const { topTrendings, isLoading, error } = storeToRefs(topTrendingStore);
+const { items } = storeToRefs(itemStore);
+
+// Component reactive data
+const favoriteVariants = ref<Set<string>>(new Set());
 const currentProduct = ref<any>(null);
 const currentVariant = ref<any>(null);
 const quantity = ref<number>(1);
 const snackbar = ref(false);
-const text = ref(""); // message for snackbar
-const router = useRouter(); // Make sure this is properly imported
-const favoriteStore = useFavoriteStore();
+const text = ref("");
 
 const addToFavorites = (variantId: string) => {
   if (favoriteVariants.value.has(variantId)) {
@@ -60,6 +70,7 @@ const handleAddToCart = async () => {
     }
   } catch (error) {
     text.value = "Something went wrong while adding to cart.";
+    console.error('Add to cart error:', error);
   } finally {
     snackbar.value = true;
   }
@@ -68,10 +79,7 @@ const handleAddToCart = async () => {
 // Enhanced quick view function with better error handling and logging
 const quickView = (productId: string | number) => {
   try {
-    // Convert to string if needed
     const idString = productId.toString();
-
-    // Navigate to product detail page
     router.push({
       path: "/product-detail",
       query: { id: idString },
@@ -85,7 +93,6 @@ const quickView = (productId: string | number) => {
 
 // Enhanced add to cart function with better error handling
 const addToCart = (variantId: string) => {
-  // Find the product containing this variant
   const product = topTrendings.value.find((item) =>
     item.variants?.some((v) => v.id === variantId)
   );
@@ -97,7 +104,6 @@ const addToCart = (variantId: string) => {
     return;
   }
 
-  // Find the variant itself
   const variant = product.variants.find((v) => v.id === variantId);
 
   if (!variant) {
@@ -113,16 +119,14 @@ const addToCart = (variantId: string) => {
 
   handleAddToCart();
 };
-const itemStore = useItemStore();
-const { items } = storeToRefs(itemStore);
 
 // Enhanced mount function with error handling
 onMounted(async () => {
   try {
     await topTrendingStore.fetchTopTrendings();
   } catch (error) {
-    console.error("Error fetching new arrivals:", error);
-    text.value = "Failed to load new arrivals.";
+    console.error("Error fetching top trending items:", error);
+    text.value = "Failed to load top trending items.";
     snackbar.value = true;
   }
 });
@@ -130,8 +134,12 @@ onMounted(async () => {
 
 <template>
   <v-slide-group center-active>
-    <v-slide-group-item v-for="item in topTrendings" :key="item.id" v-slot="{ toggle }">
-      <v-card class="relative w-[360px] mr-5" variant="text">
+    <v-slide-group-item
+      v-for="item in topTrendings.slice(0, 7)"
+      :key="item.id"
+      v-slot="{ toggle }"
+    >
+      <v-card class="relative w-[230px] md:w-[360px] mr-5" variant="text">
         <v-hover v-slot="{ isHovering, props }">
           <div v-bind="props" class="relative w-full cursor-pointer">
             <!-- Product Image -->
@@ -139,7 +147,7 @@ onMounted(async () => {
               :src="item.variants?.[0]?.image || '/images/placeholder.jpg'"
               cover
               position="top"
-              class="h-[400px] md:h-[420px]"
+              class="h-[250px] md:h-[420px]"
               @click="quickView(item.id)"
               :alt="`${item.name} - Product Image`"
             />
@@ -202,7 +210,9 @@ onMounted(async () => {
                         @click.stop="addToCart(item.variants[0].id)"
                         icon
                         class="bg-white text-black"
-                        :disabled="!item.variants[0] || item.variants[0].quantity === 0"
+                        :disabled="
+                          !item.variants[0] || item.variants[0].quantity === 0
+                        "
                       >
                         <v-icon icon="pepicons-pencil:cart" />
                       </v-btn>
@@ -236,13 +246,20 @@ onMounted(async () => {
           <div class="d-flex justify-center">
             <Icon icon="noto:star" width="20" height="20" />
             <div v-for="i in 4" :key="i">
-              <Icon icon="uim:star" class="!text-gray-400" width="20" height="20" />
+              <Icon
+                icon="uim:star"
+                class="!text-gray-400"
+                width="20"
+                height="20"
+              />
             </div>
           </div>
           <div class="flex justify-center items-center mt-2">
             <p class="text-red mr-2">
               ${{
-                item.variants?.[0]?.final_price || item.variants?.[0]?.price || "0.00"
+                item.variants?.[0]?.final_price ||
+                item.variants?.[0]?.price ||
+                "0.00"
               }}
               USD
             </p>
@@ -261,6 +278,29 @@ onMounted(async () => {
     </v-slide-group-item>
   </v-slide-group>
 
+  <!-- Loading state -->
+  <div v-if="isLoading" class="text-center py-4">
+    <v-progress-circular indeterminate color="primary" />
+    <p>Loading top trending items...</p>
+  </div>
+
+  <!-- Error state -->
+  <div v-else-if="error" class="text-center py-4 text-red-500">
+    <p>{{ error }}</p>
+    <v-btn @click="topTrendingStore.fetchTopTrendings()" color="primary" class="mt-2">
+      Retry
+    </v-btn>
+  </div>
+
+  <!-- Empty state -->
+  <div v-else-if="!topTrendings.length" class="text-center py-4">
+    <p>No trending items available at the moment.</p>
+  </div>
+
+  <div class="flex justify-end" v-if="topTrendings.length > 0">
+    <v-btn variant="outlined" color="primary" to="/top-trending">see more</v-btn>
+  </div>
+
   <!-- Global snackbar -->
   <v-snackbar
     v-model="snackbar"
@@ -272,7 +312,9 @@ onMounted(async () => {
     {{ text }}
 
     <template v-slot:actions>
-      <v-btn variant="text" class="text-white" @click="snackbar = false"> Close </v-btn>
+      <v-btn variant="text" class="text-white" @click="snackbar = false">
+        Close
+      </v-btn>
     </template>
   </v-snackbar>
 </template>

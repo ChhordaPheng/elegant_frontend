@@ -1,8 +1,4 @@
 <script setup lang="ts">
-// definePageMeta({
-//   layout: "main-layout",
-// });
-
 import { useDisplay } from "vuetify";
 import type { Size } from "~/types/size/size";
 
@@ -23,6 +19,7 @@ const selected = ref("");
 const selectedSize = ref<string | null>(null); // Changed from array to single selection
 const selectedBrand = ref<string | null>(null);
 const sortSelection = ref("");
+const favoriteVariants = ref<Set<string>>(new Set());
 
 const router = useRouter();
 const currentProduct = ref<any>(null);
@@ -30,12 +27,11 @@ const currentVariant = ref<any>(null);
 const quantity = ref<number>(1);
 const snackbar = ref(false);
 const text = ref(""); // message for snackbar
-const favoriteVariants = ref<Set<string>>(new Set());
 
 // Store
 const cartStore = useCartStore();
-const womanStore = useWomanIteStore();
-const { women } = storeToRefs(womanStore);
+const newArrivalStore = useNewArrivalStore();
+const { newArrival } = storeToRefs(newArrivalStore);
 const brandStore = useBrandStore();
 const { brands } = storeToRefs(brandStore);
 const categoryStore = useCategoryStore();
@@ -104,7 +100,7 @@ function debounce(func: Function, wait: number) {
 
 // Debounced function to apply filters
 const debouncedApplyFilters = debounce(async () => {
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 }, 500); // 500ms delay
 
 // Watch for filter changes and apply them
@@ -168,10 +164,10 @@ const getCategoryImage = (slug: string) => {
 const handleCategoryClick = async (category: any) => {
   activeIndex.value = category.id;
   selectedCategoryName.value = category.name;
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 };
 
-// In your woman page, update the quickView function:
+// In your kid page, update the quickView function:
 const quickView = (productId: string | number) => {
   router.push({
     path: "/product-detail",
@@ -238,7 +234,7 @@ const handleAddToCart = async () => {
 
 // Optional: Add to cart function
 const addToCart = (variantId: string) => {
-  const product = women.value.find((item) =>
+  const product = newArrival.value.find((item) =>
     item.variants?.some((v) => v.id === variantId)
   );
 
@@ -311,22 +307,22 @@ const activeFilters = computed(() => {
 // Reset functions - UPDATED to apply filters
 const resetPrice = async () => {
   priceRange.value = [0.03, 209.99]; // Updated to API values
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 };
 
 const resetColor = async () => {
   selected.value = "";
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 };
 
 const resetSizes = async () => {
   selectedSize.value = null; // Updated for single selection
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 };
 
 const resetBrands = async () => {
   selectedBrand.value = null;
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 };
 
 const clearAllFilters = async () => {
@@ -335,7 +331,7 @@ const clearAllFilters = async () => {
   selectedSize.value = null;
   selectedBrand.value = null;
   activeIndex.value = null;
-  await womanStore.applyFilters({});
+  await newArrivalStore.applyFilters({});
 };
 
 // Remove individual filter - UPDATED
@@ -356,19 +352,19 @@ const removeFilter = async (filter: any) => {
       }
       break;
   }
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 };
 
 // Handle size selection - UPDATED: Single selection only
 const selectSize = async (sizeId: string) => {
   selectedSize.value = selectedSize.value === sizeId ? null : sizeId;
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 };
 
 // Handle brand selection
 const toggleBrand = async (brandId: string) => {
   selectedBrand.value = selectedBrand.value === brandId ? null : brandId;
-  await womanStore.applyFilters(currentFilters.value);
+  await newArrivalStore.applyFilters(currentFilters.value);
 };
 
 // Handle sort change
@@ -384,40 +380,60 @@ const handleSortChange = (value: string) => {
 };
 
 // Apply sorting
-const applySorting = async (sortField: string, order: "asc" | "desc" = "asc") => {
+const applySorting = async (
+  sortField: string,
+  order: "asc" | "desc" = "asc"
+) => {
   const filtersWithSort = {
     ...currentFilters.value,
     sort_by: sortField,
     sort_order: order,
   };
 
-  await womanStore.applyFilters(filtersWithSort);
+  await newArrivalStore.applyFilters(filtersWithSort);
 };
 
 // Handle pagination
 const handlePageChange = async (newPage: number) => {
   page.value = newPage;
-  await womanStore.setPage(newPage);
+  await newArrivalStore.setPage(newPage);
 };
 
 // Handle items per page change
+// Handle items per page change - Correct implementation
 const handleItemsPerPageChange = async (count: number | string) => {
   active.value = count;
 
-  let perPage = 20; // default
-  if (count === 10) perPage = 10;
-  else if (count === 20) perPage = 20;
-  else if (count === "all") perPage = womanStore.total || 1000; // Large number for "all"
+  if (count === "all") {
+    // For "all", fetch all data from backend but keep pagination UI
+    // Don't set a per_page limit - let backend return all items
+    const filtersWithoutLimit = {
+      ...currentFilters.value,
+      page: 1, // Start from first page
+      // Remove per_page parameter to get all items
+    };
+    
+    // Remove per_page from the filter object if it exists
+    delete filtersWithoutLimit.per_page;
+    
+    await newArrivalStore.applyFilters(filtersWithoutLimit);
+  } else {
+    // For specific counts (10, 20), set per_page normally
+    let perPage = 20; // default
+    if (count === 10) perPage = 10;
+    else if (count === 20) perPage = 20;
 
-  womanStore.perPage = perPage;
+    // Update the store's perPage
+    newArrivalStore.perPage = perPage;
 
-  const filtersWithPerPage = {
-    ...currentFilters.value,
-    per_page: perPage,
-    page: 1, // Reset to first page
-  };
+    const filtersWithPerPage = {
+      ...currentFilters.value,
+      per_page: perPage,
+      page: 1, // Reset to first page
+    };
 
-  await womanStore.applyFilters(filtersWithPerPage);
+    await newArrivalStore.applyFilters(filtersWithPerPage);
+  }
 };
 
 // Lifecycle
@@ -431,7 +447,7 @@ onMounted(async () => {
   ]);
 
   // Initial fetch with no filters
-  await womanStore.fetchWomanItems();
+  await newArrivalStore.fetchNewArrivals;
 });
 </script>
 
@@ -442,7 +458,9 @@ onMounted(async () => {
       class="banner w-full flex flex-col justify-center items-center min-h-[300px] md:h-[400px] px-4"
     >
       <!-- Dynamic category name display -->
-      <p class="text-white text-[24px] sm:text-[32px] md:text-[40px] font-medium">
+      <p
+        class="text-white text-[24px] sm:text-[32px] md:text-[40px] font-medium"
+      >
         {{ selectedCategoryName }}
       </p>
 
@@ -599,7 +617,12 @@ onMounted(async () => {
               </div>
               <v-container>
                 <v-row v-if="brands">
-                  <v-col v-for="brand in brands" :key="brand.id" cols="12" md="4">
+                  <v-col
+                    v-for="brand in brands"
+                    :key="brand.id"
+                    cols="12"
+                    md="4"
+                  >
                     <v-card
                       :class="[
                         'd-flex align-center justify-center',
@@ -629,7 +652,7 @@ onMounted(async () => {
                 <p class="uppercase font-bold text-[25px]">TRENDING PRODUCTS</p>
               </div>
               <div
-                v-for="topTrending in topTrendings"
+                v-for="topTrending in topTrendings.slice(0,2)"
                 :key="topTrending.id"
                 class="border-b-[1px] border-gray-400 pb-3 mb-3"
               >
@@ -665,7 +688,9 @@ onMounted(async () => {
                       </div>
 
                       <!-- Item info -->
-                      <p class="font-bold my-1 text-[20px]">{{ topTrending.name }}</p>
+                      <p class="font-bold my-1 text-[20px]">
+                        {{ topTrending.name }}
+                      </p>
                       <p class="text-gray-600 text-[16px] mb-2">
                         Brand: {{ topTrending.brand.name }}
                       </p>
@@ -677,7 +702,9 @@ onMounted(async () => {
 
                       <!-- Popularity Score instead of discounted price -->
                       <div class="flex items-center my-2">
-                        <p class="text-gray-500 text-[15px]">Popularity Score:</p>
+                        <p class="text-gray-500 text-[15px]">
+                          Popularity Score:
+                        </p>
                         <p class="text-red ml-2 text-[20px]">
                           {{ topTrending.popularity_score }}
                         </p>
@@ -696,7 +723,7 @@ onMounted(async () => {
                     <v-col>
                       <div class="pl-3">
                         <p>
-                          Clothing ({{ women?.length || 0 }}
+                          Clothing ({{ newArrival?.length || 0 }}
                           items)
                         </p>
                         <div class="my-3 flex items-center flex-wrap">
@@ -726,7 +753,9 @@ onMounted(async () => {
                       </div>
                     </v-col>
                     <v-col>
-                      <div class="text-end flex justify-end items-center pr-5 mt-1">
+                      <div
+                        class="text-end flex justify-end items-center pr-5 mt-1"
+                      >
                         <div class="flex border-[2px] p-1 mr-3">
                           <p
                             :class="[
@@ -763,9 +792,18 @@ onMounted(async () => {
                             class="w-44"
                             :items="[
                               { title: 'Default sorting', value: '' },
-                              { title: 'Sort by latest', value: 'created_at_desc' },
-                              { title: 'Price: High to Low', value: 'price_desc' },
-                              { title: 'Price: Low to High', value: 'price_asc' },
+                              {
+                                title: 'Sort by latest',
+                                value: 'created_at_desc',
+                              },
+                              {
+                                title: 'Price: High to Low',
+                                value: 'price_desc',
+                              },
+                              {
+                                title: 'Price: Low to High',
+                                value: 'price_asc',
+                              },
                               { title: 'Name: A to Z', value: 'name_asc' },
                               { title: 'Name: Z to A', value: 'name_desc' },
                             ]"
@@ -780,17 +818,22 @@ onMounted(async () => {
                   <!-- Products Grid -->
                   <div class="d-flex flex-wrap">
                     <!-- Loading skeleton -->
-                    <div v-if="womanStore.isLoading" class="w-full">
+                    <div v-if="newArrivalStore.isLoading" class="w-full">
                       <v-row>
                         <v-col v-for="n in 8" :key="n" cols="12" sm="6" md="3">
-                          <v-skeleton-loader type="card" height="400"></v-skeleton-loader>
+                          <v-skeleton-loader
+                            type="card"
+                            height="400"
+                          ></v-skeleton-loader>
                         </v-col>
                       </v-row>
                     </div>
 
                     <!-- No items found -->
                     <div
-                      v-else-if="!womanStore.hasItems && !womanStore.isLoading"
+                      v-else-if="
+                        !newArrivalStore.hasItems && !newArrivalStore.isLoading
+                      "
                       class="w-full text-center py-8"
                     >
                       <v-icon
@@ -804,7 +847,11 @@ onMounted(async () => {
                       <p class="text-gray-500">
                         Try adjusting your filters or search criteria.
                       </p>
-                      <v-btn color="primary" class="mt-4" @click="clearAllFilters">
+                      <v-btn
+                        color="primary"
+                        class="mt-4"
+                        @click="clearAllFilters"
+                      >
                         Clear All Filters
                       </v-btn>
                     </div>
@@ -812,22 +859,25 @@ onMounted(async () => {
                     <!-- Products -->
                     <v-card
                       v-else
-                      v-for="womanitem in women"
-                      :key="womanitem.id"
+                      v-for="newArrival in newArrival"
+                      :key="newArrival.id"
                       class="relative w-[280px] mr-5"
                       variant="text"
                     >
                       <v-hover v-slot="{ isHovering, props }">
-                        <div v-bind="props" class="relative w-full cursor-pointer">
+                        <div
+                          v-bind="props"
+                          class="relative w-full cursor-pointer"
+                        >
                           <!-- Product Image -->
                           <img
                             :src="
-                              womanitem.variants[0].image ||
+                              newArrival.variants[0].image ||
                               'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                             "
-                            :alt="womanitem.name"
-                            class="w-full cursor-pointer h-[400px] object-cover"
-                            @click="quickView(womanitem.id)"
+                            :alt="newArrival.name"
+                            class="w-full cursor-pointer h-[300px] object-cover"
+                            @click="quickView(newArrival.id)"
                           />
 
                           <!-- Animated Buttons on Hover (narrow wrapper for better positioning) -->
@@ -843,18 +893,24 @@ onMounted(async () => {
                                       v-bind="props"
                                       icon
                                       @click.stop="
-                                        addToFavorites(womanitem.variants[0].id)
+                                        addToFavorites(
+                                          newArrival.variants[0].id
+                                        )
                                       "
+                                      class="bg-white text-black"
                                       :class="
-                                        favoriteVariants.has(womanitem.variants[0].id)
+                                        favoriteVariants.has(
+                                          newArrival.variants[0].id
+                                        )
                                           ? 'text-red'
                                           : 'bg-white text-black'
                                       "
-                                      class="bg-white text-black"
                                     >
                                       <v-icon
                                         :icon="
-                                          favoriteVariants.has(womanitem.variants[0].id)
+                                          favoriteVariants.has(
+                                            newArrival.variants[0].id
+                                          )
                                             ? 'mdi-heart'
                                             : 'mdi-heart-outline'
                                         "
@@ -874,7 +930,7 @@ onMounted(async () => {
                                       v-bind="props"
                                       icon
                                       class="bg-white text-black"
-                                      @click.stop="quickView(womanitem.id)"
+                                      @click.stop="quickView(newArrival.id)"
                                     >
                                       <v-icon icon="carbon:image-copy" />
                                     </v-btn>
@@ -892,7 +948,9 @@ onMounted(async () => {
                                       v-bind="props"
                                       icon
                                       class="bg-white text-black"
-                                      @click="addToCart(womanitem.variants[0].id)"
+                                      @click="
+                                        addToCart(newArrival.variants[0].id)
+                                      "
                                     >
                                       <v-icon icon="pepicons-pencil:cart" />
                                     </v-btn>
@@ -908,12 +966,12 @@ onMounted(async () => {
                       <div class="text-center my-5">
                         <p
                           class="font-bold text-[20px] cursor-pointer hover:text-blue-500 transition-colors"
-                          @click="quickView(womanitem.id)"
+                          @click="quickView(newArrival.id)"
                         >
-                          {{ womanitem.name }}
+                          {{ newArrival.name }}
                         </p>
                         <p class="text-blue-700 font-bold uppercase my-1">
-                          {{ womanitem.brand.name }}
+                          {{ newArrival.brand.name }}
                         </p>
                         <div class="d-flex justify-center">
                           <Icon icon="noto:star" width="20" height="20" />
@@ -928,10 +986,10 @@ onMounted(async () => {
                         </div>
                         <div class="flex justify-center items-center mt-2">
                           <p class="text-red mr-2">
-                            ${{ womanitem.variants[0].final_price }} USD
+                            ${{ newArrival.variants[0].final_price }} USD
                           </p>
                           <p class="line-through text-gray-500">
-                            ${{ womanitem.variants[0].price }} USD
+                            ${{ newArrival.variants[0].price }} USD
                           </p>
                         </div>
                       </div>
@@ -947,8 +1005,8 @@ onMounted(async () => {
                     <v-col cols="8">
                       <v-container class="max-width">
                         <v-pagination
-                          :model-value="womanStore.page"
-                          :length="womanStore.totalPages"
+                          :model-value="newArrivalStore.page"
+                          :length="newArrivalStore.totalPages"
                           rounded="circle"
                           class="my-4"
                           @update:model-value="handlePageChange"
@@ -1076,7 +1134,12 @@ onMounted(async () => {
               </div>
               <v-container>
                 <v-row v-if="brands">
-                  <v-col v-for="brand in brands" :key="brand.id" cols="6" md="4">
+                  <v-col
+                    v-for="brand in brands"
+                    :key="brand.id"
+                    cols="6"
+                    md="4"
+                  >
                     <v-card
                       :class="[
                         'd-flex align-center justify-center',
@@ -1102,7 +1165,7 @@ onMounted(async () => {
         <v-main>
           <v-container>
             <div class="pl-3">
-              <p>Clothing ({{ women?.length || 0 }} items)</p>
+              <p>Clothing ({{ newArrival?.length || 0 }} items)</p>
               <div class="my-3 flex items-center flex-wrap">
                 <p class="text-[14px] mr-2 mb-2">FILTERS :</p>
                 <div
@@ -1150,17 +1213,22 @@ onMounted(async () => {
             <!-- Mobile Products Grid -->
             <div class="d-flex flex-wrap justify-center">
               <!-- Loading skeleton for mobile -->
-              <div v-if="womanStore.isLoading" class="w-full">
+              <div v-if="newArrivalStore.isLoading" class="w-full">
                 <v-row>
                   <v-col v-for="n in 6" :key="n" cols="6">
-                    <v-skeleton-loader type="card" height="300"></v-skeleton-loader>
+                    <v-skeleton-loader
+                      type="card"
+                      height="300"
+                    ></v-skeleton-loader>
                   </v-col>
                 </v-row>
               </div>
 
               <!-- No items found for mobile -->
               <div
-                v-else-if="!womanStore.hasItems && !womanStore.isLoading"
+                v-else-if="
+                  !newArrivalStore.hasItems && !newArrivalStore.isLoading
+                "
                 class="w-full text-center py-8"
               >
                 <v-icon
@@ -1168,9 +1236,16 @@ onMounted(async () => {
                   size="48"
                   class="text-gray-400 mb-4"
                 ></v-icon>
-                <h3 class="text-lg font-medium text-gray-600 mb-2">No products found</h3>
+                <h3 class="text-lg font-medium text-gray-600 mb-2">
+                  No products found
+                </h3>
                 <p class="text-gray-500 text-sm">Try adjusting your filters.</p>
-                <v-btn color="primary" size="small" class="mt-4" @click="clearAllFilters">
+                <v-btn
+                  color="primary"
+                  size="small"
+                  class="mt-4"
+                  @click="clearAllFilters"
+                >
                   Clear Filters
                 </v-btn>
               </div>
@@ -1178,28 +1253,32 @@ onMounted(async () => {
               <!-- Mobile Products -->
               <v-card
                 v-else
-                v-for="womanitem in women"
-                :key="womanitem.id"
+                v-for="newArrival in newArrival"
+                :key="newArrival.id"
                 class="ma-2 w-[160px] sm:w-[180px]"
                 variant="text"
               >
                 <!-- Mobile product content -->
-                <div v-if="womanitem.variants && womanitem.variants.length > 0">
+                <div
+                  v-if="newArrival.variants && newArrival.variants.length > 0"
+                >
                   <v-hover v-slot="{ isHovering, props }">
                     <div v-bind="props" class="relative w-full cursor-pointer">
                       <!-- Product Image -->
                       <img
                         :src="
-                          womanitem.variants[0].image ||
+                          newArrival.variants[0].image ||
                           'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                         "
-                        :alt="womanitem.name"
+                        :alt="newArrival.name"
                         class="w-full h-[200px] sm:h-[250px] cursor-pointer object-cover"
-                        @click="quickView(womanitem.id)"
+                        @click="quickView(newArrival.id)"
                       />
 
                       <!-- Animated Buttons on Hover for Mobile -->
-                      <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                      <div
+                        class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2"
+                      >
                         <!-- Favorite (slide from left) -->
                         <transition name="slide-left">
                           <div v-if="isHovering">
@@ -1210,16 +1289,22 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
-                                  @click.stop="addToFavorites(womanitem.variants[0].id)"
+                                  @click.stop="
+                                    addToFavorites(newArrival.variants[0].id)
+                                  "
                                   :class="
-                                    favoriteVariants.has(womanitem.variants[0].id)
+                                    favoriteVariants.has(
+                                      newArrival.variants[0].id
+                                    )
                                       ? 'text-red'
                                       : 'bg-white text-black'
                                   "
                                 >
                                   <v-icon
                                     :icon="
-                                      favoriteVariants.has(womanitem.variants[0].id)
+                                      favoriteVariants.has(
+                                        newArrival.variants[0].id
+                                      )
                                         ? 'mdi-heart'
                                         : 'mdi-heart-outline'
                                     "
@@ -1240,7 +1325,7 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
-                                  @click.stop="quickView(womanitem.id)"
+                                  @click.stop="quickView(newArrival.id)"
                                 >
                                   <v-icon icon="carbon:image-copy" size="16" />
                                 </v-btn>
@@ -1259,9 +1344,12 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
-                                  @click="addToCart(womanitem.variants[0].id)"
+                                  @click="addToCart(newArrival.variants[0].id)"
                                 >
-                                  <v-icon icon="pepicons-pencil:cart" size="16" />
+                                  <v-icon
+                                    icon="pepicons-pencil:cart"
+                                    size="16"
+                                  />
                                 </v-btn>
                               </template>
                             </v-tooltip>
@@ -1275,12 +1363,14 @@ onMounted(async () => {
                   <div class="text-center my-3">
                     <p
                       class="font-bold text-[14px] sm:text-[16px] cursor-pointer hover:text-blue-500 transition-colors line-clamp-2"
-                      @click="quickView(womanitem.id)"
+                      @click="quickView(newArrival.id)"
                     >
-                      {{ womanitem.name }}
+                      {{ newArrival.name }}
                     </p>
-                    <p class="text-blue-700 font-bold uppercase my-1 text-[12px]">
-                      {{ womanitem.brand.name }}
+                    <p
+                      class="text-blue-700 font-bold uppercase my-1 text-[12px]"
+                    >
+                      {{ newArrival.brand.name }}
                     </p>
                     <div class="d-flex justify-center mb-2">
                       <Icon icon="noto:star" width="16" height="16" />
@@ -1295,10 +1385,10 @@ onMounted(async () => {
                     </div>
                     <div class="flex justify-center items-center">
                       <p class="text-red mr-1 text-[14px] font-bold">
-                        ${{ womanitem.variants[0].final_price }}
+                        ${{ newArrival.variants[0].final_price }}
                       </p>
                       <p class="line-through text-gray-500 text-[12px]">
-                        ${{ womanitem.variants[0].price }}
+                        ${{ newArrival.variants[0].price }}
                       </p>
                     </div>
                   </div>
@@ -1309,8 +1399,8 @@ onMounted(async () => {
             <!-- Mobile Pagination -->
             <div class="text-center mt-6">
               <v-pagination
-                :model-value="womanStore.page"
-                :length="womanStore.totalPages"
+                :model-value="newArrivalStore.page"
+                :length="newArrivalStore.totalPages"
                 rounded="circle"
                 class="my-4"
                 total-visible="5"
@@ -1333,7 +1423,9 @@ onMounted(async () => {
       {{ text }}
 
       <template v-slot:actions>
-        <v-btn variant="text" class="text-white" @click="snackbar = false"> Close </v-btn>
+        <v-btn variant="text" class="text-white" @click="snackbar = false">
+          Close
+        </v-btn>
       </template>
     </v-snackbar>
   </div>
@@ -1363,7 +1455,7 @@ onMounted(async () => {
 
 .line-clamp-2 {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  /* -webkit-line-clamp: 2; */
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

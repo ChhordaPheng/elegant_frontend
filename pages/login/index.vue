@@ -123,7 +123,7 @@ const handlerRegister = async () => {
     } else if (error?.response?.data?.error) {
       messageInvalid.value = error.response.data.error;
     } else {
-      messageInvalid.value = "An unexpected error occurred.";
+      messageInvalid.value = "The phone number has already been taken";
     }
     snackbar.value = true;
   }

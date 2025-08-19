@@ -1,19 +1,7 @@
 import { defineStore } from 'pinia';
-import type { Men, MenResponse } from '~/types/man_category/man_category';
+import type { Men, MenResponse,FilterParams } from '~/types/man_category/man_category';
 
 // Define filter interface
-export interface FilterParams {
-  page?: number;
-  per_page?: number;
-  brand_id?: string;
-  color_id?: string;
-  size_id?: string;
-  min_price?: number;
-  max_price?: number;
-  category_id?: string;
-  sort_order?: 'asc' | 'desc';
-  sort_by?: 'price' | 'name' | 'created_at';
-}
 
 export const useManIteStore = defineStore('useManIteStore', {
   state: () => ({

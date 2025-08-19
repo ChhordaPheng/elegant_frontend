@@ -11,7 +11,6 @@ export interface Order {
     delivery_fee: number;
     total_amount: number;
     delivery_method: string;
-    address_name: string;
     phone: string;
     status: string;
     placed_at: string;
@@ -30,8 +29,7 @@ export interface orderRequest {
     cart_id: string;
     delivery_id: string;
     payment_method: string;
-    shipping_address: string;
-    address_name: string;
+    address_id: string;
     phone: string;
     note: string;
 }

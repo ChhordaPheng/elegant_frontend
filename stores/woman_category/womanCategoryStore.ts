@@ -1,19 +1,7 @@
 import { defineStore } from 'pinia';
-import type { Women, WomenResponse } from '~/types/woman_category/woman_category';
+import type { Women, WomenResponse, FilterParams } from '~/types/woman_category/woman_category';
 
 // Define filter interface
-export interface FilterParams {
-  page?: number;
-  per_page?: number;
-  brand_id?: string;
-  color_id?: string;
-  size_id?: string;
-  min_price?: number;
-  max_price?: number;
-  category_id?: string;
-  sort_order?: 'asc' | 'desc';
-  sort_by?: 'price' | 'name' | 'created_at';
-}
 
 export const useWomanIteStore = defineStore('useWomanIteStore', {
   state: () => ({

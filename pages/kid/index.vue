@@ -1,7 +1,4 @@
 <script setup lang="ts">
-definePageMeta({
-  layout: "main-layout",
-});
 
 import { useDisplay } from "vuetify";
 import type { Size } from "~/types/size/size";
