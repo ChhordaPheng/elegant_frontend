@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { Item } from "~/types/item/item";
 import { useItemStore } from "../../stores/item/itemStore";
-definePageMeta({ layout: "main-layout" });
 
 // UI States
 const quantity = ref<number>(1);
@@ -34,15 +33,42 @@ const newArrivalStore = useNewArrivalStore();
 const { newArrival } = storeToRefs(newArrivalStore);
 const favoriteStore = useFavoriteStore();
 
-const addToFavorites = (variantId: string) => {
-  if (favoriteVariants.value.has(variantId)) {
-    favoriteVariants.value.delete(variantId);
-    text.value = "Removed from favorites!";
-  } else {
-    favoriteVariants.value.add(variantId);
-    text.value = "Added to favorites!";
+const handleAddToWishlist = (variant: any) => {
+  if (!variant || !variant.id) {
+    text.value = "No item available to add to wishlist.";
+    snackbar.value = true;
+    return;
   }
-  snackbar.value = true;
+
+  try {
+    const existingWishlist: any[] = JSON.parse(
+      localStorage.getItem("wishlist") || "[]"
+    );
+
+    // Check if variant already exists in wishlist
+    const existingIndex = existingWishlist.findIndex(
+      (item) => item.id === variant.id
+    );
+
+    if (existingIndex !== -1) {
+      // Remove from wishlist
+      existingWishlist.splice(existingIndex, 1);
+      localStorage.setItem("wishlist", JSON.stringify(existingWishlist));
+      favoriteVariants.value.delete(variant.id);
+      text.value = "Removed from wishlist!";
+    } else {
+      // Add full variant data to wishlist
+      existingWishlist.push(variant);
+      localStorage.setItem("wishlist", JSON.stringify(existingWishlist));
+      favoriteVariants.value.add(variant.id);
+      text.value = "Added to wishlist!";
+    }
+  } catch (error) {
+    text.value = "Something went wrong while updating wishlist.";
+    console.error("Wishlist error:", error);
+  } finally {
+    snackbar.value = true;
+  }
 };
 
 // Fixed: Use consistent naming for item store
@@ -50,7 +76,12 @@ const itemStoreYou = useItemStore();
 // const { items } = storeToRefs(itemStoreYou);
 
 const colors = ["green", "purple", "orange", "indigo", "red"];
-const icons = ref(["mdi-facebook", "mdi-twitter", "mdi-linkedin", "mdi-instagram"]);
+const icons = ref([
+  "mdi-facebook",
+  "mdi-twitter",
+  "mdi-linkedin",
+  "mdi-instagram",
+]);
 const notes = ref([
   "MACHINE WASH AT MAX.TEMP. 30° C - NORMAL PROCESS",
   "DO NOT BLEACH",
@@ -86,7 +117,11 @@ const productId = computed(() => {
 // Fixed: Try to find product from items store by ID with null safety
 const getProductFromItemsStore = (): Item | null => {
   // Add null safety checks
-  if (!itemStoreYou.items || !Array.isArray(itemStoreYou.items) || !productId.value) {
+  if (
+    !itemStoreYou.items ||
+    !Array.isArray(itemStoreYou.items) ||
+    !productId.value
+  ) {
     console.log("Items or productId not available:", {
       hasItems: !!itemStoreYou.items,
       isArray: Array.isArray(itemStoreYou.items),
@@ -105,7 +140,7 @@ const uniqueSizes = computed(() => {
   if (!currentProduct.value?.variants) return [];
 
   const sizes = currentProduct.value.variants.map((v) => v.size);
-  const uniqueMap = new Map<string, typeof sizes[0]>();
+  const uniqueMap = new Map<string, (typeof sizes)[0]>();
 
   sizes.forEach((size) => {
     if (size && !uniqueMap.has(size.id)) {
@@ -121,7 +156,7 @@ const uniqueColors = computed(() => {
   if (!currentProduct.value?.variants) return [];
 
   const colors = currentProduct.value.variants.map((v) => v.color);
-  const uniqueMap = new Map<string, typeof colors[0]>();
+  const uniqueMap = new Map<string, (typeof colors)[0]>();
 
   colors.forEach((color) => {
     if (color && !uniqueMap.has(color.id)) {
@@ -138,8 +173,9 @@ const currentVariant = computed(() => {
   }
 
   return (
-    currentProduct.value.variants.find((v) => v.id === selectedVariantId.value) ||
-    currentProduct.value.variants[0]
+    currentProduct.value.variants.find(
+      (v) => v.id === selectedVariantId.value
+    ) || currentProduct.value.variants[0]
   );
 });
 
@@ -160,12 +196,16 @@ const selectVariantByColor = (colorId: string) => {
 const selectVariant = (variantId: string) => {
   selectedVariantId.value = variantId;
 
-  const variant = currentProduct.value?.variants.find((v) => v.id === variantId);
+  const variant = currentProduct.value?.variants.find(
+    (v) => v.id === variantId
+  );
   if (variant) {
     selectedColorId.value = variant.color.id;
     selectedSizeId.value = variant.size.id;
 
-    const index = currentProduct.value?.variants.findIndex((v) => v.id === variantId);
+    const index = currentProduct.value?.variants.findIndex(
+      (v) => v.id === variantId
+    );
     if (index !== -1) {
       selectedVariantIndex.value = index || 0;
     }
@@ -257,7 +297,7 @@ const availableSizes = computed(() => {
   }
 
   const sizes = filteredVariants.map((v) => v.size);
-  const uniqueMap = new Map<string, typeof sizes[0]>();
+  const uniqueMap = new Map<string, (typeof sizes)[0]>();
 
   sizes.forEach((size) => {
     if (size && !uniqueMap.has(size.id)) {
@@ -274,11 +314,13 @@ const availableColors = computed(() => {
   let filteredVariants = currentProduct.value.variants;
 
   if (selectedSizeId.value) {
-    filteredVariants = filteredVariants.filter((v) => v.size.id === selectedSizeId.value);
+    filteredVariants = filteredVariants.filter(
+      (v) => v.size.id === selectedSizeId.value
+    );
   }
 
   const colors = filteredVariants.map((v) => v.color);
-  const uniqueMap = new Map<string, typeof colors[0]>();
+  const uniqueMap = new Map<string, (typeof colors)[0]>();
 
   colors.forEach((color) => {
     if (color && !uniqueMap.has(color.id)) {
@@ -310,41 +352,108 @@ const displayPrice = computed(() => {
   };
 });
 
-const brandName = computed(() => currentProduct.value?.brand?.name || "Unknown Brand");
+const brandName = computed(
+  () => currentProduct.value?.brand?.name || "Unknown Brand"
+);
 
 const isDevelopment = computed(() => process.env.NODE_ENV === "development");
 
-const addToCart = async () => {
+const handleAddToCart = async () => {
   if (!currentProduct.value || !currentVariant.value) {
-    console.warn("No item available to add to cart");
+    text.value = "No item available to add to cart.";
+    snackbar.value = true;
     return;
   }
 
   if (currentVariant.value.quantity === 0) {
-    console.warn("Item is out of stock");
+    text.value = "Item is out of stock.";
+    snackbar.value = true;
     return;
   }
 
   if (quantity.value > currentVariant.value.quantity) {
-    console.warn("Requested quantity exceeds available stock");
+    text.value = "Requested quantity exceeds available stock.";
+    snackbar.value = true;
     return;
   }
 
-  const cartPayload = {
-    item_variant_id: currentVariant.value.id,
-    quantity: quantity.value,
-  };
-
   try {
-    await cartStore.addToCart(cartPayload);
+    // Create cart item with full data (similar to wishlist structure)
+    const cartItem = {
+      id: currentVariant.value.id, // variant ID as main ID
+      variant_id: currentVariant.value.id,
+      item_id: currentProduct.value.id,
+      quantity: quantity.value,
+      added_at: new Date().toISOString(),
+      
+      // Full variant data
+      variant: {
+        id: currentVariant.value.id,
+        item_id: currentProduct.value.id,
+        color_id: currentVariant.value.color_id,
+        size_id: currentVariant.value.size_id,
+        image: currentVariant.value.image,
+        price: currentVariant.value.price,
+        final_price: currentVariant.value.final_price || currentVariant.value.price,
+        quantity: currentVariant.value.quantity,
+        // is_favorite: currentVariant.value.is_favorite,
+        created_at: currentVariant.value.created_at,
+        updated_at: currentVariant.value.updated_at,
+        
+        // Include color, size, and item data if available
+        color: currentVariant.value.color,
+        size: currentVariant.value.size,
+        item: {
+          id: currentProduct.value.id,
+          name: currentProduct.value.name,
+          description: currentProduct.value.description,
+          // total_sold: currentProduct.value.total_sold,
+          // last_sale_at: currentProduct.value.last_sale_at,
+          // is_featured_new_arrival: currentProduct.value.is_featured_new_arrival,
+          // is_featured_trending: currentProduct.value.is_featured_trending,
+          category_id: currentProduct.value.category_id,
+          season_id: currentProduct.value.season_id,
+          brand_id: currentProduct.value.brand_id,
+          discount_id: currentProduct.value.discount_id,
+          created_at: currentProduct.value.created_at,
+          updated_at: currentProduct.value.updated_at,
+          
+          // Include related data if available
+          brand: currentProduct.value.brand,
+          category: currentProduct.value.category,
+          season: currentProduct.value.season
+          // discount: currentProduct.value.discount // Removed to fix type error
+        }
+      }
+    };
 
-    if (cartStore.error) {
-      console.error("Failed to add to cart:", cartStore.error);
+    // Get current cart from localStorage
+    const existingCart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    // Check if the item already exists in the cart
+    const index = existingCart.findIndex(
+      (item: any) => item.variant_id === cartItem.variant_id
+    );
+
+    if (index !== -1) {
+      // Update quantity if item exists
+      existingCart[index].quantity += cartItem.quantity;
+      existingCart[index].added_at = cartItem.added_at; // Update timestamp
     } else {
-      quantity.value = 1;
+      // Add new item with full data
+      existingCart.push(cartItem);
     }
+
+    // Save back to localStorage
+    localStorage.setItem("cart", JSON.stringify(existingCart));
+
+    text.value = "Item successfully added to cart!";
+    quantity.value = 1;
   } catch (error) {
-    console.error("Error adding to cart:", error);
+    text.value = "Something went wrong while adding to cart.";
+    console.error(error);
+  } finally {
+    snackbar.value = true;
   }
 };
 
@@ -462,7 +571,11 @@ onMounted(async () => {
   <div class="">
     <!-- Loading state -->
     <div v-if="isLoadingProduct" class="text-center py-10">
-      <v-progress-circular indeterminate color="primary" size="64"></v-progress-circular>
+      <v-progress-circular
+        indeterminate
+        color="primary"
+        size="64"
+      ></v-progress-circular>
       <p class="mt-4">Loading product details...</p>
     </div>
 
@@ -472,13 +585,17 @@ onMounted(async () => {
         {{ productError }}
       </v-alert>
       <p class="text-gray-600 mb-4">Product ID: {{ productId }}</p>
-      <v-btn color="primary" @click="router.push('/')"> Back to Products </v-btn>
+      <v-btn color="primary" @click="router.push('/')">
+        Back to Products
+      </v-btn>
     </div>
 
     <!-- Product content -->
     <div
       v-else-if="
-        currentProduct && currentProduct.variants && currentProduct.variants.length > 0
+        currentProduct &&
+        currentProduct.variants &&
+        currentProduct.variants.length > 0
       "
     >
       <v-container fluid>
@@ -538,7 +655,11 @@ onMounted(async () => {
                     <template v-slot:item="props">
                       <v-icon
                         size="25"
-                        :color="props.isFilled ? colors[props.index] : 'grey-lighten-1'"
+                        :color="
+                          props.isFilled
+                            ? colors[props.index]
+                            : 'grey-lighten-1'
+                        "
                       >
                         {{ props.isFilled ? "mdi-star" : "mdi-star-outline" }}
                       </v-icon>
@@ -548,7 +669,9 @@ onMounted(async () => {
 
                 <!-- Price Display -->
                 <div class="d-flex items-center my-3">
-                  <p class="text-red mr-2 text-[30px]">${{ displayPrice.final }} USD</p>
+                  <p class="text-red mr-2 text-[30px]">
+                    ${{ displayPrice.final }} USD
+                  </p>
                   <p
                     v-if="displayPrice.hasDiscount"
                     class="line-through text-gray-500 text-[15px]"
@@ -576,7 +699,12 @@ onMounted(async () => {
                         v-bind="activatorProps"
                         class="flex flex-col items-center justify-center cursor-pointer"
                       >
-                        <v-btn class="text-blue" variant="text" size="x-large" icon>
+                        <v-btn
+                          class="text-blue"
+                          variant="text"
+                          size="x-large"
+                          icon
+                        >
                           <v-icon size="40">mingcute:t-shirt-fill</v-icon>
                         </v-btn>
                         <p>Size Guide</p>
@@ -615,7 +743,8 @@ onMounted(async () => {
                     class="relative mb-2 w-[180px] flex-shrink-0 cursor-pointer hover:shadow-lg transition-shadow"
                     @click="selectVariant(variant.id)"
                     :class="{
-                      'border-2 border-primary': selectedVariantId === variant.id,
+                      'border-2 border-primary':
+                        selectedVariantId === variant.id,
                     }"
                   >
                     <!-- Variant Info Badge -->
@@ -726,7 +855,7 @@ onMounted(async () => {
                     class="text-white px-10 w-[55%] md:w-[65%]"
                     rounded="lg"
                     size="large"
-                    @click="addToCart"
+                    @click="handleAddToCart()"
                     :disabled="isAddToCartDisabled"
                     :loading="cartStore.loading"
                   >
@@ -735,15 +864,15 @@ onMounted(async () => {
 
                   <!-- Favorite Button -->
                   <v-btn
+                    @click.stop="
+                      handleAddToWishlist(currentProduct.variants[0])
+                    "
                     icon
-                    variant="outlined"
-                    rounded="lg"
                     :class="
                       favoriteVariants.has(currentProduct.variants[0].id)
                         ? 'text-red'
                         : 'bg-white text-black'
                     "
-                    @click.stop="addToFavorites(currentProduct.variants[0].id)"
                   >
                     <v-icon
                       :icon="
@@ -765,7 +894,11 @@ onMounted(async () => {
                   {{ text }}
 
                   <template v-slot:actions>
-                    <v-btn variant="text" class="text-white" @click="snackbar = false">
+                    <v-btn
+                      variant="text"
+                      class="text-white"
+                      @click="snackbar = false"
+                    >
                       Close
                     </v-btn>
                   </template>
@@ -776,7 +909,7 @@ onMounted(async () => {
                   size="large"
                   color="primary"
                   rounded="lg"
-                  @click="buyNow"
+                  @click="router.push('/cart')"
                   :disabled="isAddToCartDisabled"
                   :loading="cartStore.loading"
                 >
@@ -825,7 +958,9 @@ onMounted(async () => {
                   <v-col cols="12" md="5" class="">
                     <div class="">
                       <div class="border-b-2 pb-2 border-gray-300">
-                        <p class="text-[20px] font-bold">Perfect Quality Wear</p>
+                        <p class="text-[20px] font-bold">
+                          Perfect Quality Wear
+                        </p>
                       </div>
                       <p class="py-4 text-gray-500">
                         <span class="pl-5"></span>
@@ -853,7 +988,9 @@ onMounted(async () => {
                     </div>
                     <div class="">
                       <div class="border-b-2 pb-2 border-gray-300">
-                        <p class="text-[20px] font-bold">Washing Instructions</p>
+                        <p class="text-[20px] font-bold">
+                          Washing Instructions
+                        </p>
                       </div>
                       <div>
                         <v-list class="pa-0">
@@ -863,7 +1000,9 @@ onMounted(async () => {
                             class="d-flex align-center pa-0"
                             density="compact"
                           >
-                            <v-icon size="large" class="mr-2">mdi-circle-small</v-icon>
+                            <v-icon size="large" class="mr-2"
+                              >mdi-circle-small</v-icon
+                            >
                             <span class="text-gray-600">{{ item }}</span>
                           </v-list-item>
                         </v-list>
@@ -923,7 +1062,9 @@ onMounted(async () => {
                                         : 'grey-lighten-1'
                                     "
                                   >
-                                    {{ props.isFilled ? "noto:star" : "uim:star" }}
+                                    {{
+                                      props.isFilled ? "noto:star" : "uim:star"
+                                    }}
                                   </v-icon>
                                 </template>
                               </v-rating>
@@ -939,8 +1080,8 @@ onMounted(async () => {
                   <v-col cols="12" md="5">
                     <p class="font-bold text-[25px]">Be the first to review</p>
                     <p class="text-gray-400 my-2">
-                      Your email address will not be published. Required fields are marked
-                      *
+                      Your email address will not be published. Required fields
+                      are marked *
                     </p>
                     <!-- rating -->
                     <div class="flex items-center">
@@ -953,7 +1094,9 @@ onMounted(async () => {
                             <v-icon
                               size="20"
                               :color="
-                                props.isFilled ? colors[props.index] : 'grey-lighten-1'
+                                props.isFilled
+                                  ? colors[props.index]
+                                  : 'grey-lighten-1'
                               "
                             >
                               {{ props.isFilled ? "noto:star" : "uim:star" }}
@@ -971,8 +1114,8 @@ onMounted(async () => {
                       ></v-textarea>
 
                       <p class="text-gray-500 text-[12px]">
-                        <span class="text-red">*</span> You have to be logged in to be
-                        able to review the products.
+                        <span class="text-red">*</span> You have to be logged in
+                        to be able to review the products.
                       </p>
                     </div>
                     <div class="mt-4">
@@ -1006,7 +1149,9 @@ onMounted(async () => {
 
         <!-- related products -->
         <div class="mt-10 mb-3">
-          <p class="text-center font-bold text-[25px]">{{ $t('content.product_you_may_like') }}</p>
+          <p class="text-center font-bold text-[25px]">
+            {{ $t("content.product_you_may_like") }}
+          </p>
         </div>
 
         <!-- recommendation -->
@@ -1027,7 +1172,9 @@ onMounted(async () => {
           All Items Store Count: {{ itemStoreYou.items?.length || 0 }}
         </span>
       </v-alert>
-      <v-btn color="primary" @click="router.push('/')"> Back to Products </v-btn>
+      <v-btn color="primary" @click="router.push('/')">
+        Back to Products
+      </v-btn>
     </div>
   </div>
 </template>

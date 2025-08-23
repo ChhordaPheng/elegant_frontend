@@ -3,7 +3,7 @@ import { useI18n } from "vue-i18n";
 
 const { locale } = useI18n();
 onMounted(async () => {
-  const storedLanguage = localStorage.getItem("lang");
+  const storedLanguage = localStorage.getItem("app_language");
   if (storedLanguage) {
     locale.value = storedLanguage;
   }

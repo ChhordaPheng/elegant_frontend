@@ -128,8 +128,8 @@ onMounted(async () => {
   await menStore.fetchManItems();
   await womenStore.fetchWomanItems();
   await topTrendingStore.fetchTopTrendings(),
-  // Start auto-fetching promotion data every 30 seconds
-  startAutoFetch(30);
+    // Start auto-fetching promotion data every 30 seconds
+    startAutoFetch(30);
 });
 
 onUnmounted(() => {
@@ -154,9 +154,13 @@ onUnmounted(() => {
         ></div>
 
         <!-- Main Row -->
-        <v-row class="z-500 px-2 md:px-4 items-center h-100">
+        <v-row class="z-500 px-2 md:px-4 items-center justify-center h-100">
           <!-- Column 1: Left-side Carousel -->
-          <v-col cols="12" md="4" class="flex justify-center mb-4 md:mb-0">
+          <v-col
+            cols="12"
+            md="4"
+            class="flex justify-center items-center mb-4 md:mb-0"
+          >
             <v-carousel
               :show-arrows="false"
               hide-delimiter-background
@@ -230,7 +234,7 @@ onUnmounted(() => {
           </v-col>
 
           <!-- Column 3: Right-side Card with Carousel -->
-          <v-col cols="12" md="4" class="flex justify-center">
+          <v-col cols="12" md="4" class="flex justify-center items-center">
             <v-card elevation="3" class="w-full max-w-[250px] md:max-w-[300px]">
               <v-carousel
                 :show-arrows="false"
@@ -358,11 +362,11 @@ onUnmounted(() => {
               rounded="full"
               class="bg-primary text-white rounded-xl px-3 ml-2"
               size="small"
-              to="/man"
+              to="/discount"
             >
               <div class="flex items-center gap-1">
                 <span class="text-xs md:text-sm">{{
-                  $t("buttons.learn_more")
+                  $t("buttons.see_more")
                 }}</span>
                 <Icon icon="system-uicons:upward" width="16" height="16" />
               </div>

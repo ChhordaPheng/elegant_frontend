@@ -175,13 +175,40 @@ const quickView = (productId: string | number) => {
   });
 };
 
-// Optional: Add to favorites function
-const addToFavorites = async (variantId: string) => {
+// Optional: Add to Wishlist  function
+const handleAddToWishlist = (variant: any) => {
+  if (!variant || !variant.id) {
+    text.value = "No item available to add to wishlist.";
+    snackbar.value = true;
+    return;
+  }
+
   try {
-    await favoriteStore.addToFav({ item_variant_id: variantId });
-    text.value = "Item added to favorites!";
+    const existingWishlist: any[] = JSON.parse(
+      localStorage.getItem("wishlist") || "[]"
+    );
+
+    // Check if variant already exists in wishlist
+    const existingIndex = existingWishlist.findIndex(
+      (item) => item.id === variant.id
+    );
+
+    if (existingIndex !== -1) {
+      // Remove from wishlist
+      existingWishlist.splice(existingIndex, 1);
+      localStorage.setItem("wishlist", JSON.stringify(existingWishlist));
+      favoriteVariants.value.delete(variant.id);
+      text.value = "Removed from wishlist!";
+    } else {
+      // Add full variant data to wishlist
+      existingWishlist.push(variant);
+      localStorage.setItem("wishlist", JSON.stringify(existingWishlist));
+      favoriteVariants.value.add(variant.id);
+      text.value = "Added to wishlist!";
+    }
   } catch (error) {
-    text.value = "Failed to add to favorites.";
+    text.value = "Something went wrong while updating wishlist.";
+    console.error("Wishlist error:", error);
   } finally {
     snackbar.value = true;
   }
@@ -207,26 +234,81 @@ const handleAddToCart = async () => {
     return;
   }
 
-  const cartPayload = {
-    item_variant_id: currentVariant.value.id,
-    quantity: quantity.value,
-  };
-
   try {
-    const cartPayload = {
-      item_variant_id: currentVariant.value.id,
+    // Create cart item with full data (similar to wishlist structure)
+    const cartItem = {
+      id: currentVariant.value.id, // variant ID as main ID
+      variant_id: currentVariant.value.id,
+      item_id: currentProduct.value.id,
       quantity: quantity.value,
+      added_at: new Date().toISOString(),
+      
+      // Full variant data
+      variant: {
+        id: currentVariant.value.id,
+        item_id: currentProduct.value.id,
+        color_id: currentVariant.value.color_id,
+        size_id: currentVariant.value.size_id,
+        image: currentVariant.value.image,
+        price: currentVariant.value.price,
+        final_price: currentVariant.value.final_price || currentVariant.value.price,
+        quantity: currentVariant.value.quantity,
+        is_favorite: currentVariant.value.is_favorite,
+        created_at: currentVariant.value.created_at,
+        updated_at: currentVariant.value.updated_at,
+        
+        // Include color, size, and item data if available
+        color: currentVariant.value.color,
+        size: currentVariant.value.size,
+        item: {
+          id: currentProduct.value.id,
+          name: currentProduct.value.name,
+          description: currentProduct.value.description,
+          total_sold: currentProduct.value.total_sold,
+          last_sale_at: currentProduct.value.last_sale_at,
+          is_featured_new_arrival: currentProduct.value.is_featured_new_arrival,
+          is_featured_trending: currentProduct.value.is_featured_trending,
+          category_id: currentProduct.value.category_id,
+          season_id: currentProduct.value.season_id,
+          brand_id: currentProduct.value.brand_id,
+          discount_id: currentProduct.value.discount_id,
+          created_at: currentProduct.value.created_at,
+          updated_at: currentProduct.value.updated_at,
+          
+          // Include related data if available
+          brand: currentProduct.value.brand,
+          category: currentProduct.value.category,
+          season: currentProduct.value.season,
+          discount: currentProduct.value.discount
+        }
+      }
     };
-    await cartStore.addToCart(cartPayload);
 
-    if (cartStore.error) {
-      text.value = cartStore.error || "Failed to add to cart.";
+    // Get current cart from localStorage
+    const existingCart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    // Check if the item already exists in the cart
+    const index = existingCart.findIndex(
+      (item: any) => item.variant_id === cartItem.variant_id
+    );
+
+    if (index !== -1) {
+      // Update quantity if item exists
+      existingCart[index].quantity += cartItem.quantity;
+      existingCart[index].added_at = cartItem.added_at; // Update timestamp
     } else {
-      text.value = "Item successfully added to cart!";
-      quantity.value = 1;
+      // Add new item with full data
+      existingCart.push(cartItem);
     }
+
+    // Save back to localStorage
+    localStorage.setItem("cart", JSON.stringify(existingCart));
+
+    text.value = "Item successfully added to cart!";
+    quantity.value = 1;
   } catch (error) {
     text.value = "Something went wrong while adding to cart.";
+    console.error(error);
   } finally {
     snackbar.value = true;
   }
@@ -412,10 +494,10 @@ const handleItemsPerPageChange = async (count: number | string) => {
       page: 1, // Start from first page
       // Remove per_page parameter to get all items
     };
-    
+
     // Remove per_page from the filter object if it exists
     delete filtersWithoutLimit.per_page;
-    
+
     await newArrivalStore.applyFilters(filtersWithoutLimit);
   } else {
     // For specific counts (10, 20), set per_page normally
@@ -652,7 +734,7 @@ onMounted(async () => {
                 <p class="uppercase font-bold text-[25px]">TRENDING PRODUCTS</p>
               </div>
               <div
-                v-for="topTrending in topTrendings.slice(0,2)"
+                v-for="topTrending in topTrendings.slice(0, 2)"
                 :key="topTrending.id"
                 class="border-b-[1px] border-gray-400 pb-3 mb-3"
               >
@@ -887,17 +969,16 @@ onMounted(async () => {
                             <!-- Favorite (slide from left) -->
                             <transition name="slide-left">
                               <div v-if="isHovering">
-                                <v-tooltip text="Add to Favorites">
+                                <v-tooltip text="Add to Wishlist ">
                                   <template #activator="{ props }">
                                     <v-btn
                                       v-bind="props"
-                                      icon
                                       @click.stop="
-                                        addToFavorites(
-                                          newArrival.variants[0].id
+                                        handleAddToWishlist(
+                                          newArrival.variants[0]
                                         )
                                       "
-                                      class="bg-white text-black"
+                                      icon
                                       :class="
                                         favoriteVariants.has(
                                           newArrival.variants[0].id
@@ -1282,16 +1363,16 @@ onMounted(async () => {
                         <!-- Favorite (slide from left) -->
                         <transition name="slide-left">
                           <div v-if="isHovering">
-                            <v-tooltip text="Add to Favorites">
+                            <v-tooltip text="Add to Wishlist ">
                               <template #activator="{ props }">
                                 <v-btn
                                   v-bind="props"
-                                  icon
-                                  size="small"
-                                  class="bg-white text-black"
                                   @click.stop="
-                                    addToFavorites(newArrival.variants[0].id)
+                                    handleAddToWishlist(
+                                      newArrival.variants[0]
+                                    )
                                   "
+                                  icon
                                   :class="
                                     favoriteVariants.has(
                                       newArrival.variants[0].id

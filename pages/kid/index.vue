@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import { useDisplay } from "vuetify";
 import type { Size } from "~/types/size/size";
 
@@ -176,13 +175,40 @@ const quickView = (productId: string | number) => {
   });
 };
 
-// Optional: Add to favorites function
-const addToFavorites = async (variantId: string) => {
+// Optional: Add to Wishlist  function
+const handleAddToWishlist = (variant: any) => {
+  if (!variant || !variant.id) {
+    text.value = "No item available to add to wishlist.";
+    snackbar.value = true;
+    return;
+  }
+
   try {
-    await favoriteStore.addToFav({ item_variant_id: variantId });
-    text.value = "Item added to favorites!";
+    const existingWishlist: any[] = JSON.parse(
+      localStorage.getItem("wishlist") || "[]"
+    );
+
+    // Check if variant already exists in wishlist
+    const existingIndex = existingWishlist.findIndex(
+      (item) => item.id === variant.id
+    );
+
+    if (existingIndex !== -1) {
+      // Remove from wishlist
+      existingWishlist.splice(existingIndex, 1);
+      localStorage.setItem("wishlist", JSON.stringify(existingWishlist));
+      favoriteVariants.value.delete(variant.id);
+      text.value = "Removed from wishlist!";
+    } else {
+      // Add full variant data to wishlist
+      existingWishlist.push(variant);
+      localStorage.setItem("wishlist", JSON.stringify(existingWishlist));
+      favoriteVariants.value.add(variant.id);
+      text.value = "Added to wishlist!";
+    }
   } catch (error) {
-    text.value = "Failed to add to favorites.";
+    text.value = "Something went wrong while updating wishlist.";
+    console.error("Wishlist error:", error);
   } finally {
     snackbar.value = true;
   }
@@ -208,26 +234,81 @@ const handleAddToCart = async () => {
     return;
   }
 
-  const cartPayload = {
-    item_variant_id: currentVariant.value.id,
-    quantity: quantity.value,
-  };
-
   try {
-    const cartPayload = {
-      item_variant_id: currentVariant.value.id,
+    // Create cart item with full data (similar to wishlist structure)
+    const cartItem = {
+      id: currentVariant.value.id, // variant ID as main ID
+      variant_id: currentVariant.value.id,
+      item_id: currentProduct.value.id,
       quantity: quantity.value,
+      added_at: new Date().toISOString(),
+      
+      // Full variant data
+      variant: {
+        id: currentVariant.value.id,
+        item_id: currentProduct.value.id,
+        color_id: currentVariant.value.color_id,
+        size_id: currentVariant.value.size_id,
+        image: currentVariant.value.image,
+        price: currentVariant.value.price,
+        final_price: currentVariant.value.final_price || currentVariant.value.price,
+        quantity: currentVariant.value.quantity,
+        is_favorite: currentVariant.value.is_favorite,
+        created_at: currentVariant.value.created_at,
+        updated_at: currentVariant.value.updated_at,
+        
+        // Include color, size, and item data if available
+        color: currentVariant.value.color,
+        size: currentVariant.value.size,
+        item: {
+          id: currentProduct.value.id,
+          name: currentProduct.value.name,
+          description: currentProduct.value.description,
+          total_sold: currentProduct.value.total_sold,
+          last_sale_at: currentProduct.value.last_sale_at,
+          is_featured_new_arrival: currentProduct.value.is_featured_new_arrival,
+          is_featured_trending: currentProduct.value.is_featured_trending,
+          category_id: currentProduct.value.category_id,
+          season_id: currentProduct.value.season_id,
+          brand_id: currentProduct.value.brand_id,
+          discount_id: currentProduct.value.discount_id,
+          created_at: currentProduct.value.created_at,
+          updated_at: currentProduct.value.updated_at,
+          
+          // Include related data if available
+          brand: currentProduct.value.brand,
+          category: currentProduct.value.category,
+          season: currentProduct.value.season,
+          discount: currentProduct.value.discount
+        }
+      }
     };
-    await cartStore.addToCart(cartPayload);
 
-    if (cartStore.error) {
-      text.value = cartStore.error || "Failed to add to cart.";
+    // Get current cart from localStorage
+    const existingCart = JSON.parse(localStorage.getItem("cart") || "[]");
+
+    // Check if the item already exists in the cart
+    const index = existingCart.findIndex(
+      (item: any) => item.variant_id === cartItem.variant_id
+    );
+
+    if (index !== -1) {
+      // Update quantity if item exists
+      existingCart[index].quantity += cartItem.quantity;
+      existingCart[index].added_at = cartItem.added_at; // Update timestamp
     } else {
-      text.value = "Item successfully added to cart!";
-      quantity.value = 1;
+      // Add new item with full data
+      existingCart.push(cartItem);
     }
+
+    // Save back to localStorage
+    localStorage.setItem("cart", JSON.stringify(existingCart));
+
+    text.value = "Item successfully added to cart!";
+    quantity.value = 1;
   } catch (error) {
     text.value = "Something went wrong while adding to cart.";
+    console.error(error);
   } finally {
     snackbar.value = true;
   }
@@ -381,7 +462,10 @@ const handleSortChange = (value: string) => {
 };
 
 // Apply sorting
-const applySorting = async (sortField: string, order: "asc" | "desc" = "asc") => {
+const applySorting = async (
+  sortField: string,
+  order: "asc" | "desc" = "asc"
+) => {
   const filtersWithSort = {
     ...currentFilters.value,
     sort_by: sortField,
@@ -439,7 +523,9 @@ onMounted(async () => {
       class="banner w-full flex flex-col justify-center items-center min-h-[300px] md:h-[400px] px-4"
     >
       <!-- Dynamic category name display -->
-      <p class="text-white text-[24px] sm:text-[32px] md:text-[40px] font-medium">
+      <p
+        class="text-white text-[24px] sm:text-[32px] md:text-[40px] font-medium"
+      >
         {{ selectedCategoryName }}
       </p>
 
@@ -596,7 +682,12 @@ onMounted(async () => {
               </div>
               <v-container>
                 <v-row v-if="brands">
-                  <v-col v-for="brand in brands" :key="brand.id" cols="12" md="4">
+                  <v-col
+                    v-for="brand in brands"
+                    :key="brand.id"
+                    cols="12"
+                    md="4"
+                  >
                     <v-card
                       :class="[
                         'd-flex align-center justify-center',
@@ -662,7 +753,9 @@ onMounted(async () => {
                       </div>
 
                       <!-- Item info -->
-                      <p class="font-bold my-1 text-[20px]">{{ topTrending.name }}</p>
+                      <p class="font-bold my-1 text-[20px]">
+                        {{ topTrending.name }}
+                      </p>
                       <p class="text-gray-600 text-[16px] mb-2">
                         Brand: {{ topTrending.brand.name }}
                       </p>
@@ -674,7 +767,9 @@ onMounted(async () => {
 
                       <!-- Popularity Score instead of discounted price -->
                       <div class="flex items-center my-2">
-                        <p class="text-gray-500 text-[15px]">Popularity Score:</p>
+                        <p class="text-gray-500 text-[15px]">
+                          Popularity Score:
+                        </p>
                         <p class="text-red ml-2 text-[20px]">
                           {{ topTrending.popularity_score }}
                         </p>
@@ -723,7 +818,9 @@ onMounted(async () => {
                       </div>
                     </v-col>
                     <v-col>
-                      <div class="text-end flex justify-end items-center pr-5 mt-1">
+                      <div
+                        class="text-end flex justify-end items-center pr-5 mt-1"
+                      >
                         <div class="flex border-[2px] p-1 mr-3">
                           <p
                             :class="[
@@ -760,9 +857,18 @@ onMounted(async () => {
                             class="w-44"
                             :items="[
                               { title: 'Default sorting', value: '' },
-                              { title: 'Sort by latest', value: 'created_at_desc' },
-                              { title: 'Price: High to Low', value: 'price_desc' },
-                              { title: 'Price: Low to High', value: 'price_asc' },
+                              {
+                                title: 'Sort by latest',
+                                value: 'created_at_desc',
+                              },
+                              {
+                                title: 'Price: High to Low',
+                                value: 'price_desc',
+                              },
+                              {
+                                title: 'Price: Low to High',
+                                value: 'price_asc',
+                              },
                               { title: 'Name: A to Z', value: 'name_asc' },
                               { title: 'Name: Z to A', value: 'name_desc' },
                             ]"
@@ -780,7 +886,10 @@ onMounted(async () => {
                     <div v-if="kidStore.isLoading" class="w-full">
                       <v-row>
                         <v-col v-for="n in 8" :key="n" cols="12" sm="6" md="3">
-                          <v-skeleton-loader type="card" height="400"></v-skeleton-loader>
+                          <v-skeleton-loader
+                            type="card"
+                            height="400"
+                          ></v-skeleton-loader>
                         </v-col>
                       </v-row>
                     </div>
@@ -801,7 +910,11 @@ onMounted(async () => {
                       <p class="text-gray-500">
                         Try adjusting your filters or search criteria.
                       </p>
-                      <v-btn color="primary" class="mt-4" @click="clearAllFilters">
+                      <v-btn
+                        color="primary"
+                        class="mt-4"
+                        @click="clearAllFilters"
+                      >
                         Clear All Filters
                       </v-btn>
                     </div>
@@ -815,7 +928,10 @@ onMounted(async () => {
                       variant="text"
                     >
                       <v-hover v-slot="{ isHovering, props }">
-                        <div v-bind="props" class="relative w-full cursor-pointer">
+                        <div
+                          v-bind="props"
+                          class="relative w-full cursor-pointer"
+                        >
                           <!-- Product Image -->
                           <img
                             :src="
@@ -834,22 +950,29 @@ onMounted(async () => {
                             <!-- Favorite (slide from left) -->
                             <transition name="slide-left">
                               <div v-if="isHovering">
-                                <v-tooltip text="Add to Favorites">
+                                <v-tooltip text="Add to Wishlist ">
                                   <template #activator="{ props }">
                                     <v-btn
                                       v-bind="props"
+                                      @click.stop="
+                                        handleAddToWishlist(
+                                          kidItem.variants[0]
+                                        )
+                                      "
                                       icon
-                                      @click.stop="addToFavorites(kidItem.variants[0].id)"
-                                      class="bg-white text-black"
                                       :class="
-                                        favoriteVariants.has(kidItem.variants[0].id)
+                                        favoriteVariants.has(
+                                          kidItem.variants[0].id
+                                        )
                                           ? 'text-red'
                                           : 'bg-white text-black'
                                       "
                                     >
                                       <v-icon
                                         :icon="
-                                          favoriteVariants.has(kidItem.variants[0].id)
+                                          favoriteVariants.has(
+                                            kidItem.variants[0].id
+                                          )
                                             ? 'mdi-heart'
                                             : 'mdi-heart-outline'
                                         "
@@ -1071,7 +1194,12 @@ onMounted(async () => {
               </div>
               <v-container>
                 <v-row v-if="brands">
-                  <v-col v-for="brand in brands" :key="brand.id" cols="6" md="4">
+                  <v-col
+                    v-for="brand in brands"
+                    :key="brand.id"
+                    cols="6"
+                    md="4"
+                  >
                     <v-card
                       :class="[
                         'd-flex align-center justify-center',
@@ -1148,7 +1276,10 @@ onMounted(async () => {
               <div v-if="kidStore.isLoading" class="w-full">
                 <v-row>
                   <v-col v-for="n in 6" :key="n" cols="6">
-                    <v-skeleton-loader type="card" height="300"></v-skeleton-loader>
+                    <v-skeleton-loader
+                      type="card"
+                      height="300"
+                    ></v-skeleton-loader>
                   </v-col>
                 </v-row>
               </div>
@@ -1163,9 +1294,16 @@ onMounted(async () => {
                   size="48"
                   class="text-gray-400 mb-4"
                 ></v-icon>
-                <h3 class="text-lg font-medium text-gray-600 mb-2">No products found</h3>
+                <h3 class="text-lg font-medium text-gray-600 mb-2">
+                  No products found
+                </h3>
                 <p class="text-gray-500 text-sm">Try adjusting your filters.</p>
-                <v-btn color="primary" size="small" class="mt-4" @click="clearAllFilters">
+                <v-btn
+                  color="primary"
+                  size="small"
+                  class="mt-4"
+                  @click="clearAllFilters"
+                >
                   Clear Filters
                 </v-btn>
               </div>
@@ -1194,18 +1332,20 @@ onMounted(async () => {
                       />
 
                       <!-- Animated Buttons on Hover for Mobile -->
-                      <div class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2">
+                      <div
+                        class="absolute bottom-2 left-1/2 -translate-x-1/2 flex gap-2"
+                      >
                         <!-- Favorite (slide from left) -->
                         <transition name="slide-left">
                           <div v-if="isHovering">
-                            <v-tooltip text="Add to Favorites">
+                            <v-tooltip text="Add to Wishlist ">
                               <template #activator="{ props }">
                                 <v-btn
                                   v-bind="props"
+                                  @click.stop="
+                                    handleAddToWishlist(kidItem.variants[0])
+                                  "
                                   icon
-                                  size="small"
-                                  class="bg-white text-black"
-                                  @click.stop="addToFavorites(kidItem.variants[0].id)"
                                   :class="
                                     favoriteVariants.has(kidItem.variants[0].id)
                                       ? 'text-red'
@@ -1214,7 +1354,9 @@ onMounted(async () => {
                                 >
                                   <v-icon
                                     :icon="
-                                      favoriteVariants.has(kidItem.variants[0].id)
+                                      favoriteVariants.has(
+                                        kidItem.variants[0].id
+                                      )
                                         ? 'mdi-heart'
                                         : 'mdi-heart-outline'
                                     "
@@ -1256,7 +1398,10 @@ onMounted(async () => {
                                   class="bg-white text-black"
                                   @click="addToCart(kidItem.variants[0].id)"
                                 >
-                                  <v-icon icon="pepicons-pencil:cart" size="16" />
+                                  <v-icon
+                                    icon="pepicons-pencil:cart"
+                                    size="16"
+                                  />
                                 </v-btn>
                               </template>
                             </v-tooltip>
@@ -1274,7 +1419,9 @@ onMounted(async () => {
                     >
                       {{ kidItem.name }}
                     </p>
-                    <p class="text-blue-700 font-bold uppercase my-1 text-[12px]">
+                    <p
+                      class="text-blue-700 font-bold uppercase my-1 text-[12px]"
+                    >
                       {{ kidItem.brand.name }}
                     </p>
                     <div class="d-flex justify-center mb-2">
@@ -1328,7 +1475,9 @@ onMounted(async () => {
       {{ text }}
 
       <template v-slot:actions>
-        <v-btn variant="text" class="text-white" @click="snackbar = false"> Close </v-btn>
+        <v-btn variant="text" class="text-white" @click="snackbar = false">
+          Close
+        </v-btn>
       </template>
     </v-snackbar>
   </div>
@@ -1358,7 +1507,7 @@ onMounted(async () => {
 
 .line-clamp-2 {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  /* -webkit-line-clamp: 2; */
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

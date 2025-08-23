@@ -15,7 +15,7 @@ const dialogShowLang = defineModel<boolean>({ default: false });
 const activeLanguage = ref<string>("");
 const selectedLanguage = ref<string>("");
 
-const LANG_KEY = "language";
+const LANG_KEY = "app_language";
 
 const languages: Language[] = [
   {

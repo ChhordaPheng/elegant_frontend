@@ -1,3 +1,13 @@
+export interface DiscountedItemsResponse {
+  success: boolean;
+  message: string;
+  status_code: number;
+  data: DiscountItem[];
+  pagination: Pagination;
+  filters_applied: FiltersApplied;
+  filter_summary: FilterSummary;
+}
+
 export interface Discount {
   id: string;
   name: string;
@@ -115,7 +125,7 @@ export interface Season {
   updated_at: string;
 }
 
-export interface DataItem {
+export interface DiscountItem {
   id: string;
   name: string;
   description: string;
@@ -149,12 +159,25 @@ export interface Pagination {
   has_more_pages: boolean;
 }
 
-export interface DiscountedItemsResponse {
-  success: boolean;
-  message: string;
-  status_code: number;
-  data: DataItem[];
-  pagination: Pagination;
-  filters_applied: any[];
-  filter_summary: any[];
+export interface FiltersApplied {
+  brand_id: string;
+  category_id: string;
+  color_id: string;
+  size_id: string;
+  min_price: string;
+  max_price: string;
+  sort_order: string;
+}
+
+export interface FilterSummary {
+  brand: string;
+  category: string;
+  color: string;
+  size: string;
+  price_range: PriceRange;
+}
+
+export interface PriceRange {
+  min: string;
+  max: string;
 }

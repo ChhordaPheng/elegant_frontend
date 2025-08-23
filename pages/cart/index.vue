@@ -1,17 +1,23 @@
 <script setup lang="ts">
 import { useFetchDataApi } from "~/composables/userFetchApi";
 import QRCode from "qrcode";
+import Login from "~/components/Login.vue";
 
 // Nuxt-specific imports
 const router = useRouter();
 const config = useRuntimeConfig();
 const qrCodeDataUrl = ref<string>("");
 
-// Use the cart store and profile store
-const cartStore = useCartStore();
+// Use stores (only for deliveries and addresses)
 const profileStore = useProfileStore();
+const deliveryStore = useDeliveryStore();
 
-// Types (these would be in your types directory)
+// Authentication stores and state
+const loginStore = useLoginStore();
+const { authenticated } = storeToRefs(loginStore);
+const token = useCookie("accessToken");
+
+// Types
 interface Delivery {
   id: string;
   name: string;
@@ -29,14 +35,26 @@ interface Order {
 }
 
 interface OrderRequest {
-  cart_id: string;
+  items: Array<{
+    item_variant_id: string;
+    quantity: number;
+    item_name: string;
+    item_sku?: string | null;
+    size: string;
+    color: string;
+    item_image: string;
+    original_price: number;
+    final_price: number;
+    total_price: number;
+    discount_amount: number;
+    discount_type?: string | null;
+    discount_value?: number | null;
+  }>;
   delivery_id: string;
-  payment_method: string;
-  shipping_address: string;
-  address_name: string;
+  payment_method: "bank_transfer" | "cash_on_delivery" | "cash";
+  address_id?: string;
   phone: string;
   note: string;
-  address_id?: string;
 }
 
 interface Address {
@@ -57,36 +75,151 @@ interface Address {
 const dialog = ref(false);
 const paymentDialog = ref(false);
 const deliveryDialog = ref(false);
-const addressDialog = ref(false); // New address selection dialog
+const addressDialog = ref(false);
+const loginDialog = ref(false);
+const hahaDialog = ref(false);
+const loginTab = ref("login");
+
 const isValid = ref(false);
 const selectedDelivery = ref<Delivery | null>(null);
-const selectedAddress = ref<Address | null>(null); // New selected address
+const selectedAddress = ref<Address | null>(null);
+const selectedPaymentMethod = ref<
+  "bank_transfer" | "cash_on_delivery" | "cash"
+>("bank_transfer");
 const deliveries = ref<Delivery[]>([]);
-const addresses = ref<Address[]>([]); // New addresses array
+const addresses = ref<Address[]>([]);
 const currentOrder = ref<Order | null>(null);
-const paymentStatus = ref<"pending" | "checking" | "completed" | "failed">("pending");
+const paymentStatus = ref<"pending" | "checking" | "completed" | "failed">(
+  "pending"
+);
 const paymentCheckInterval = ref<NodeJS.Timeout | null>(null);
 
-// Add missing reactive state properties
+// Cart state (localStorage only)
+const cartItems = ref<any[]>([]);
+const cartLoaded = ref(false);
+
+// Loading and error states
 const isLoading = ref(false);
 const loading = ref(false);
 const error = ref<string | null>(null);
 
-// Use store's computed values instead of local cart data
-const cartItems = computed(() => cartStore.cartData?.items || []);
-const totalSavings = computed(() => cartStore.cartData?.total_savings || 0);
-const subtotal = computed(() => cartStore.cartData?.total_amount || 0);
-const originalSubtotal = computed(() => cartStore.cartData?.original_total_amount || 0);
-const deliveryFee = computed(() => {
-  return selectedDelivery.value ? parseFloat(selectedDelivery.value.delivery_fee) : 2;
-});
-const total = computed(() => subtotal.value + deliveryFee.value);
+// Success/Error snackbar
+const snackbar = ref(false);
+const snackbarMessage = ref("");
+const snackbarColor = ref("success");
 
-const copyQrString = () => {
-  if (currentOrder.value?.qr_string) {
-    navigator.clipboard.writeText(currentOrder.value.qr_string);
+// Login form states
+const showLoginPassword = ref<boolean>(false);
+const showRegisterPassword = ref<boolean>(false);
+const showConfirmPassword = ref<boolean>(false);
+const loginErrors = ref<Record<string, string>>({});
+const loginMessage = ref("");
+const loginSnackbar = ref<boolean>(false);
+
+// Payment method options
+const paymentMethods = [
+  {
+    value: "bank_transfer",
+    label: "Bank Transfer",
+    description: "Pay via QR code using your banking app",
+    icon: "mdi-qrcode",
+  },
+  {
+    value: "cash_on_delivery",
+    label: "Cash on Delivery",
+    description: "Pay cash when your order arrives",
+    icon: "mdi-truck-delivery",
+  },
+  {
+    value: "cash",
+    label: "Cash Payment",
+    description: "Pay cash at pickup location",
+    icon: "mdi-cash",
+  },
+];
+
+// Cart functions (localStorage only)
+const loadCartFromStorage = () => {
+  if (process.client) {
+    try {
+      const savedCart = localStorage.getItem("cart");
+      if (savedCart) {
+        cartItems.value = JSON.parse(savedCart);
+      } else {
+        cartItems.value = [];
+      }
+      cartLoaded.value = true;
+    } catch (error) {
+      console.error("Failed to load cart from localStorage:", error);
+      cartItems.value = [];
+      cartLoaded.value = true;
+    }
   }
 };
+
+const saveCartToStorage = () => {
+  if (process.client) {
+    try {
+      localStorage.setItem("cart", JSON.stringify(cartItems.value));
+    } catch (error) {
+      console.error("Failed to save cart to localStorage:", error);
+    }
+  }
+};
+
+const clearCart = () => {
+  if (process.client) {
+    cartItems.value = [];
+    localStorage.removeItem("cart");
+    console.log("Cart cleared from localStorage");
+  }
+};
+
+const updateItemTotal = (index: number) => {
+  const item = cartItems.value[index];
+  const finalPrice =
+    item.variant?.final_price ||
+    item.final_price ||
+    item.variant?.price ||
+    item.price;
+  cartItems.value[index].total_price = finalPrice * item.quantity;
+};
+
+// Computed properties
+const hasItems = computed(() => cartItems.value.length > 0);
+const totalItems = computed(() => cartItems.value.length);
+
+const subtotal = computed(() => {
+  return cartItems.value.reduce((sum, item) => {
+    const finalPrice =
+      item.variant?.final_price ||
+      item.final_price ||
+      item.variant?.price ||
+      item.price;
+    return sum + finalPrice * item.quantity;
+  }, 0);
+});
+
+const originalSubtotal = computed(() => {
+  return cartItems.value.reduce((sum, item) => {
+    const originalPrice =
+      item.variant?.price ||
+      item.price ||
+      item.variant?.final_price ||
+      item.final_price;
+    return sum + originalPrice * item.quantity;
+  }, 0);
+});
+
+const totalSavings = computed(() => originalSubtotal.value - subtotal.value);
+
+const deliveryFee = computed(() => {
+  return selectedDelivery.value
+    ? parseFloat(selectedDelivery.value.delivery_fee)
+    : 2;
+});
+
+const total = computed(() => subtotal.value + deliveryFee.value);
 
 // Form data
 const form = ref({
@@ -95,7 +228,7 @@ const form = ref({
   address: "",
   selectedItem: null as any | null,
   note: "",
-  useExistingAddress: false, // New flag for address type
+  useExistingAddress: false,
 });
 
 // Form validation rules
@@ -112,19 +245,90 @@ const formattedAddress = computed(() => {
   return `${addr.home}, ${addr.street}, ${addr.city}, ${addr.country}`;
 });
 
+// FIXED: Check authentication before checkout using consistent method
+const proceedToCheckout = () => {
+  if (!process.client) return;
+
+  // Use the authentication store directly (same as header component)
+  const accessToken = token.value;
+  const isAuthenticated = authenticated.value;
+
+  if (!accessToken || !isAuthenticated) {
+    hahaDialog.value = true;
+    return;
+  }
+  dialog.value = true;
+};
+
+// Show snackbar function
+const showSnackbar = (message: string, color: string = "success") => {
+  snackbarMessage.value = message;
+  snackbarColor.value = color;
+  snackbar.value = true;
+};
+
+// FIXED: Login functions - consistent with header component authentication
+const handleLoginInDialog = async () => {
+  try {
+    loginErrors.value = {};
+    loginMessage.value = "";
+    loginSnackbar.value = false;
+
+    if (!loginStore.user.phone_number) {
+      loginErrors.value.username = "Phone number is required";
+      loginSnackbar.value = true;
+      return;
+    }
+
+    if (!loginStore.user.password) {
+      loginErrors.value.password = "Password is required";
+      loginSnackbar.value = true;
+      return;
+    }
+
+    const response = await loginStore.fetchLogin();
+
+    if (response && response.customer) {
+      // Store user data consistently with header component
+      if (process.client) {
+        localStorage.setItem("user", JSON.stringify(response.customer));
+        // Don't manually set tokens - let the fetchLogin handle cookies
+      }
+
+      loginMessage.value = "Login successful! Proceeding to checkout...";
+      loginSnackbar.value = true;
+
+      setTimeout(() => {
+        hahaDialog.value = false;
+        dialog.value = true;
+      }, 1000);
+    } else {
+      loginMessage.value = "Login failed. Please check your credentials";
+      loginSnackbar.value = true;
+    }
+  } catch (error: any) {
+    if (error?.response?.data?.errors) {
+      loginErrors.value = error.response.data.errors;
+      loginMessage.value = "Please check the errors and try again";
+    } else if (error?.response?.data?.error) {
+      loginMessage.value = error.response.data.error;
+    } else {
+      loginMessage.value = "Login failed. Please try again";
+    }
+    loginSnackbar.value = true;
+  }
+};
+
 // API Functions
 const fetchDeliveries = async () => {
   try {
     isLoading.value = true;
     error.value = null;
 
-    const response = await useFetchDataApi<{
-      status: string;
-      data: Delivery[];
-    }>("/delivery");
+    const response = await deliveryStore.fetchDeliveries();
 
-    if (response.data.value?.status === "success") {
-      deliveries.value = response.data.value.data;
+    if (response && response.data) {
+      deliveries.value = response.data;
       if (!selectedDelivery.value && deliveries.value.length > 0) {
         selectedDelivery.value = deliveries.value[0];
       }
@@ -137,13 +341,11 @@ const fetchDeliveries = async () => {
   }
 };
 
-// New function to fetch addresses
 const fetchAddresses = async () => {
   try {
     const addressData = await profileStore.getAddress();
     if (addressData && Array.isArray(addressData)) {
       addresses.value = addressData;
-      // Set default address if available
       const defaultAddress = addressData.find((addr) => addr.is_default === 1);
       if (defaultAddress) {
         selectedAddress.value = defaultAddress;
@@ -159,212 +361,206 @@ const fetchAddresses = async () => {
   }
 };
 
+// Transform cart items for order
+const transformCartItemsForOrder = (items: any[]) => {
+  return items.map((item) => ({
+    item_variant_id: item.variant?.id || item.variant_id || item.id,
+    quantity: item.quantity,
+    item_name: item.variant?.item?.name || item.name,
+    item_sku: item.variant?.item?.sku || null,
+    size: item.variant?.size?.name || item.size,
+    color: item.variant?.color?.name || item.color,
+    item_image: item.variant?.image || item.image,
+    original_price:
+      item.variant?.price ||
+      item.price ||
+      item.variant?.final_price ||
+      item.final_price,
+    final_price:
+      item.variant?.final_price ||
+      item.final_price ||
+      item.variant?.price ||
+      item.price,
+    total_price:
+      (item.variant?.final_price ||
+        item.final_price ||
+        item.variant?.price ||
+        item.price) * item.quantity,
+    discount_amount: Math.max(
+      0,
+      (item.variant?.price || item.price || 0) -
+        (item.variant?.final_price ||
+          item.final_price ||
+          item.variant?.price ||
+          item.price)
+    ),
+    discount_type: null,
+    discount_value: null,
+  }));
+};
+
+// Place order
 const placeOrder = async () => {
   if (
     !selectedDelivery.value ||
+    !selectedPaymentMethod.value ||
     (!form.value.useExistingAddress &&
       (!form.value.name || !form.value.phoneNumber || !form.value.address)) ||
     (form.value.useExistingAddress && !selectedAddress.value)
   ) {
+    showSnackbar("Please complete all required fields.", "error");
     return;
   }
-
+  if (
+    form.value.useExistingAddress &&
+    selectedAddress.value &&
+    !selectedAddress.value.phone
+  ) {
+    showSnackbar("Selected address must have a phone number", "error");
+    return;
+  }
   try {
     loading.value = true;
-    cartStore.loading = true;
     error.value = null;
-
     const orderData: OrderRequest = {
-      cart_id: cartStore.cartData?.cart_id || "",
+      items: transformCartItemsForOrder(cartItems.value),
       delivery_id: selectedDelivery.value.id,
-      payment_method: "bank",
-      shipping_address: form.value.useExistingAddress
-        ? formattedAddress.value
-        : form.value.address,
-      address_name: form.value.useExistingAddress
-        ? selectedAddress.value?.name || ""
-        : form.value.name,
+      payment_method: selectedPaymentMethod.value,
       phone: form.value.useExistingAddress
         ? selectedAddress.value?.phone || ""
         : form.value.phoneNumber,
       note: form.value.note || "",
     };
-
     if (form.value.useExistingAddress && selectedAddress.value) {
       orderData.address_id = selectedAddress.value.id;
     }
-
-    const response = await useFetchDataApi<{ status: string; data: Order }>("/orders", {
-      method: "POST",
-      body: orderData,
-    });
-
-    if (response.data.value?.status === "success" && response.data) {
-      currentOrder.value = response.data.value.data;
-      // Generate QR code when order is created
-      if (currentOrder.value.qr_string) {
-        await generateQRCode(currentOrder.value.qr_string);
+    const response = await useFetchDataApi<{ status: string; data: Order }>(
+      "/orders",
+      {
+        method: "POST",
+        body: orderData,
       }
-      dialog.value = false;
-      paymentDialog.value = true;
-      startPaymentCheck();
+    );
+    if (response.data.value?.status === "success" && response.data.value.data) {
+      currentOrder.value = response.data.value.data;
+      dialog.value = false; // Close checkout dialog
+      console.log("📦 Order created:", currentOrder.value);
+
+      if (selectedPaymentMethod.value === "bank_transfer") {
+        if (currentOrder.value.qr_string) {
+          console.log("🏦 Bank transfer selected, generating QR code...");
+          try {
+            await generateQRCode(currentOrder.value.qr_string);
+            console.log("✅ QR Code generated, opening dialog...");
+            paymentDialog.value = true;
+            startPaymentCheck(); // Payment check will handle clearCart on success
+          } catch (qrError) {
+            console.error("❌ Failed to generate QR code:", qrError);
+            showSnackbar("Failed to generate QR code. Please try again.", "error");
+            paymentStatus.value = "failed";
+            return;
+          }
+        } else {
+          console.error("❌ No QR string in order response");
+          showSnackbar("No QR code provided by the server.", "error");
+          paymentStatus.value = "failed";
+          return;
+        }
+      } else {
+        // For cash_on_delivery or cash, clear cart immediately
+        clearCart();
+        const paymentTypeText =
+          selectedPaymentMethod.value === "cash_on_delivery"
+            ? "You will pay when your order is delivered."
+            : "You will pay at the pickup location.";
+        showSnackbar(
+          `Order placed successfully! ${paymentTypeText}`,
+          "success"
+        );
+        setTimeout(() => {
+          router.push("/cart");
+        }, 2000);
+      }
     } else {
-      throw response.data.value?.data || new Error("Order failed");
+      throw new Error("Order creation failed");
     }
   } catch (err: any) {
     console.error("Order creation failed:", err);
     error.value = err.message || "Failed to place order. Please try again.";
+    showSnackbar("Failed to place order. Please try again.", "error");
   } finally {
     loading.value = false;
-    cartStore.loading = false;
   }
 };
 
-const placeSingleItemOrder = async () => {
-  if (!selectedDelivery.value || !form.value.selectedItem) {
+// Payment checking (only for bank_transfer)
+const startPaymentCheck = () => {
+  if (
+    !currentOrder.value ||
+    selectedPaymentMethod.value !== "bank_transfer" ||
+    !paymentDialog.value
+  ) {
+    console.log("Payment check not started: invalid conditions");
     return;
   }
-
-  try {
-    loading.value = true;
-    error.value = null;
-
-    const orderData = {
-      cart_id: cartStore.cartData?.cart_id || "",
-      item_variant_id: form.value.selectedItem.item_variant.id,
-      quantity: form.value.selectedItem.quantity,
-      delivery_id: selectedDelivery.value.id,
-      payment_method: "bank",
-      shipping_address: form.value.useExistingAddress
-        ? formattedAddress.value
-        : form.value.address,
-      address_name: form.value.useExistingAddress
-        ? selectedAddress.value?.name || ""
-        : form.value.name,
-      phone: form.value.useExistingAddress
-        ? selectedAddress.value?.phone || ""
-        : form.value.phoneNumber,
-      note: form.value.note || "",
-      ...(form.value.useExistingAddress &&
-        selectedAddress.value && {
-          address_id: selectedAddress.value.id,
-        }),
-    };
-
-    const response = await useFetchDataApi<{ status: string; data: Order }>("/orders", {
-      method: "POST",
-      body: orderData,
-    });
-
-    if (response.data.value?.status === "success" && response.data) {
-      currentOrder.value = response.data.value.data;
-      // Calculate the correct total for single item
-      currentOrder.value.total_amount =
-        form.value.selectedItem.total_price +
-        parseFloat(selectedDelivery.value.delivery_fee);
-
-      if (currentOrder.value.qr_string) {
-        await generateQRCode(currentOrder.value.qr_string);
-      }
-      dialog.value = false;
-      paymentDialog.value = true;
-      startPaymentCheck();
-    } else {
-      throw response.data.value?.data || new Error("Order failed");
-    }
-  } catch (err: any) {
-    console.error("Single item order creation failed:", err);
-    error.value = err.message || "Failed to place order. Please try again.";
-  } finally {
-    loading.value = false;
-  }
-};
-
-const startPaymentCheck = () => {
-  if (!currentOrder.value) return;
-
   paymentStatus.value = "checking";
-
   paymentCheckInterval.value = setInterval(async () => {
+    if (!paymentDialog.value) {
+      stopPaymentCheck();
+      showSnackbar("Payment check stopped due to dialog closure.", "info");
+      return;
+    }
     try {
       const res = await useFetchDataApi<{ status: string }>(
         `/orders/${currentOrder.value!.order_id}/status`
       );
-
       if (res.data.value?.status === "completed") {
         paymentStatus.value = "completed";
         stopPaymentCheck();
+        showSnackbar("Payment successful! Order confirmed.", "success");
+        clearCart();
+        setTimeout(() => {
+          paymentDialog.value = false;
+          router.push("/cart");
+        }, 3000);
       } else if (res.data.value?.status === "failed") {
         paymentStatus.value = "failed";
+        stopPaymentCheck();
+        showSnackbar("Payment failed. Please try again.", "error");
       }
     } catch (err) {
       console.error("Payment check failed:", err);
+      showSnackbar(
+        "Unable to verify payment status. Please check manually.",
+        "warning"
+      );
     }
   }, 3000);
 };
 
-const stopPaymentCheck = () => {
-  if (paymentCheckInterval.value) {
-    clearInterval(paymentCheckInterval.value);
-    paymentCheckInterval.value = null;
+// Cart item actions
+const increaseCartItem = (index: number) => {
+  cartItems.value[index].quantity++;
+  updateItemTotal(index);
+  saveCartToStorage();
+};
+
+const decreaseCartItem = (index: number) => {
+  if (cartItems.value[index].quantity > 1) {
+    cartItems.value[index].quantity--;
+    updateItemTotal(index);
+    saveCartToStorage();
   }
 };
 
-// Cart item actions using store methods
-const increase = async (item: any) => {
-  try {
-    loading.value = true;
-    await cartStore.updateCartItem(item.item_variant.id, item.quantity + 1);
-  } catch (err) {
-    console.error("Failed to increase quantity:", err);
-    error.value = "Failed to update quantity";
-  } finally {
-    loading.value = false;
-  }
+const removeCartItem = (index: number) => {
+  cartItems.value.splice(index, 1);
+  saveCartToStorage();
 };
 
-const decrease = async (item: any) => {
-  if (item.quantity > 1) {
-    try {
-      loading.value = true;
-      await cartStore.updateCartItem(item.item_variant.id, item.quantity - 1);
-    } catch (err) {
-      console.error("Failed to decrease quantity:", err);
-      error.value = "Failed to update quantity";
-    } finally {
-      loading.value = false;
-    }
-  }
-};
-
-const removeItem = async (itemVariantId: string) => {
-  try {
-    loading.value = true;
-    await cartStore.deleteCartItem(itemVariantId);
-  } catch (err) {
-    console.error("Failed to remove item:", err);
-    error.value = "Failed to remove item";
-  } finally {
-    loading.value = false;
-  }
-};
-
-const buyNow = (item: any) => {
-  // Create a copy of the item to avoid reactivity issues
-  form.value.selectedItem = {
-    ...item,
-    item_variant: { ...item.item_variant },
-    total_price: item.total_price
-  };
-  dialog.value = true;
-};
-
+// Dialog management functions
 const submitForm = async () => {
-  if (form.value.selectedItem) {
-    await placeSingleItemOrder();
-  } else {
-    await placeOrder();
-  }
+  await placeOrder();
 };
 
 const openDeliverySelection = () => {
@@ -376,12 +572,19 @@ const selectDelivery = (delivery: Delivery) => {
   deliveryDialog.value = false;
 };
 
-// New address selection functions
 const openAddressSelection = () => {
   addressDialog.value = true;
 };
 
 const selectAddress = (address: Address) => {
+  if (!address.phone || !address.phone.trim()) {
+    // Show warning but still allow selection
+    showSnackbar(
+      "Warning: This address has no phone number. Please add one before checkout.",
+      "warning"
+    );
+  }
+
   selectedAddress.value = address;
   form.value.useExistingAddress = true;
   form.value.name = address.name;
@@ -399,32 +602,155 @@ const useNewAddress = () => {
   addressDialog.value = false;
 };
 
+// QR Code generation
 const generateQRCode = async (qrString: string) => {
+  if (!qrString) {
+    console.error("Error generating QR code: qrString is empty or invalid");
+    qrCodeDataUrl.value = "";
+    throw new Error("Invalid QR code string");
+  }
   try {
+    console.log("Generating QR code for:", qrString);
     const url = await QRCode.toDataURL(qrString, {
-      width: 240,
+      width: 256,
       margin: 2,
-      color: {
-        dark: "#000000",
-        light: "#FFFFFF",
-      },
+      color: { dark: "#000000", light: "#FFFFFF" },
+      errorCorrectionLevel: "M",
     });
     qrCodeDataUrl.value = url;
+    console.log("QR code generated successfully");
   } catch (error) {
     console.error("Error generating QR code:", error);
+    qrCodeDataUrl.value = "";
+    throw error;
   }
 };
+
+// ADDED: Helper function to get cookie value (same as header component)
+const getCookie = (name: string) => {
+  if (typeof document === "undefined") return null;
+  try {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop()?.split(";").shift();
+    return null;
+  } catch (error) {
+    console.error("Error getting cookie:", error);
+    return null;
+  }
+};
+
+// ADDED: Check authentication status (same logic as header component)
+const checkAuthStatus = () => {
+  if (typeof window === "undefined") return;
+
+  try {
+    const accessToken = getCookie("accessToken") || token.value;
+
+    if (accessToken && accessToken !== "null" && accessToken !== "undefined") {
+      if (!authenticated.value) {
+        loginStore.authenticated = true;
+        const userData = localStorage.getItem("user");
+        if (userData) {
+          try {
+            loginStore.user = JSON.parse(userData);
+          } catch (error) {
+            // Provide default user object with required properties
+            loginStore.user = {
+              phone_number: "",
+              password: "",
+            };
+          }
+        } else {
+          // Provide default user object with required properties
+          loginStore.user = {
+            phone_number: "",
+            password: "",
+          };
+        }
+      }
+    } else {
+      if (authenticated.value) {
+        loginStore.authenticated = false;
+        // Reset with proper structure
+        loginStore.user = {
+          phone_number: "",
+          password: "",
+        };
+      }
+    }
+  } catch (error) {
+    loginStore.authenticated = false;
+    loginStore.user = {
+      phone_number: "",
+      password: "",
+    };
+  }
+};
+// Payment Dialog Helper Functions
+
+// Cancel payment and close dialog
+const cancelPayment = () => {
+  stopPaymentCheck();
+  paymentDialog.value = false;
+  paymentStatus.value = "pending";
+  qrCodeDataUrl.value = "";
+  currentOrder.value = null;
+  showSnackbar("Order cancelled.", "info");
+};
+
+// Retry payment - restart the checking process
+const retryPayment = () => {
+  paymentStatus.value = "pending";
+  if (currentOrder.value && currentOrder.value.qr_string) {
+    generateQRCode(currentOrder.value.qr_string)
+      .then(() => {
+        startPaymentCheck();
+      })
+      .catch(() => {
+        showSnackbar(
+          "Failed to regenerate QR code. Please try again.",
+          "error"
+        );
+      });
+  }
+};
+
+// Go to orders page
+const goToOrders = () => {
+  paymentDialog.value = false;
+  router.push("/cart");
+};
+
+// Enhanced stop payment check function
+const stopPaymentCheck = () => {
+  if (paymentCheckInterval.value) {
+    clearInterval(paymentCheckInterval.value);
+    paymentCheckInterval.value = null;
+    console.log("Payment check interval stopped");
+  }
+};
+
+watch(paymentDialog, (newValue) => {
+  console.log("paymentDialog changed:", newValue);
+});
 
 // Lifecycle hooks
 onMounted(async () => {
   try {
     isLoading.value = true;
 
-    // Only fetch cart if not already loaded or if it's empty
-    if (!cartStore.cartData || cartStore.cartData.items?.length === 0) {
-      await cartStore.fetchCart();
+    // ADDED: Check authentication status on mount
+    checkAuthStatus();
+
+    // Load cart from localStorage
+    loadCartFromStorage();
+    await fetchDeliveries();
+
+    // Only fetch addresses if authenticated
+    if (token.value && authenticated.value) {
+      await fetchAddresses();
     }
-    await Promise.all([fetchDeliveries(), fetchAddresses()]);
   } catch (err) {
     console.error("Failed to initialize cart page:", err);
     error.value = "Failed to load page data";
@@ -454,14 +780,17 @@ onUnmounted(() => {
 
     <v-container class="mt-4">
       <!-- Loading state -->
-      <div v-if="isLoading" class="text-center py-8">
-        <v-progress-circular indeterminate color="primary"></v-progress-circular>
+      <div v-if="isLoading || !cartLoaded" class="text-center py-8">
+        <v-progress-circular
+          indeterminate
+          color="primary"
+        ></v-progress-circular>
         <p class="mt-2">Loading cart...</p>
       </div>
 
       <!-- Empty cart state -->
       <div
-        v-if="!isLoading && cartItems.length === 0"
+        v-if="cartLoaded && !hasItems"
         class="text-center flex items-center justify-center"
       >
         <div class="">
@@ -469,14 +798,16 @@ onUnmounted(() => {
             <img class="w-40" src="images/no_data.gif" alt="" />
           </div>
           <p class="text-xl text-gray-600">Your cart is empty</p>
-          <v-btn color="primary" class="mt-4" :to="'/woman'"> Continue Shopping </v-btn>
+          <v-btn color="primary" class="mt-4" :to="'/woman'">
+            Continue Shopping
+          </v-btn>
         </div>
       </div>
 
       <!-- Cart content -->
-      <v-row v-if="!isLoading && cartItems.length > 0">
+      <v-row v-if="cartLoaded && hasItems">
         <v-col cols="12" sm="7" md="8">
-          <!-- title  -->
+          <!-- Cart Items Header -->
           <v-row class="uppercase border-b text-center">
             <v-col cols="3" md="3" class="text-left">
               <p class="text-center">Product</p>
@@ -490,12 +821,14 @@ onUnmounted(() => {
             <v-col cols="2" class="flex items-center justify-center">
               <p class="">Total</p>
             </v-col>
-            <v-col cols="2" md="1" class="flex items-center justify-between"> </v-col>
+            <v-col cols="2" md="1" class="flex items-center justify-between">
+            </v-col>
           </v-row>
 
+          <!-- Cart Items -->
           <v-row
-            v-for="item in cartItems"
-            :key="item.cart_item_id"
+            v-for="(item, index) in cartItems"
+            :key="item.id || index"
             class="uppercase border-b text-center"
           >
             <v-col cols="3" md="3" class="pa-0">
@@ -504,20 +837,27 @@ onUnmounted(() => {
               >
                 <v-card class="w-[100px] mx-auto sm:mx-0">
                   <img
-                    :src="item.item_variant.image"
-                    :alt="item.item_variant.item.name"
+                    :src="item.variant?.image || item.image"
+                    :alt="item.variant?.item?.name || item.name"
                   />
                 </v-card>
                 <p
                   class="pt-2 text-center sm:pt-0 sm:text-left text-[10px] md:text-[15px]"
                 >
-                  {{ item.item_variant.item.name }}
+                  {{ item.variant?.item?.name || item.name }}
                 </p>
               </div>
             </v-col>
 
             <v-col cols="2" class="flex items-center justify-center">
-              <p class="text-grey">${{ item.final_price }}</p>
+              <p class="text-grey">
+                ${{
+                  item.variant?.final_price ||
+                  item.final_price ||
+                  item.variant?.price ||
+                  item.price
+                }}
+              </p>
             </v-col>
 
             <v-col cols="3" md="3" class="flex items-center justify-center">
@@ -527,7 +867,7 @@ onUnmounted(() => {
                 <v-btn
                   size="small"
                   variant="flat"
-                  @click="decrease(item)"
+                  @click="decreaseCartItem(index)"
                   :disabled="item.quantity <= 1 || loading"
                   icon
                   class="bg-gray-100 hover:bg-gray-200"
@@ -536,23 +876,13 @@ onUnmounted(() => {
                 </v-btn>
 
                 <div class="relative">
-                  <v-progress-circular
-                    v-if="loading"
-                    indeterminate
-                    size="16"
-                    width="2"
-                    color="primary"
-                    class="absolute -top-1 -right-1"
-                  ></v-progress-circular>
-                  <p v-else class="text-center w-8 min-w-8">
-                    {{ item.quantity }}
-                  </p>
+                  <p class="text-center w-8 min-w-8">{{ item.quantity }}</p>
                 </div>
 
                 <v-btn
                   variant="tonal"
                   size="small"
-                  @click="increase(item)"
+                  @click="increaseCartItem(index)"
                   :disabled="loading"
                   icon
                   class="bg-blue-50 hover:bg-blue-100"
@@ -563,26 +893,25 @@ onUnmounted(() => {
             </v-col>
 
             <v-col cols="2" class="flex items-center justify-center">
-              <p class="font-bold">${{ item.total_price }}</p>
+              <p class="font-bold">
+                ${{
+                  (
+                    (item.variant?.final_price ||
+                      item.final_price ||
+                      item.variant?.price ||
+                      item.price) * item.quantity
+                  ).toFixed(2)
+                }}
+              </p>
             </v-col>
 
             <v-col cols="2" md="2" class="flex items-center justify-between">
               <div class="flex flex-col items-center justify-between">
-                <!-- <v-btn
-                  variant="text"
-                  icon
-                  :disabled="loading"
-                  @click="buyNow(item)"
-                  class="text-blue-600 hover:text-blue-800"
-                  size="small"
-                >
-                  <v-icon size="22">mdi-cart-arrow-down</v-icon>
-                </v-btn> -->
                 <v-btn
                   variant="text"
                   icon
                   :disabled="loading"
-                  @click="removeItem(item.item_variant.id)"
+                  @click="removeCartItem(index)"
                   class="text-red-500 hover:text-red-700"
                 >
                   <v-icon size="22">mdi-delete</v-icon>
@@ -592,31 +921,38 @@ onUnmounted(() => {
           </v-row>
         </v-col>
 
+        <!-- Order Summary -->
         <v-col cols="12" sm="5" md="4">
           <v-card class="!bg-gray-100 pa-5">
             <p class="uppercase border-b pb-3 font-bold">order summary</p>
 
             <!-- Delivery Selection -->
             <v-card class="mt-3 mb-4" elevation="1">
-              <div class="address-preview-header">
-                <div class="flex items-center space-x-2">
-                  <div class="address-preview-icon">
-                    <v-icon size="16" color="white">mdi-truck-delivery</v-icon>
+              <div
+                class="address-preview-header bg-gradient-to-r from-blue-500 to-blue-600 pa-3 rounded-t"
+              >
+                <div class="flex items-center justify-between">
+                  <div class="flex items-center space-x-2">
+                    <v-icon size="20" color="white">mdi-truck-delivery</v-icon>
+                    <h3 class="font-bold text-white text-sm">
+                      Delivery Method
+                    </h3>
                   </div>
-                  <h3 class="font-bold text-white text-sm">Delivery Method</h3>
+                  <v-btn
+                    size="small"
+                    variant="outlined"
+                    color="white"
+                    @click="openDeliverySelection"
+                  >
+                    <v-icon size="16" class="mr-1">mdi-pencil</v-icon>
+                    Change
+                  </v-btn>
                 </div>
-                <v-btn
-                  size="small"
-                  variant="outlined"
-                  color="white"
-                  @click="openDeliverySelection"
-                  class="address-change-btn"
-                >
-                  <v-icon size="16" class="mr-1">mdi-pencil</v-icon>
-                  Change
-                </v-btn>
               </div>
-              <div v-if="selectedDelivery" class="flex items-center space-x-3 pa-3">
+              <div
+                v-if="selectedDelivery"
+                class="flex items-center space-x-3 pa-3"
+              >
                 <img
                   :src="selectedDelivery.logo"
                   :alt="selectedDelivery.name"
@@ -634,108 +970,65 @@ onUnmounted(() => {
               </div>
             </v-card>
 
-            <!-- Address Selection Preview -->
-            <!-- <v-card class="address-preview-card rounded shadow-sm" v-if="selectedAddress">
-              <div class="address-preview-header">
-                <div class="flex items-center space-x-2">
-                  <div class="address-preview-icon">
-                    <v-icon size="16" color="white">mdi-truck-delivery</v-icon>
-                  </div>
-                  <h3 class="font-bold text-white text-sm">Shipping Address</h3>
-                </div>
-                <v-btn
-                  size="small"
-                  variant="outlined"
-                  color="white"
-                  @click="openAddressSelection"
-                  class="address-change-btn"
-                >
-                  <v-icon size="16" class="mr-1">mdi-pencil</v-icon>
-                  Change
-                </v-btn>
-              </div>
-
-              <div class="address-preview-content">
-                <div class="address-preview-main">
-                  <div class="flex items-start space-x-3">
-                    <div class="address-avatar">
-                      <v-icon size="20" color="primary">mdi-account-circle</v-icon>
-                    </div>
-                    <div class="flex-1">
-                      <h4 class="font-bold text-gray-800">
-                        {{ selectedAddress.name }}
-                      </h4>
-                      <p class="text-sm text-gray-600 mt-1">
-                        {{ formattedAddress }}
-                      </p>
-                      <p class="text-sm text-gray-600" v-if="selectedAddress.phone">
-                        <v-icon size="12" class="mr-1">mdi-phone</v-icon>
-                        {{ selectedAddress.phone }}
-                      </p>
-                    </div>
-                    <div class="address-preview-badge" v-if="selectedAddress.is_default">
-                      <v-icon size="10">mdi-star</v-icon>
-                      <span>Default</span>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </v-card> -->
-
-            <v-row class="mt-3" v-for="item in cartItems" :key="item.cart_item_id">
+            <!-- Cart Items Summary -->
+            <v-row v-for="item in cartItems" :key="item.id" class="mt-3">
               <v-col cols="8">
                 <div class="flex">
                   <v-card width="100" class="me-3 flex-shrink-0">
                     <img
                       class="object-cover h-[120px] w-full"
-                      :src="item.item_variant.image"
-                      :alt="item.item_variant.item.name"
+                      :src="item.variant?.image || item.image"
+                      :alt="item.variant?.item?.name || item.name"
                     />
                   </v-card>
                   <div>
-                    <p>{{ item.item_variant.item.name }}</p>
+                    <p>{{ item.variant?.item?.name || item.name }}</p>
                     <p class="text-grey">Quantity : {{ item.quantity }}</p>
-                    <p class="text-grey">Size : {{ item.item_variant.size.name }}</p>
-                    <p class="text-grey">Color : {{ item.item_variant.color.name }}</p>
+                    <p class="text-grey">
+                      Size : {{ item.variant?.size?.name || item.size }}
+                    </p>
+                    <p class="text-grey">
+                      Color : {{ item.variant?.color?.name || item.color }}
+                    </p>
                   </div>
                 </div>
               </v-col>
-
               <v-col>
-                <p class="text-grey text-center">${{ item.total_price }}</p>
-                <!-- <v-btn
-                  size="small"
-                  color="primary"
-                  variant="outlined"
-                  class="mt-2"
-                  @click="buyNow(item)"
-                  :disabled="loading"
-                >
-                  Buy Now
-                </v-btn> -->
+                <p class="text-grey text-center">
+                  ${{
+                    (
+                      (item.variant?.final_price ||
+                        item.final_price ||
+                        item.variant?.price ||
+                        item.price) * item.quantity
+                    ).toFixed(2)
+                  }}
+                </p>
               </v-col>
             </v-row>
 
-            <!-- border -->
+            <!-- Price Summary -->
             <div class="border-b my-8"></div>
             <div>
               <v-row class="items-center">
                 <v-col>
                   <p class="uppercase font-bold">subtotal</p>
                 </v-col>
-                <p class="pr-3 text-grey">${{ subtotal }}</p>
+                <p class="pr-3 text-grey">${{ subtotal.toFixed(2) }}</p>
               </v-row>
               <v-row class="items-center">
                 <v-col>
                   <p class="uppercase font-bold">DELIVERY</p>
                 </v-col>
-                <p class="pr-3 text-grey">${{ deliveryFee }}</p>
+                <p class="pr-3 text-grey">${{ deliveryFee.toFixed(2) }}</p>
               </v-row>
               <v-row class="items-center" v-if="totalSavings > 0">
                 <v-col>
                   <p class="uppercase font-bold">TOTAL SAVINGS</p>
                 </v-col>
-                <p class="pr-3 text-red-500">- ${{ totalSavings }}</p>
+                <p class="pr-3 text-red-500">
+                  - ${{ totalSavings.toFixed(2) }}
+                </p>
               </v-row>
 
               <div class="border-b my-8"></div>
@@ -743,14 +1036,15 @@ onUnmounted(() => {
                 <v-col>
                   <p class="uppercase">TOTAL</p>
                 </v-col>
-                <p class="pr-3">${{ total }}</p>
+                <p class="pr-3">${{ total.toFixed(2) }}</p>
               </v-row>
+
               <v-btn
                 class="w-full mt-4 text-white"
                 color="black"
                 variant="elevated"
                 size="large"
-                @click="dialog = true"
+                @click="proceedToCheckout"
                 :disabled="loading || !selectedDelivery"
               >
                 <v-progress-circular
@@ -767,207 +1061,49 @@ onUnmounted(() => {
         </v-col>
       </v-row>
 
-      <!-- Address Selection Dialog -->
-      <v-dialog v-model="addressDialog" max-width="700px">
-        <v-card class="address-dialog-card">
-          <!-- Modern Header -->
-          <div class="address-dialog-header">
-            <div class="flex items-center space-x-3">
-              <div class="address-icon-wrapper">
-                <v-icon size="24" color="white">mdi-map-marker</v-icon>
-              </div>
-              <div>
-                <h2 class="text-xl font-bold text-white">Select Shipping Address</h2>
-                <p class="text-blue-100 text-sm">
-                  Choose from saved addresses or add new one
-                </p>
-              </div>
-            </div>
+      <!-- Login Dialog -->
+      <v-dialog
+        v-model="hahaDialog"
+        max-width="400px"
+        persistent
+        scrim="transparent"
+      >
+        <v-card
+          style="
+            background-color: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(20px);
+            border-radius: 20px;
+          "
+        >
+          <v-card-title class="text-end">
             <v-btn
-              icon="mdi-close"
+              icon="line-md:close-small"
               variant="text"
-              color="white"
-              @click="addressDialog = false"
-              class="address-close-btn"
+              class="text-red"
+              @click="hahaDialog = false"
             />
-          </div>
-
-          <div class="address-dialog-content">
-            <!-- Option to use new address -->
-            <div class="new-address-card" @click="useNewAddress">
-              <div class="new-address-content">
-                <div class="new-address-icon">
-                  <v-icon size="32" color="primary">mdi-plus-circle</v-icon>
-                </div>
-                <div class="new-address-text">
-                  <h3 class="font-bold text-lg text-primary">Add New Address</h3>
-                  <p class="text-gray-600">Enter a new shipping address for this order</p>
-                </div>
-                <div class="new-address-arrow">
-                  <v-icon color="primary">mdi-chevron-right</v-icon>
-                </div>
-              </div>
-            </div>
-
-            <!-- Existing addresses -->
-            <div v-if="addresses.length > 0" class="saved-addresses-section">
-              <div class="section-header">
-                <h3 class="font-bold text-gray-800 flex items-center">
-                  <v-icon size="20" class="mr-2" color="gray"
-                    >mdi-bookmark-multiple</v-icon
-                  >
-                  Saved Addresses
-                </h3>
-                <span class="text-sm text-gray-500">{{ addresses.length }} saved</span>
-              </div>
-
-              <div class="addresses-grid">
-                <div
-                  v-for="address in addresses"
-                  :key="address.id"
-                  :class="[
-                    'address-card',
-                    selectedAddress?.id === address.id
-                      ? 'address-card-selected'
-                      : 'address-card-default',
-                  ]"
-                  @click="selectAddress(address)"
-                >
-                  <!-- Selection indicator -->
-                  <div class="address-card-indicator">
-                    <div
-                      :class="[
-                        'selection-dot',
-                        selectedAddress?.id === address.id ? 'selected' : '',
-                      ]"
-                    ></div>
-                  </div>
-
-                  <!-- Address content -->
-                  <div class="address-card-content">
-                    <div class="address-header">
-                      <div class="flex items-center space-x-2">
-                        <v-icon
-                          size="18"
-                          :color="selectedAddress?.id === address.id ? 'primary' : 'gray'"
-                        >
-                          mdi-account-circle
-                        </v-icon>
-                        <h4 class="font-bold text-lg">{{ address.name }}</h4>
-                      </div>
-                      <div class="address-badges">
-                        <div v-if="address.is_default" class="default-badge">
-                          <v-icon size="12">mdi-star</v-icon>
-                          <span>Default</span>
-                        </div>
-                        <div
-                          v-if="selectedAddress?.id === address.id"
-                          class="selected-badge"
-                        >
-                          <v-icon size="12">mdi-check</v-icon>
-                          <span>Selected</span>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div class="address-details">
-                      <div class="address-line">
-                        <v-icon size="14" color="gray" class="address-line-icon"
-                          >mdi-home</v-icon
-                        >
-                        <span>{{ address.home }}, {{ address.street }}</span>
-                      </div>
-                      <div class="address-line">
-                        <v-icon size="14" color="gray" class="address-line-icon"
-                          >mdi-map-marker</v-icon
-                        >
-                        <span>{{ address.city }}, {{ address.country }}</span>
-                      </div>
-                      <div class="address-line" v-if="address.phone">
-                        <v-icon size="14" color="gray" class="address-line-icon"
-                          >mdi-phone</v-icon
-                        >
-                        <span>{{ address.phone }}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <!-- Hover effect overlay -->
-                  <div class="address-card-overlay"></div>
-                </div>
-              </div>
-            </div>
-
-            <!-- No addresses message -->
-            <div v-else class="no-addresses">
-              <div class="no-addresses-icon">
-                <v-icon size="48" color="gray">mdi-map-marker-off</v-icon>
-              </div>
-              <h3 class="font-bold text-gray-700 mb-2">No saved addresses</h3>
-              <p class="text-gray-500 text-center max-w-sm">
-                You don't have any saved addresses yet. Add a new address to get started.
-              </p>
-            </div>
-          </div>
-        </v-card>
-      </v-dialog>
-
-      <!-- Delivery Selection Dialog -->
-      <v-dialog v-model="deliveryDialog" max-width="500px">
-        <v-card class="pa-4">
-          <v-card-title class="text-h6 font-bold mb-4">
-            <div class="flex justify-between items-center">
-              <span>Select Delivery Method</span>
-              <v-btn icon="mdi-close" variant="text" @click="deliveryDialog = false" />
-            </div>
           </v-card-title>
-
-          <div class="space-y-3">
-            <v-card
-              v-for="delivery in deliveries"
-              :key="delivery.id"
-              :class="[
-                'pa-3 cursor-pointer transition-colors',
-                selectedDelivery?.id === delivery.id
-                  ? 'bg-blue-50 border-blue-500 border-2'
-                  : 'hover:bg-gray-50 border border-gray-200',
-              ]"
-              @click="selectDelivery(delivery)"
-            >
-              <div class="flex items-center space-x-4">
-                <img
-                  :src="delivery.logo"
-                  :alt="delivery.name"
-                  class="w-12 h-12 object-cover rounded"
-                />
-                <div class="flex-1">
-                  <p class="font-semibold">{{ delivery.name }}</p>
-                  <p class="text-sm text-grey">{{ delivery.description }}</p>
-                </div>
-                <div class="text-right">
-                  <p class="font-bold text-lg">${{ delivery.delivery_fee }}</p>
-                </div>
-              </div>
-            </v-card>
-          </div>
+          <v-card-text>
+            <Login />
+          </v-card-text>
         </v-card>
       </v-dialog>
+
+      <!-- Login Dialog -->
+      <!-- <v-dialog v-model="loginDialog" max-width="500px" persistent>
+        <Login />
+      </v-dialog> -->
 
       <!-- Checkout Dialog -->
       <v-dialog v-model="dialog" max-width="600px">
         <v-card class="pa-5">
           <v-card-title class="text-h6 font-bold">
             <v-row class="mb-2 items-center">
-              <p>
-                {{ form.selectedItem ? "SINGLE ITEM CHECKOUT" : "SHIPPING ADDRESS" }}
-              </p>
+              <p>SHIPPING ADDRESS & PAYMENT</p>
               <v-spacer></v-spacer>
               <v-btn
                 icon="mdi-close"
-                @click="
-                  dialog = false;
-                  form.selectedItem = null;
-                "
+                @click="dialog = false"
                 class="text-red-500 hover:text-red-700"
                 variant="text"
               />
@@ -975,35 +1111,6 @@ onUnmounted(() => {
           </v-card-title>
 
           <v-card-text class="pa-0">
-            <!-- Single Item Summary -->
-            <v-card v-if="form.selectedItem" class="mb-4 pa-3 bg-blue-50">
-              <p class="font-bold mb-2">Item to Purchase:</p>
-              <div class="flex items-center space-x-3">
-                <img
-                  :src="form.selectedItem.item_variant.image"
-                  :alt="form.selectedItem.item_variant.item.name"
-                  class="w-20 h-25 object-cover rounded"
-                />
-                <div>
-                  <p class="font-semibold">
-                    {{ form.selectedItem.item_variant.item.name }}
-                  </p>
-                  <p class="text-sm text-grey">
-                    Quantity: {{ form.selectedItem.quantity }}
-                  </p>
-                  <p class="text-sm text-grey">
-                    Size: {{ form.selectedItem.item_variant.size.name }}
-                  </p>
-                  <p class="text-sm text-grey">
-                    Color: {{ form.selectedItem.item_variant.color.name }}
-                  </p>
-                  <p class="font-bold text-primary">
-                    Total: ${{ form.selectedItem.total_price + deliveryFee }}
-                  </p>
-                </div>
-              </div>
-            </v-card>
-
             <!-- Delivery Summary -->
             <v-card v-if="selectedDelivery" class="mb-4 pa-3 bg-green-50">
               <p class="font-bold mb-2">Delivery Method:</p>
@@ -1025,9 +1132,57 @@ onUnmounted(() => {
               </div>
             </v-card>
 
+            <!-- Payment Method Selection -->
+            <v-card class="mb-4 pa-3 bg-blue-50">
+              <p class="font-bold mb-3">Payment Method:</p>
+              <v-select
+                v-model="selectedPaymentMethod"
+                :items="paymentMethods"
+                item-title="label"
+                item-value="value"
+                label="Select Payment Method"
+                variant="outlined"
+                class="mb-3"
+              >
+                <template v-slot:item="{ props, item }">
+                  <v-list-item v-bind="props" class="pa-3">
+                    <template v-slot:prepend>
+                      <v-icon
+                        :icon="item.raw.icon"
+                        size="20"
+                        color="primary"
+                        class="mr-3"
+                      ></v-icon>
+                    </template>
+                    <v-list-item-title class="font-semibold">{{
+                      item.raw.label
+                    }}</v-list-item-title>
+                    <v-list-item-subtitle class="text-sm text-gray-600">{{
+                      item.raw.description
+                    }}</v-list-item-subtitle>
+                  </v-list-item>
+                </template>
+                <template v-slot:selection="{ item }">
+                  <div class="flex items-center space-x-3">
+                    <v-icon
+                      :icon="item.raw.icon"
+                      size="20"
+                      color="primary"
+                    ></v-icon>
+                    <div>
+                      <p class="font-semibold">{{ item.raw.label }}</p>
+                      <p class="text-sm text-gray-600">
+                        {{ item.raw.description }}
+                      </p>
+                    </div>
+                  </div>
+                </template>
+              </v-select>
+            </v-card>
+
             <!-- Address Type Selection -->
-            <div class="address-type-card bg-blue-50">
-              <div class="address-type-header">
+            <div class="address-type-card bg-blue-50 pa-3 rounded mb-4">
+              <div class="address-type-header mb-3">
                 <h3 class="font-bold flex items-center">
                   <v-icon size="20" class="mr-2" color="primary"
                     >mdi-map-marker-check</v-icon
@@ -1036,23 +1191,23 @@ onUnmounted(() => {
                 </h3>
               </div>
 
-              <div class="address-options">
+              <div class="address-options space-y-3">
                 <!-- Saved Address Option -->
                 <div
                   :class="[
-                    'address-option',
+                    'address-option pa-3 rounded border cursor-pointer transition-all',
                     form.useExistingAddress
-                      ? 'address-option-active'
-                      : 'address-option-inactive',
+                      ? 'border-primary bg-blue-100'
+                      : 'border-gray-300 bg-white hover:bg-gray-50',
                   ]"
                   @click="form.useExistingAddress = true"
                 >
-                  <div class="address-option-radio">
-                    <div
-                      :class="['radio-dot', form.useExistingAddress ? 'active' : '']"
-                    ></div>
-                  </div>
-                  <div class="address-option-content">
+                  <div class="flex items-center space-x-3">
+                    <v-radio-btn
+                      :model-value="form.useExistingAddress"
+                      :value="true"
+                      color="primary"
+                    ></v-radio-btn>
                     <div class="flex items-center justify-between w-full">
                       <div>
                         <h4 class="font-semibold">Use saved address</h4>
@@ -1069,10 +1224,11 @@ onUnmounted(() => {
                       <v-btn
                         v-if="addresses.length > 0"
                         size="small"
-                        :variant="form.useExistingAddress ? 'elevated' : 'outlined'"
+                        :variant="
+                          form.useExistingAddress ? 'elevated' : 'outlined'
+                        "
                         :color="form.useExistingAddress ? 'primary' : 'gray'"
                         @click.stop="openAddressSelection"
-                        class="address-select-btn"
                       >
                         <v-icon size="16" class="mr-1">
                           {{ selectedAddress ? "mdi-pencil" : "mdi-plus" }}
@@ -1086,19 +1242,19 @@ onUnmounted(() => {
                 <!-- New Address Option -->
                 <div
                   :class="[
-                    'address-option',
+                    'address-option pa-3 rounded border cursor-pointer transition-all',
                     !form.useExistingAddress
-                      ? 'address-option-active'
-                      : 'address-option-inactive',
+                      ? 'border-primary bg-blue-100'
+                      : 'border-gray-300 bg-white hover:bg-gray-50',
                   ]"
                   @click="form.useExistingAddress = false"
                 >
-                  <div class="address-option-radio">
-                    <div
-                      :class="['radio-dot', !form.useExistingAddress ? 'active' : '']"
-                    ></div>
-                  </div>
-                  <div class="address-option-content">
+                  <div class="flex items-center space-x-3">
+                    <v-radio-btn
+                      :model-value="!form.useExistingAddress"
+                      :value="true"
+                      color="primary"
+                    ></v-radio-btn>
                     <div>
                       <h4 class="font-semibold">Enter new address</h4>
                       <p class="text-sm text-gray-500">
@@ -1112,34 +1268,69 @@ onUnmounted(() => {
               <!-- Selected Address Preview -->
               <div
                 v-if="form.useExistingAddress && selectedAddress"
-                class="selected-address-preview"
+                class="selected-address-preview mt-3 pa-3 bg-white rounded border"
+                :class="
+                  selectedAddress.phone ? 'border-primary' : 'border-warning'
+                "
               >
-                <div class="selected-address-content">
-                  <div class="flex items-start space-x-3">
-                    <div class="selected-address-icon">
-                      <v-icon size="18" color="primary">mdi-check-circle</v-icon>
-                    </div>
-                    <div class="flex-1">
-                      <h4 class="font-bold text-gray-800">
-                        {{ selectedAddress.name }}
-                      </h4>
-                      <p class="text-sm text-gray-600 mt-1">
-                        {{ formattedAddress }}
-                      </p>
-                      <p
-                        class="text-sm text-gray-600 flex items-center mt-1"
-                        v-if="selectedAddress.phone"
-                      >
-                        <v-icon size="12" class="mr-1">mdi-phone</v-icon>
-                        {{ selectedAddress.phone }}
-                      </p>
-                    </div>
-                    <div class="selected-address-badge" v-if="selectedAddress.is_default">
-                      <v-icon size="10">mdi-star</v-icon>
-                      <span>Default</span>
-                    </div>
+                <div class="flex items-start space-x-3">
+                  <div class="selected-address-icon">
+                    <v-icon
+                      size="18"
+                      :color="selectedAddress.phone ? 'primary' : 'warning'"
+                    >
+                      {{
+                        selectedAddress.phone
+                          ? "mdi-check-circle"
+                          : "mdi-alert-circle"
+                      }}
+                    </v-icon>
+                  </div>
+                  <div class="flex-1">
+                    <h4 class="font-bold text-gray-800">
+                      {{ selectedAddress.name }}
+                    </h4>
+                    <p class="text-sm text-gray-600 mt-1">
+                      {{ formattedAddress }}
+                    </p>
+                    <p
+                      class="text-sm mt-1 flex items-center"
+                      :class="
+                        selectedAddress.phone ? 'text-gray-600' : 'text-warning'
+                      "
+                    >
+                      <v-icon size="12" class="mr-1">mdi-phone</v-icon>
+                      {{
+                        selectedAddress.phone ||
+                        "No phone number - please add one"
+                      }}
+                    </p>
+                  </div>
+                  <div
+                    class="selected-address-badge"
+                    v-if="selectedAddress.is_default"
+                  >
+                    <v-chip size="small" color="primary" variant="flat">
+                      <v-icon size="10" start>mdi-star</v-icon>
+                      Default
+                    </v-chip>
                   </div>
                 </div>
+
+                <!-- Warning message for missing phone -->
+                <v-alert
+                  v-if="!selectedAddress.phone"
+                  type="warning"
+                  variant="tonal"
+                  class="mt-3"
+                  density="compact"
+                >
+                  <template v-slot:prepend>
+                    <v-icon>mdi-alert</v-icon>
+                  </template>
+                  This address is missing a phone number. Please select a
+                  different address or enter your phone number above.
+                </v-alert>
               </div>
             </div>
 
@@ -1188,8 +1379,8 @@ onUnmounted(() => {
                 <v-text-field
                   :model-value="selectedAddress.phone || 'No phone number'"
                   label="Phone Number"
-                  readonly
                   class="mb-3"
+                  required
                   prepend-inner-icon="mdi-phone"
                   variant="filled"
                 />
@@ -1218,6 +1409,7 @@ onUnmounted(() => {
                   !isValid ||
                   loading ||
                   !selectedDelivery ||
+                  !selectedPaymentMethod ||
                   (form.useExistingAddress && !selectedAddress)
                 "
                 color="primary"
@@ -1231,26 +1423,235 @@ onUnmounted(() => {
                   width="2"
                   class="mr-2"
                 ></v-progress-circular>
-                {{ form.selectedItem ? "Place Single Item Order" : "Place Order" }}
+                Place Order - ${{ total.toFixed(2) }}
               </v-btn>
             </v-form>
           </v-card-text>
         </v-card>
       </v-dialog>
 
-      <!-- Payment Dialog with QR Code -->
+      <!-- Address Selection Dialog -->
+      <v-dialog v-model="addressDialog" max-width="700px">
+        <v-card class="address-dialog-card">
+          <!-- Modern Header -->
+          <div
+            class="address-dialog-header bg-gradient-to-r from-blue-500 to-blue-600 pa-4 rounded-t"
+          >
+            <div class="flex items-center justify-between">
+              <div class="flex items-center space-x-3">
+                <div class="address-icon-wrapper bg-white/20 rounded-full p-2">
+                  <v-icon size="24" color="white">mdi-map-marker</v-icon>
+                </div>
+                <div>
+                  <h2 class="text-xl font-bold text-white">
+                    Select Shipping Address
+                  </h2>
+                  <p class="text-blue-100 text-sm">
+                    Choose from saved addresses or add new one
+                  </p>
+                </div>
+              </div>
+              <v-btn
+                icon="mdi-close"
+                variant="text"
+                color="white"
+                @click="addressDialog = false"
+              />
+            </div>
+          </div>
+
+          <div class="address-dialog-content pa-4">
+            <!-- Option to use new address -->
+            <div
+              class="new-address-card pa-4 border rounded mb-4 cursor-pointer hover:bg-blue-50 transition-colors"
+              @click="useNewAddress"
+            >
+              <div class="flex items-center space-x-4">
+                <div class="new-address-icon">
+                  <v-icon size="32" color="primary">mdi-plus-circle</v-icon>
+                </div>
+                <div class="flex-1">
+                  <h3 class="font-bold text-lg text-primary">
+                    Add New Address
+                  </h3>
+                  <p class="text-gray-600">
+                    Enter a new shipping address for this order
+                  </p>
+                </div>
+                <div class="new-address-arrow">
+                  <v-icon color="primary">mdi-chevron-right</v-icon>
+                </div>
+              </div>
+            </div>
+
+            <!-- Existing addresses -->
+            <div v-if="addresses.length > 0" class="saved-addresses-section">
+              <div
+                class="section-header flex items-center justify-between mb-4"
+              >
+                <h3 class="font-bold text-gray-800 flex items-center">
+                  <v-icon size="20" class="mr-2" color="gray"
+                    >mdi-bookmark-multiple</v-icon
+                  >
+                  Saved Addresses
+                </h3>
+                <span class="text-sm text-gray-500"
+                  >{{ addresses.length }} saved</span
+                >
+              </div>
+
+              <div class="addresses-grid space-y-3">
+                <div
+                  v-for="address in addresses"
+                  :key="address.id"
+                  :class="[
+                    'address-card pa-4 border rounded cursor-pointer transition-all',
+                    selectedAddress?.id === address.id
+                      ? 'border-primary bg-blue-50'
+                      : 'border-gray-200 hover:border-primary hover:bg-gray-50',
+                  ]"
+                  @click="selectAddress(address)"
+                >
+                  <!-- Address content -->
+                  <div class="address-card-content">
+                    <div
+                      class="address-header flex items-start justify-between mb-2"
+                    >
+                      <div class="flex items-center space-x-2">
+                        <v-icon
+                          size="18"
+                          :color="
+                            selectedAddress?.id === address.id
+                              ? 'primary'
+                              : 'gray'
+                          "
+                        >
+                          mdi-account-circle
+                        </v-icon>
+                        <h4 class="font-bold text-lg">{{ address.name }}</h4>
+                      </div>
+                      <div class="address-badges flex space-x-2">
+                        <v-chip
+                          v-if="address.is_default"
+                          size="small"
+                          color="amber"
+                          variant="flat"
+                        >
+                          <v-icon size="12" start>mdi-star</v-icon>
+                          Default
+                        </v-chip>
+                        <v-chip
+                          v-if="selectedAddress?.id === address.id"
+                          size="small"
+                          color="primary"
+                          variant="flat"
+                        >
+                          <v-icon size="12" start>mdi-check</v-icon>
+                          Selected
+                        </v-chip>
+                      </div>
+                    </div>
+
+                    <div class="address-details space-y-2">
+                      <div class="address-line flex items-center space-x-2">
+                        <v-icon size="14" color="gray">mdi-home</v-icon>
+                        <span>{{ address.home }}, {{ address.street }}</span>
+                      </div>
+                      <div class="address-line flex items-center space-x-2">
+                        <v-icon size="14" color="gray">mdi-map-marker</v-icon>
+                        <span>{{ address.city }}, {{ address.country }}</span>
+                      </div>
+                      <div
+                        class="address-line flex items-center space-x-2"
+                        v-if="address.phone"
+                      >
+                        <v-icon size="14" color="gray">mdi-phone</v-icon>
+                        <span>{{ address.phone }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- No addresses message -->
+            <div v-else class="no-addresses text-center py-8">
+              <div class="no-addresses-icon mb-4">
+                <v-icon size="48" color="gray">mdi-map-marker-off</v-icon>
+              </div>
+              <h3 class="font-bold text-gray-700 mb-2">No saved addresses</h3>
+              <p class="text-gray-500 text-center max-w-sm mx-auto">
+                You don't have any saved addresses yet. Add a new address to get
+                started.
+              </p>
+            </div>
+          </div>
+        </v-card>
+      </v-dialog>
+
+      <!-- Delivery Selection Dialog -->
+      <v-dialog v-model="deliveryDialog" max-width="500px">
+        <v-card class="pa-4">
+          <v-card-title class="text-h6 font-bold mb-4">
+            <div class="flex justify-between items-center">
+              <span>Select Delivery Method</span>
+              <v-btn
+                icon="mdi-close"
+                variant="text"
+                @click="deliveryDialog = false"
+              />
+            </div>
+          </v-card-title>
+
+          <div class="space-y-3">
+            <v-card
+              v-for="delivery in deliveries"
+              :key="delivery.id"
+              :class="[
+                'pa-3 cursor-pointer transition-colors',
+                selectedDelivery?.id === delivery.id
+                  ? 'bg-blue-50 border-blue-500 border-2'
+                  : 'hover:bg-gray-50 border border-gray-200',
+              ]"
+              @click="selectDelivery(delivery)"
+            >
+              <div class="flex items-center space-x-4">
+                <img
+                  :src="delivery.logo"
+                  :alt="delivery.name"
+                  class="w-12 h-12 object-cover rounded"
+                />
+                <div class="flex-1">
+                  <p class="font-semibold">{{ delivery.name }}</p>
+                  <p class="text-sm text-grey">{{ delivery.description }}</p>
+                </div>
+                <div class="text-right">
+                  <p class="font-bold text-lg">${{ delivery.delivery_fee }}</p>
+                </div>
+              </div>
+            </v-card>
+          </div>
+        </v-card>
+      </v-dialog>
+
+      <!-- Payment Dialog with QR Code (only for bank_transfer) -->
       <v-dialog v-model="paymentDialog" max-width="500px" persistent>
         <v-card class="pa-6 text-center">
-          <v-card-title class="text-h5 font-bold mb-4"> Payment Required </v-card-title>
+          <v-card-title class="text-h5 font-bold mb-4"
+            >Payment Required</v-card-title
+          >
 
           <div v-if="currentOrder">
             <!-- Order Summary -->
-            <!-- In your payment dialog template -->
             <v-card v-if="currentOrder" class="mb-4 pa-4 bg-gray-50">
-              <!-- <p class="font-bold">Order #{{ currentOrder.order_number }}</p> -->
-              <p class="text-lg font-bold text-primary">
-                Total: ${{ currentOrder.total_amount.toFixed(2) }}
-              </p>
+              <p class="font-bold">Order #{{ currentOrder.order_number }}</p>
+              <!-- <p class="text-lg font-bold text-primary">
+                Total: ${{
+                  currentOrder.total_amount
+                    ? currentOrder.total_amount.toFixed(2)
+                    : "0.00"
+                }}
+              </p> -->
               <p v-if="form.selectedItem" class="text-sm text-grey">
                 (Single item purchase)
               </p>
@@ -1263,12 +1664,12 @@ onUnmounted(() => {
             <!-- QR Code Display -->
             <div class="mb-4">
               <p class="font-bold mb-3">Scan QR Code to Pay</p>
-
-              <!-- Real QR Code Display -->
               <div class="flex justify-center mb-4">
-                <div class="border-2 border-gray-300 p-4 rounded-lg bg-white shadow-lg">
+                <div
+                  class="border-2 border-gray-300 p-4 rounded-lg bg-white shadow-lg"
+                >
                   <div
-                    v-if="qrCodeDataUrl"
+                    v-if="qrCodeDataUrl && paymentStatus !== 'failed'"
                     class="w-64 h-64 flex items-center justify-center"
                   >
                     <img
@@ -1278,42 +1679,51 @@ onUnmounted(() => {
                     />
                   </div>
                   <div
-                    v-else
+                    v-else-if="!qrCodeDataUrl && paymentStatus === 'pending'"
                     class="w-64 h-64 flex items-center justify-center bg-gray-100"
                   >
                     <v-progress-circular
                       indeterminate
                       size="40"
                       width="4"
+                      color="primary"
+                      class="mb-2"
                     ></v-progress-circular>
+                    <p class="text-sm text-gray-600">Generating QR Code...</p>
+                  </div>
+                  <div
+                    v-else
+                    class="w-64 h-64 flex items-center justify-center bg-red-50"
+                  >
+                    <div class="text-center">
+                      <v-icon size="40" color="error" class="mb-2"
+                        >mdi-alert-circle</v-icon
+                      >
+                      <p class="text-sm text-red-600">
+                        Failed to generate QR Code
+                      </p>
+                      <v-btn
+                        size="small"
+                        color="primary"
+                        variant="outlined"
+                        class="mt-2"
+                        @click="generateQRCode(currentOrder.qr_string)"
+                      >
+                        Retry
+                      </v-btn>
+                    </div>
                   </div>
                 </div>
               </div>
-
-              <!-- QR String for manual input -->
-              <!-- <v-card class="pa-3 bg-blue-50 mb-4 text-left">
-                <p class="text-xs font-bold mb-2">
-                  QR String (for manual input):
-                </p>
-                <div class="flex items-center justify-between">
-                  <p class="text-xs font-mono break-all flex-1 mr-2">
-                    {{ currentOrder.qr_string }}
-                  </p>
-                  <v-btn
-                    size="x-small"
-                    variant="outlined"
-                    @click="copyQrString"
-                    class="flex-shrink-0"
-                  >
-                    Copy
-                  </v-btn>
-                </div>
-              </v-card> -->
             </div>
 
-            <!-- Keep all your existing payment status and instructions sections -->
+            <!-- Rest of the dialog (payment status, instructions, etc.) -->
             <div class="mb-4">
-              <v-alert v-if="paymentStatus === 'pending'" type="info" class="mb-2">
+              <v-alert
+                v-if="paymentStatus === 'pending'"
+                type="info"
+                class="mb-2"
+              >
                 <div class="flex items-center">
                   <v-progress-circular
                     indeterminate
@@ -1324,8 +1734,11 @@ onUnmounted(() => {
                   Waiting for payment...
                 </div>
               </v-alert>
-
-              <v-alert v-if="paymentStatus === 'checking'" type="warning" class="mb-2">
+              <v-alert
+                v-if="paymentStatus === 'checking'"
+                type="warning"
+                class="mb-2"
+              >
                 <div class="flex items-center">
                   <v-progress-circular
                     indeterminate
@@ -1336,15 +1749,21 @@ onUnmounted(() => {
                   Verifying payment...
                 </div>
               </v-alert>
-
-              <v-alert v-if="paymentStatus === 'completed'" type="success" class="mb-2">
+              <v-alert
+                v-if="paymentStatus === 'completed'"
+                type="success"
+                class="mb-2"
+              >
                 <div class="flex items-center">
                   <v-icon class="mr-2">mdi-check-circle</v-icon>
                   Payment successful! Redirecting...
                 </div>
               </v-alert>
-
-              <v-alert v-if="paymentStatus === 'failed'" type="error" class="mb-2">
+              <v-alert
+                v-if="paymentStatus === 'failed'"
+                type="error"
+                class="mb-2"
+              >
                 <div class="flex items-center">
                   <v-icon class="mr-2">mdi-alert-circle</v-icon>
                   Payment failed. Please try again.
@@ -1352,7 +1771,6 @@ onUnmounted(() => {
               </v-alert>
             </div>
 
-            <!-- Instructions -->
             <v-card class="pa-3 bg-yellow-50 text-left">
               <p class="font-bold mb-2">Payment Instructions:</p>
               <ol class="text-sm space-y-1">
@@ -1364,12 +1782,12 @@ onUnmounted(() => {
               </ol>
               <div class="mt-3 p-2 bg-yellow-100 rounded">
                 <p class="text-xs text-yellow-800">
-                  <strong>Note:</strong> Payment verification may take up to 30 seconds
+                  <strong>Note:</strong> Payment verification may take up to 30
+                  seconds
                 </p>
               </div>
             </v-card>
 
-            <!-- Cancel Order Button -->
             <v-btn
               v-if="paymentStatus === 'pending' || paymentStatus === 'checking'"
               variant="text"
@@ -1383,707 +1801,150 @@ onUnmounted(() => {
               Cancel Order
             </v-btn>
           </div>
+          <div v-else class="text-center">
+            <v-icon size="40" color="error" class="mb-2"
+              >mdi-alert-circle</v-icon
+            >
+            <p class="text-sm text-red-600">Order data not available</p>
+            <v-btn
+              size="small"
+              color="primary"
+              variant="outlined"
+              class="mt-2"
+              @click="paymentDialog = false"
+            >
+              Close
+            </v-btn>
+          </div>
         </v-card>
       </v-dialog>
+
+      <!-- Success/Error Snackbar -->
+      <v-snackbar
+        v-model="snackbar"
+        timeout="4000"
+        :color="snackbarColor"
+        location="top center"
+      >
+        {{ snackbarMessage }}
+        <template v-slot:actions>
+          <v-btn
+            icon="mdi-close"
+            color="white"
+            variant="text"
+            @click="snackbar = false"
+          />
+        </template>
+      </v-snackbar>
+
+      <!-- Login Snackbar -->
+      <v-snackbar
+        v-model="loginSnackbar"
+        timeout="3000"
+        :color="loginMessage.includes('successful') ? 'success' : 'error'"
+        location="top center"
+      >
+        {{ loginMessage }}
+        <template v-slot:actions>
+          <v-btn
+            icon="mdi-close"
+            color="white"
+            variant="text"
+            @click="loginSnackbar = false"
+          />
+        </template>
+      </v-snackbar>
     </v-container>
   </div>
 </template>
 
 <style scoped>
-/* Existing styles */
-.text-red {
-  color: #ef4444;
+.login-input :deep(.v-field__input) {
+  color: white !important;
 }
 
-.text-red-500 {
-  color: #ef4444;
+.login-input :deep(.v-field__input)::placeholder {
+  color: rgba(255, 255, 255, 0.7) !important;
 }
 
-.text-red-700 {
-  color: #b91c1c;
+.login-input :deep(.v-label) {
+  color: rgba(255, 255, 255, 0.9) !important;
 }
 
-.hover\:text-red-500:hover {
-  color: #ef4444;
+.login-input :deep(.v-field__outline) {
+  border-color: rgba(255, 255, 255, 0.3) !important;
 }
 
-.hover\:text-red-700:hover {
-  color: #b91c1c;
+.login-input:hover :deep(.v-field__outline) {
+  border-color: rgba(255, 255, 255, 0.6) !important;
 }
 
-.hover\:bg-gray-200:hover {
-  background-color: #e5e7eb;
-}
-
-.hover\:bg-blue-100:hover {
-  background-color: #dbeafe;
-}
-
-.hover\:bg-gray-50:hover {
-  background-color: #f9fafb;
-}
-
-.bg-gray-100 {
-  background-color: #f3f4f6;
-}
-
-.bg-blue-50 {
-  background-color: #eff6ff;
-}
-
-.bg-green-50 {
-  background-color: #f0fdf4;
-}
-
-.bg-yellow-50 {
-  background-color: #fefce8;
-}
-
-.bg-yellow-100 {
-  background-color: #fef3c7;
-}
-
-.transition-colors {
-  transition-property: color;
-  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
-  transition-duration: 150ms;
-}
-
-.border-blue-500 {
-  border-color: #3b82f6;
-}
-
-.border-gray-200 {
-  border-color: #e5e7eb;
-}
-
-.space-y-1 > * + * {
-  margin-top: 0.25rem;
-}
-
-.space-y-3 > * + * {
-  margin-top: 0.75rem;
-}
-
-.space-x-3 > * + * {
-  margin-left: 0.75rem;
-}
-
-.space-x-4 > * + * {
-  margin-left: 1rem;
-}
-
-.text-yellow-800 {
-  color: #92400e;
-}
-
-.break-all {
-  word-break: break-all;
-}
-
-.font-mono {
-  font-family: ui-monospace, SFMono-Regular, "SF Mono", Monaco, Consolas,
-    "Liberation Mono", "Courier New", monospace;
-}
-
-/* Modern Address Dialog Styles */
-.address-dialog-card {
-  border-radius: 20px !important;
-  overflow: hidden;
-  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
-}
-
-.address-dialog-header {
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  padding: 24px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.address-icon-wrapper {
-  width: 48px;
-  height: 48px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  backdrop-filter: blur(10px);
-}
-
-.address-close-btn {
-  opacity: 0.8;
-}
-
-.address-close-btn:hover {
-  opacity: 1;
-  background: rgba(255, 255, 255, 0.1) !important;
-}
-
-.address-dialog-content {
-  padding: 24px;
-}
-
-/* New Address Card */
-.new-address-card {
-  background: linear-gradient(135deg, #f8faff 0%, #f0f7ff 100%);
-  border: 2px dashed #3b82f6;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 24px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-}
-
-.new-address-card:hover {
-  border-color: #2563eb;
-  background: linear-gradient(135deg, #f0f7ff 0%, #e6f3ff 100%);
-  transform: translateY(-2px);
-  box-shadow: 0 10px 25px rgba(59, 130, 246, 0.15);
-}
-
-.new-address-content {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.new-address-icon {
-  width: 60px;
-  height: 60px;
-  background: white;
-  border-radius: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.15);
-}
-
-.new-address-text {
-  flex: 1;
-  margin-left: 16px;
-}
-
-.new-address-arrow {
-  opacity: 0.6;
-  transition: all 0.3s ease;
-}
-
-.new-address-card:hover .new-address-arrow {
-  opacity: 1;
-  transform: translateX(4px);
-}
-
-/* Saved Addresses Section */
-.saved-addresses-section {
-  margin-top: 8px;
-}
-
-.section-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e5e7eb;
-}
-
-.addresses-grid {
-  display: grid;
-  gap: 16px;
-}
-
-/* Address Cards */
-.address-card {
-  position: relative;
-  border-radius: 16px;
-  padding: 20px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  overflow: hidden;
-}
-
-.address-card-default {
-  background: #fafafa;
-  border: 2px solid #e5e7eb;
-}
-
-.address-card-selected {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border: 2px solid #3b82f6;
-  box-shadow: 0 8px 25px rgba(59, 130, 246, 0.15);
-}
-
-.address-card:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.1);
-}
-
-.address-card-indicator {
-  position: absolute;
-  top: 16px;
-  right: 16px;
-}
-
-.selection-dot {
-  width: 20px;
-  height: 20px;
-  border-radius: 50%;
-  border: 2px solid #d1d5db;
-  background: white;
-  transition: all 0.3s ease;
-  position: relative;
-}
-
-.selection-dot.selected {
-  background: #3b82f6;
-  border-color: #3b82f6;
-}
-
-.selection-dot.selected::after {
-  content: "";
-  position: absolute;
-  width: 8px;
-  height: 8px;
-  background: white;
-  border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.address-card-content {
-  padding-right: 40px;
-}
-
-.address-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 12px;
-}
-
-.address-badges {
-  display: flex;
-  gap: 8px;
-}
-
-.default-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #fbbf24;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.selected-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #10b981;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.address-details {
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-}
-
-.address-line {
-  display: flex;
-  align-items: center;
-  color: #6b7280;
-  font-size: 14px;
-}
-
-.address-line-icon {
-  margin-right: 8px;
-  opacity: 0.7;
-}
-
-.address-card-overlay {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: linear-gradient(
-    135deg,
-    rgba(59, 130, 246, 0.05) 0%,
-    rgba(59, 130, 246, 0.02) 100%
-  );
-  opacity: 0;
-  transition: opacity 0.3s ease;
-}
-
-.address-card:hover .address-card-overlay {
-  opacity: 1;
-}
-
-/* No Addresses */
-.no-addresses {
-  text-align: center;
-  padding: 48px 24px;
-}
-
-.no-addresses-icon {
-  margin-bottom: 16px;
-  opacity: 0.5;
-}
-
-/* Address Preview Card */
-.address-preview-card {
-  border-radius: 16px;
-  margin: 12px 0 16px 0;
-}
-
-.address-preview-header {
-  padding: 16px 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: linear-gradient(135deg, #667eea 0%, #246ec8 100%);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.address-preview-icon {
-  width: 28px;
-  height: 28px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.address-change-btn {
-  border-color: rgba(255, 255, 255, 0.5) !important;
-  font-size: 12px !important;
-  height: 32px !important;
-}
-
-.address-change-btn:hover {
-  background: rgba(255, 255, 255, 0.1) !important;
-  border-color: white !important;
-}
-
-.address-preview-content {
-  padding: 20px;
-  background: white;
-  backdrop-filter: blur(10px);
-}
-
-.address-avatar {
-  width: 40px;
-  height: 40px;
-  background: #eff6ff;
-  border-radius: 12px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.address-preview-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #fbbf24;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 12px;
-  font-size: 10px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-/* Address Type Selection */
 .address-type-card {
-  background: #f8fafc;
-  border-radius: 16px;
-  padding: 20px;
-  margin-bottom: 20px;
-  border: 1px solid #e2e8f0;
-}
-
-.address-type-header {
-  margin-bottom: 16px;
-  padding-bottom: 12px;
-  border-bottom: 1px solid #e2e8f0;
-}
-
-.address-options {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .address-option {
-  display: flex;
-  align-items: flex-start;
-  padding: 16px;
-  border-radius: 12px;
-  cursor: pointer;
-  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-  border: 2px solid transparent;
-}
-
-.address-option-inactive {
-  background: white;
-  border-color: #e5e7eb;
+  transition: all 0.2s ease;
 }
 
 .address-option-active {
-  background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%);
-  border-color: #3b82f6;
-  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+  background-color: rgb(239 246 255);
+  border-color: rgb(59 130 246);
+}
+
+.address-option-inactive {
+  background-color: white;
+  border-color: rgb(209 213 219);
 }
 
 .address-option:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 6px 15px rgba(0, 0, 0, 0.1);
-}
-
-.address-option-radio {
-  margin-right: 12px;
-  margin-top: 2px;
+  border-color: rgb(59 130 246);
 }
 
 .radio-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: 50%;
+  width: 20px;
+  height: 20px;
   border: 2px solid #d1d5db;
-  background: white;
-  transition: all 0.3s ease;
-  position: relative;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
 }
 
 .radio-dot.active {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  border-color: rgb(59 130 246);
+  background-color: rgb(59 130 246);
 }
 
 .radio-dot.active::after {
   content: "";
-  position: absolute;
-  width: 6px;
-  height: 6px;
-  background: white;
+  width: 8px;
+  height: 8px;
+  background-color: white;
   border-radius: 50%;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-}
-
-.address-option-content {
-  flex: 1;
-}
-
-.address-select-btn {
-  font-size: 12px !important;
-  height: 32px !important;
-  min-width: 80px !important;
-}
-
-/* Selected Address Preview */
-.selected-address-preview {
-  margin-top: 16px;
-  padding-top: 16px;
-  border-top: 1px solid #e2e8f0;
-}
-
-.selected-address-content {
-  background: white;
-  border-radius: 12px;
-  padding: 16px;
-  border: 1px solid #e2e8f0;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-}
-
-.selected-address-icon {
-  width: 32px;
-  height: 32px;
-  background: #eff6ff;
-  border-radius: 8px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.selected-address-badge {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: #fbbf24;
-  color: white;
-  padding: 4px 8px;
-  border-radius: 8px;
-  font-size: 10px;
-  font-weight: 600;
-  flex-shrink: 0;
-}
-
-/* Responsive Design */
-@media (max-width: 768px) {
-  .address-dialog-header {
-    padding: 20px;
-    flex-direction: column;
-    gap: 12px;
-    align-items: flex-start;
-  }
-
-  .address-dialog-content {
-    padding: 16px;
-  }
-
-  .new-address-card {
-    padding: 16px;
-  }
-
-  .new-address-content {
-    flex-direction: column;
-    gap: 12px;
-    text-align: center;
-  }
-
-  .new-address-arrow {
-    display: none;
-  }
-
-  .address-card {
-    padding: 16px;
-  }
-
-  .address-card-content {
-    padding-right: 32px;
-  }
-
-  .address-preview-header {
-    padding: 12px 16px;
-  }
-
-  .address-preview-content {
-    padding: 16px;
-  }
-
-  .address-type-card {
-    padding: 16px;
-  }
-
-  .address-option {
-    padding: 12px;
-  }
-
-  .selected-address-content {
-    padding: 12px;
-  }
-}
-
-/* Animation keyframes */
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(20px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-.address-dialog-card {
-  animation: slideInUp 0.3s ease-out;
 }
 
 .address-card {
-  animation: fadeIn 0.5s ease-out;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
 }
 
-.address-card:nth-child(2) {
-  animation-delay: 0.1s;
+.address-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
 }
 
-.address-card:nth-child(3) {
-  animation-delay: 0.2s;
-}
-
-.address-card:nth-child(4) {
-  animation-delay: 0.3s;
-}
-
-/* Loading states */
-.address-loading {
+.address-line {
   display: flex;
-  justify-content: center;
-  align-items: center;
-  padding: 40px;
+  align-items: flex-start;
+  gap: 8px;
 }
 
-/* Error states */
-.address-error {
-  background: #fef2f2;
-  border: 1px solid #fecaca;
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-  color: #dc2626;
-}
-
-/* Success states */
-.address-success {
-  background: #f0fdf4;
-  border: 1px solid #bbf7d0;
-  border-radius: 12px;
-  padding: 16px;
-  text-align: center;
-  color: #166534;
-}
-
-/* Accessibility improvements */
-.address-option:focus-visible,
-.address-card:focus-visible,
-.new-address-card:focus-visible {
-  outline: 2px solid #3b82f6;
-  outline-offset: 2px;
-}
-
-/* Custom scrollbar for dialog */
-.address-dialog-content::-webkit-scrollbar {
-  width: 6px;
-}
-
-.address-dialog-content::-webkit-scrollbar-track {
-  background: #f1f5f9;
-  border-radius: 3px;
-}
-
-.address-dialog-content::-webkit-scrollbar-thumb {
-  background: #cbd5e1;
-  border-radius: 3px;
-}
-
-.address-dialog-content::-webkit-scrollbar-thumb:hover {
-  background: #94a3b8;
+.address-line-icon {
+  margin-top: 2px;
+  flex-shrink: 0;
 }
 </style>

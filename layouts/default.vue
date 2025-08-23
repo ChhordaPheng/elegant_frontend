@@ -229,16 +229,17 @@ watch(
 );
 
 // let authCheckInterval: ReturnType<typeof setInterval>;
-
-onMounted(async () => {
-  try {
-    await SiteInfoStore.fetchSiteInfo();
-    await userProfileStore.fetchUserProfile();
-    checkAuthStatus();
-  } catch (error) {
-    console.error("Error fetching site info:", error);
-  }
-  const storedLanguage = localStorage.getItem("app_language");
+  
+  onMounted(async () => {
+    try {
+      await SiteInfoStore.fetchSiteInfo();
+      await userProfileStore.fetchUserProfile();
+      checkAuthStatus();
+    } catch (error) {
+      console.error("Error fetching site info:", error);
+    }
+    const storedLanguage = localStorage.getItem("app_language") || process.env.NUXT_PUBLIC_APP_DEFAULT_LANGUAGE || "kh";
+    console.log("storedLanguage", storedLanguage);
   if (storedLanguage) {
     locale.value = storedLanguage;
   }
@@ -408,7 +409,7 @@ onBeforeUnmount(() => {
                 :class="{ active: activeButton === 'register' }"
                 :disabled="isNavigating"
                 @click="
-                  handleNavigation('/register', null);
+                  handleNavigation('/login', null);
                   activeButton = 'register';
                 "
               >
@@ -517,7 +518,7 @@ onBeforeUnmount(() => {
 
           <v-list-item
             @click="
-              handleNavigation('/register', null);
+              handleNavigation('/login', null);
               activeButton = 'register';
             "
             :disabled="isNavigating"
