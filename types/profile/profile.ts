@@ -17,9 +17,46 @@ export interface User {
   updated_at: string;
   otp_verified_for_reset: number;
   full_name: string;
-  addresses: any[];
+  addresses: Address[];
   profile_image?: string;
-  orders: any[];
+  orders: Order[];
+}
+
+export interface Address {
+  id: string;
+  customer_id: string;
+  name: string;
+  home: string;
+  street: string;
+  city: string;
+  country: string;
+  phone: string;
+  is_default: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Order {
+  id: string;
+  order_number: string;
+  customer_id: string;
+  subtotal: string;
+  delivery_fee: string;
+  total_amount: string;
+  payment_method: string;
+  placed_at: string;
+  khqr_string: string;
+  delivery_id: string;
+  address_id: null | string;
+  phone: string;
+  note: string;
+  khqr_md5: string;
+  status: string;
+  order_status: string;
+  paid_at: string;
+  paid_amount: string;
+  created_at: string;
+  updated_at: string;
 }
 
 ////  change password 

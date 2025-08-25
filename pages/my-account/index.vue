@@ -18,7 +18,164 @@ const tabs = [
   { label: "Edit Info", value: "account" },
   { label: "Change Password", value: "password" },
   { label: "Addresses", value: "address" },
+  { label: "Tracking Orders", value: "orders" },
 ];
+
+// Define all possible statuses as a union type
+type OrderStatus =
+  | "pending"
+  | "confirmed"
+  | "preparing"
+  | "ready"
+  | "shipped"
+  | "delivered"
+  | "completed"
+  | "cancelled";
+
+// Tracking steps configuration
+const trackingSteps = ref<
+  { status: OrderStatus; label: string; icon: string }[]
+>([
+  { status: "pending", label: "Pending", icon: "mdi-clock-outline" },
+  { status: "confirmed", label: "Confirmed", icon: "mdi-check-circle" },
+  { status: "preparing", label: "Preparing", icon: "mdi-chef-hat" },
+  { status: "ready", label: "Ready", icon: "mdi-package-variant" },
+  { status: "shipped", label: "Shipped", icon: "mdi-truck" },
+  { status: "delivered", label: "Delivered", icon: "mdi-home-heart" },
+  { status: "completed", label: "Completed", icon: "mdi-check-all" },
+]);
+
+const statusOrder: OrderStatus[] = [
+  "pending",
+  "confirmed",
+  "preparing",
+  "ready",
+  "shipped",
+  "delivered",
+  "completed",
+];
+
+// Status configurations
+const statusColors: Record<OrderStatus, string> = {
+  pending: "orange",
+  confirmed: "blue",
+  preparing: "purple",
+  ready: "indigo",
+  shipped: "teal",
+  delivered: "green",
+  completed: "success",
+  cancelled: "red",
+};
+
+const statusIcons: Record<OrderStatus, string> = {
+  pending: "mdi-clock-outline",
+  confirmed: "mdi-check-circle",
+  preparing: "mdi-chef-hat",
+  ready: "mdi-package-variant",
+  shipped: "mdi-truck",
+  delivered: "mdi-home-heart",
+  completed: "mdi-check-all",
+  cancelled: "mdi-close-circle",
+};
+// Computed properties
+const hasOrders = computed(() => {
+  return userProfile.value?.orders && userProfile.value.orders.length > 0;
+});
+
+const sortedOrders = computed(() => {
+  if (!userProfile.value?.orders) return [];
+  return [...userProfile.value.orders].sort(
+    (a, b) => new Date(b.placed_at).getTime() - new Date(a.placed_at).getTime()
+  );
+});
+
+// Methods
+
+const getEstimatedDelivery = (): string => {
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  return tomorrow.toLocaleDateString();
+};
+// Methods
+const getStatusColor = (status: OrderStatus): string => {
+  return statusColors[status] || "grey";
+};
+
+const getStatusIcon = (status: OrderStatus): string => {
+  return statusIcons[status] || "mdi-help-circle";
+};
+
+const formatStatus = (status: string): string => {
+  return status.charAt(0).toUpperCase() + status.slice(1);
+};
+
+const formatPaymentMethod = (method: string): string => {
+  return method
+    .replace("_", " ")
+    .replace(/\b\w/g, (l: string) => l.toUpperCase());
+};
+
+const getStepColor = (
+  orderStatus: OrderStatus,
+  stepStatus: OrderStatus
+): string => {
+  const orderIndex = statusOrder.indexOf(orderStatus);
+  const stepIndex = statusOrder.indexOf(stepStatus);
+
+  if (stepIndex < orderIndex) return "success";
+  if (stepIndex === orderIndex) return "primary";
+  return "grey-lighten-2";
+};
+
+const getStepIconColor = (
+  orderStatus: OrderStatus,
+  stepStatus: OrderStatus
+): string => {
+  const orderIndex = statusOrder.indexOf(orderStatus);
+  const stepIndex = statusOrder.indexOf(stepStatus);
+
+  if (stepIndex <= orderIndex) return "white";
+  return "grey";
+};
+
+const getStepTextClass = (
+  orderStatus: OrderStatus,
+  stepStatus: OrderStatus
+): string => {
+  const orderIndex = statusOrder.indexOf(orderStatus);
+  const stepIndex = statusOrder.indexOf(stepStatus);
+
+  if (stepIndex < orderIndex) return "success--text font-weight-bold";
+  if (stepIndex === orderIndex) return "primary--text font-weight-bold";
+  return "text--secondary";
+};
+
+const isCurrentStep = (
+  orderStatus: OrderStatus,
+  stepStatus: OrderStatus
+): boolean => {
+  return orderStatus === stepStatus;
+};
+
+const isStepCompleted = (
+  orderStatus: OrderStatus,
+  stepStatus: OrderStatus
+): boolean => {
+  return statusOrder.indexOf(stepStatus) < statusOrder.indexOf(orderStatus);
+};
+
+const isStepPending = (
+  orderStatus: OrderStatus,
+  stepStatus: OrderStatus
+): boolean => {
+  return statusOrder.indexOf(stepStatus) > statusOrder.indexOf(orderStatus);
+};
+
+const getProgressWidth = (orderStatus: OrderStatus): string => {
+  const currentIndex = statusOrder.indexOf(orderStatus);
+  const percentage = ((currentIndex + 1) / statusOrder.length) * 100;
+  return `${Math.min(percentage, 100)}%`;
+};
 
 const account = ref({
   firstname: "",
@@ -230,7 +387,11 @@ const saveAddress = async () => {
 };
 
 // Custom confirm dialog functions
-function showConfirm(title: string, message: string, action: () => Promise<void>) {
+function showConfirm(
+  title: string,
+  message: string,
+  action: () => Promise<void>
+) {
   confirmDialogTitle.value = title;
   confirmDialogMessage.value = message;
   confirmDialogAction.value = action;
@@ -302,7 +463,11 @@ onMounted(async () => {
         rounded="xl"
       >
         <!-- Loading Overlay -->
-        <v-overlay v-model="loading" class="align-center justify-center" contained>
+        <v-overlay
+          v-model="loading"
+          class="align-center justify-center"
+          contained
+        >
           <v-progress-circular
             color="primary"
             indeterminate
@@ -482,7 +647,11 @@ onMounted(async () => {
                 </div>
 
                 <!-- Address List -->
-                <div v-if="userProfile?.addresses && userProfile.addresses.length > 0">
+                <div
+                  v-if="
+                    userProfile?.addresses && userProfile.addresses.length > 0
+                  "
+                >
                   <v-card
                     v-for="address in userProfile.addresses"
                     :key="address.id"
@@ -535,11 +704,18 @@ onMounted(async () => {
                 </div>
 
                 <!-- Empty State -->
-                <v-card v-else class="pa-8 text-center" elevation="1" rounded="lg">
+                <v-card
+                  v-else
+                  class="pa-8 text-center"
+                  elevation="1"
+                  rounded="lg"
+                >
                   <v-icon size="64" color="grey-lighten-1" class="mb-4">
                     mdi-map-marker-off
                   </v-icon>
-                  <h3 class="text-h6 mb-2 text-grey-darken-1">No addresses yet</h3>
+                  <h3 class="text-h6 mb-2 text-grey-darken-1">
+                    No addresses yet
+                  </h3>
                   <p class="text-body-2 text-grey mb-4">
                     Add your first address to get started with deliveries
                   </p>
@@ -550,6 +726,321 @@ onMounted(async () => {
                     :disabled="addressLoading"
                   >
                     Add Your First Address
+                  </v-btn>
+                </v-card>
+              </div>
+            </transition>
+          </v-window-item>
+
+          <!-- Orders Tab -->
+          <v-window-item value="orders">
+            <transition name="slide-fade" mode="out-in">
+              <div key="orders-content" class="px-2 py-4">
+                <div class="text-center mb-6">
+                  <h3 class="text-h4 font-weight-bold mb-2 primary--text">
+                    My Orders
+                  </h3>
+                  <p class="text-body-2 text--secondary">
+                    Track your order history and status
+                  </p>
+                </div>
+
+                <!-- Orders List -->
+                <div v-if="hasOrders">
+                  <v-card
+                    v-for="(order, orderIndex) in sortedOrders"
+                    :key="order.id"
+                    class="mb-6 order-card"
+                    elevation="3"
+                    rounded="xl"
+                  >
+                    <!-- Order Header -->
+                    <v-card-title class="pb-3">
+                      <div class="d-flex align-center w-100">
+                        <v-avatar size="48" class="mr-4" color="primary">
+                          <v-icon color="white" size="24">mdi-receipt</v-icon>
+                        </v-avatar>
+                        <div class="flex-grow-1">
+                          <h4 class="text-h6 font-weight-bold mb-1">
+                            Order #{{ order.order_number }}
+                          </h4>
+                          <p class="text-body-2 text--secondary mb-0">
+                            {{ new Date(order.placed_at).toLocaleDateString() }}
+                          </p>
+                        </div>
+                        <v-chip
+                          :color="getStatusColor(order.order_status as OrderStatus)"
+                          variant="flat"
+                          size="large"
+                          class="font-weight-bold"
+                        >
+                          <v-icon start size="16">{{
+                            getStatusIcon(order.order_status as OrderStatus)
+                          }}</v-icon>
+                          {{ formatStatus(order.order_status as OrderStatus) }}
+                        </v-chip>
+                      </div>
+                    </v-card-title>
+
+                    <v-divider></v-divider>
+
+                    <v-card-text class="pt-4">
+                      <!-- Order Details Grid -->
+                      <v-row class="mb-6">
+                        <v-col cols="6" md="3">
+                          <v-card
+                            variant="outlined"
+                            class="pa-3 h-100 detail-card detail-card--blue"
+                            rounded="lg"
+                          >
+                            <div class="d-flex align-center">
+                              <v-icon color="blue" size="20" class="mr-2"
+                                >mdi-calendar</v-icon
+                              >
+                              <div>
+                                <p
+                                  class="text-caption font-weight-bold text-uppercase blue--text mb-1"
+                                >
+                                  Date
+                                </p>
+                                <p class="text-body-2 font-weight-medium mb-0">
+                                  {{
+                                    new Date(
+                                      order.placed_at
+                                    ).toLocaleDateString()
+                                  }}
+                                </p>
+                              </div>
+                            </div>
+                          </v-card>
+                        </v-col>
+
+                        <v-col cols="6" md="3">
+                          <v-card
+                            variant="outlined"
+                            class="pa-3 h-100 detail-card detail-card--green"
+                            rounded="lg"
+                          >
+                            <div class="d-flex align-center">
+                              <v-icon color="green" size="20" class="mr-2"
+                                >mdi-currency-usd</v-icon
+                              >
+                              <div>
+                                <p
+                                  class="text-caption font-weight-bold text-uppercase green--text mb-1"
+                                >
+                                  Total
+                                </p>
+                                <p class="text-body-2 font-weight-medium mb-0">
+                                  ${{ order.total_amount }}
+                                </p>
+                              </div>
+                            </div>
+                          </v-card>
+                        </v-col>
+
+                        <v-col cols="6" md="3">
+                          <v-card
+                            variant="outlined"
+                            class="pa-3 h-100 detail-card detail-card--purple"
+                            rounded="lg"
+                          >
+                            <div class="d-flex align-center">
+                              <v-icon color="purple" size="20" class="mr-2"
+                                >mdi-credit-card</v-icon
+                              >
+                              <div>
+                                <p
+                                  class="text-caption font-weight-bold text-uppercase purple--text mb-1"
+                                >
+                                  Payment
+                                </p>
+                                <p class="text-body-2 font-weight-medium mb-0">
+                                  {{
+                                    formatPaymentMethod(order.payment_method)
+                                  }}
+                                </p>
+                              </div>
+                            </div>
+                          </v-card>
+                        </v-col>
+
+                        <v-col cols="6" md="3">
+                          <v-card
+                            variant="outlined"
+                            class="pa-3 h-100 detail-card detail-card--orange"
+                            rounded="lg"
+                          >
+                            <div class="d-flex align-center">
+                              <v-icon color="orange" size="20" class="mr-2"
+                                >mdi-phone</v-icon
+                              >
+                              <div>
+                                <p
+                                  class="text-caption font-weight-bold text-uppercase orange--text mb-1"
+                                >
+                                  Contact
+                                </p>
+                                <p class="text-body-2 font-weight-medium mb-0">
+                                  {{ order.phone }}
+                                </p>
+                              </div>
+                            </div>
+                          </v-card>
+                        </v-col>
+                      </v-row>
+
+                      <!-- Order Tracking Section -->
+                      <v-card
+                        variant="outlined"
+                        class="pa-4 tracking-card"
+                        rounded="xl"
+                      >
+                        <h5 class="text-h6 font-weight-bold mb-4 text-center">
+                          Order Tracking
+                        </h5>
+
+                        <!-- Progress Steps -->
+                        <div class="position-relative mb-4">
+                          <v-row
+                            align="center"
+                            justify="space-between"
+                            class="mx-0 position-relative"
+                            style="z-index: 2"
+                          >
+                            <v-col
+                              v-for="(step, index) in trackingSteps"
+                              :key="index"
+                              cols="auto"
+                              class="d-flex flex-column align-center text-center pa-1"
+                            >
+                              <!-- Step Icon -->
+                              <v-avatar
+                                :size="
+                                  isCurrentStep(order.order_status as OrderStatus, step.status)
+                                    ? 56
+                                    : 48
+                                "
+                                :color="
+                                  getStepColor(order.order_status as OrderStatus, step.status)
+                                "
+                                class="mb-2 step-avatar"
+                                :class="{
+                                  'step-avatar--active': isCurrentStep(
+                                    order.order_status as OrderStatus,
+                                    step.status
+                                  ),
+                                  'step-avatar--completed': isStepCompleted(
+                                    order.order_status as OrderStatus,
+                                    step.status
+                                  ),
+                                  'step-avatar--pending': isStepPending(
+                                    order.order_status as OrderStatus,
+                                    step.status
+                                  ),
+                                }"
+                              >
+                                <v-icon
+                                  :color="
+                                    getStepIconColor(
+                                      order.order_status as OrderStatus,
+                                      step.status
+                                    )
+                                  "
+                                  :size="
+                                    isCurrentStep(
+                                      order.order_status as OrderStatus,
+                                      step.status
+                                    )
+                                      ? 24
+                                      : 20
+                                  "
+                                >
+                                  {{ step.icon }}
+                                </v-icon>
+                              </v-avatar>
+
+                              <!-- Step Label -->
+                              <span
+                                class="text-caption font-weight-medium"
+                                :class="
+                                  getStepTextClass(
+                                    order.order_status as OrderStatus,
+                                    step.status
+                                  )
+                                "
+                              >
+                                {{ step.label }}
+                              </span>
+                            </v-col>
+                          </v-row>
+
+                          <!-- Progress Line -->
+                          <div class="progress-line">
+                            <div
+                              class="progress-fill"
+                              :style="{
+                                width: getProgressWidth(order.order_status as OrderStatus),
+                              }"
+                            ></div>
+                          </div>
+                        </div>
+
+                        <!-- Estimated Delivery -->
+                        <v-alert
+                          v-if="
+                            order.order_status !== 'delivered' &&
+                            order.order_status !== 'completed' &&
+                            order.order_status !== 'cancelled'
+                          "
+                          color="info"
+                          variant="tonal"
+                          icon="mdi-truck-fast"
+                          class="mb-0"
+                          rounded="lg"
+                        >
+                          <template v-slot:text>
+                            <span class="font-weight-medium">
+                              Estimated delivery: {{ getEstimatedDelivery() }}
+                            </span>
+                          </template>
+                        </v-alert>
+
+                        <!-- Order Note (if exists) -->
+                        <v-alert
+                          v-if="order.note"
+                          color="grey-lighten-6"
+                          variant="tonal"
+                          icon="mdi-note-text"
+                          class="mb-0 mt-3"
+                          rounded="lg"
+                        >
+                          <template v-slot:text>
+                            <strong>Note:</strong> {{ order.note }}
+                          </template>
+                        </v-alert>
+                      </v-card>
+                    </v-card-text>
+                  </v-card>
+                </div>
+
+                <!-- Empty State -->
+                <v-card
+                  v-else
+                  class="text-center pa-12"
+                  variant="outlined"
+                  rounded="xl"
+                >
+                  <v-icon size="80" color="grey-lighten-2" class="mb-4"
+                    >mdi-cart-off</v-icon
+                  >
+                  <h3 class="text-h5 mb-2 text--secondary">No orders yet</h3>
+                  <p class="text-body-1 text--secondary mb-4">
+                    Your order history will appear here when you make your first
+                    purchase
+                  </p>
+                  <v-btn color="primary" variant="elevated" rounded="pill">
+                    Start Shopping
                   </v-btn>
                 </v-card>
               </div>
@@ -646,7 +1137,9 @@ onMounted(async () => {
     <v-dialog v-model="showConfirmDialog" max-width="450px" persistent>
       <v-card rounded="xl" class="pa-2">
         <v-card-title class="text-h5 pa-6 pb-4 d-flex align-center">
-          <v-icon color="warning" size="28" class="mr-3">mdi-alert-circle</v-icon>
+          <v-icon color="warning" size="28" class="mr-3"
+            >mdi-alert-circle</v-icon
+          >
           {{ confirmDialogTitle }}
         </v-card-title>
 
@@ -656,7 +1149,12 @@ onMounted(async () => {
 
         <v-card-actions class="pa-6 pt-2">
           <v-spacer />
-          <v-btn color="grey" variant="outlined" @click="closeConfirmDialog" class="mr-3">
+          <v-btn
+            color="grey"
+            variant="outlined"
+            @click="closeConfirmDialog"
+            class="mr-3"
+          >
             Cancel
           </v-btn>
           <v-btn color="error" @click="handleConfirm" class="animated-btn">
@@ -875,5 +1373,64 @@ onMounted(async () => {
   50% {
     box-shadow: 0 0 20px rgba(158, 158, 164, 0.6);
   }
+}
+.slide-fade-enter-active {
+  transition: all 0.6s ease-out;
+}
+
+.slide-fade-leave-active {
+  transition: all 0.4s ease-in;
+}
+
+.slide-fade-enter-from {
+  transform: translateY(20px);
+  opacity: 0;
+}
+
+.slide-fade-leave-to {
+  transform: translateY(-20px);
+  opacity: 0;
+}
+
+/* Card entrance animation */
+.v-card {
+  animation: slideInUp 0.6s ease-out forwards;
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Custom hover effects */
+.group:hover .animate-bounce {
+  animation-duration: 2s;
+}
+
+/* Progress bar shimmer effect */
+@keyframes shimmer {
+  0% {
+    background-position: -200px 0;
+  }
+  100% {
+    background-position: calc(200px + 100%) 0;
+  }
+}
+
+.progress-shimmer {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.4),
+    transparent
+  );
+  background-size: 200px 100%;
+  animation: shimmer 2s infinite;
 }
 </style>
