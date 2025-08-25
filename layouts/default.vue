@@ -115,7 +115,8 @@ const checkAuthStatus = () => {
 
   try {
     // Get the accessToken cookie (this is what your app uses)
-    const accessToken = getCookie("accessToken") || useCookie("accessToken").value;
+    const accessToken =
+      getCookie("accessToken") || useCookie("accessToken").value;
 
     if (accessToken && accessToken !== "null" && accessToken !== "undefined") {
       // Token exists, user should be authenticated
@@ -229,17 +230,29 @@ watch(
 );
 
 // let authCheckInterval: ReturnType<typeof setInterval>;
-  
-  onMounted(async () => {
-    try {
-      await SiteInfoStore.fetchSiteInfo();
+
+onMounted(async () => {
+  try {
+    // Always fetch site info
+    await SiteInfoStore.fetchSiteInfo();
+
+    // Fetch user profile only if logged in
+    if (safeIsAuthenticated.value) {
       await userProfileStore.fetchUserProfile();
-      checkAuthStatus();
-    } catch (error) {
-      console.error("Error fetching site info:", error);
     }
-    const storedLanguage = localStorage.getItem("app_language") || process.env.NUXT_PUBLIC_APP_DEFAULT_LANGUAGE || "kh";
-    console.log("storedLanguage", storedLanguage);
+
+    // Check authentication status
+    checkAuthStatus();
+  } catch (error) {
+    console.error("Error fetching data:", error);
+  }
+
+  // Set language from localStorage or default
+  const storedLanguage =
+    localStorage.getItem("app_language") ||
+    process.env.NUXT_PUBLIC_APP_DEFAULT_LANGUAGE ||
+    "kh";
+
   if (storedLanguage) {
     locale.value = storedLanguage;
   }
@@ -449,8 +462,8 @@ onBeforeUnmount(() => {
         </v-card-title>
 
         <v-card-text class="text-body-2 text-grey-darken-1">
-          Are you sure you want to log out? You’ll need to sign in again to access your
-          account.
+          Are you sure you want to log out? You’ll need to sign in again to
+          access your account.
         </v-card-text>
 
         <v-card-actions class="justify-end mt-2">
@@ -464,7 +477,12 @@ onBeforeUnmount(() => {
             Cancel
           </v-btn>
 
-          <v-btn variant="flat" color="red" class="rounded-lg" @click="performLogout">
+          <v-btn
+            variant="flat"
+            color="red"
+            class="rounded-lg"
+            @click="performLogout"
+          >
             <v-icon start>mdi-logout</v-icon>
             Logout
           </v-btn>
@@ -560,7 +578,11 @@ onBeforeUnmount(() => {
       style="z-index: 9999"
       opacity="0.3"
     >
-      <v-progress-circular indeterminate size="64" color="primary"></v-progress-circular>
+      <v-progress-circular
+        indeterminate
+        size="64"
+        color="primary"
+      ></v-progress-circular>
     </v-overlay>
 
     <!-- Main content -->
@@ -572,8 +594,14 @@ onBeforeUnmount(() => {
             <NuxtPage />
           </template>
           <template #fallback>
-            <div class="d-flex align-center justify-center" style="height: 400px">
-              <v-progress-circular indeterminate color="primary"></v-progress-circular>
+            <div
+              class="d-flex align-center justify-center"
+              style="height: 400px"
+            >
+              <v-progress-circular
+                indeterminate
+                color="primary"
+              ></v-progress-circular>
             </div>
           </template>
         </Suspense>
