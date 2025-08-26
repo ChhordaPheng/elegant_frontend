@@ -14,7 +14,6 @@ const isMobile = computed(() => mdAndDown.value);
 const isLarge = computed(() => lgAndUp.value);
 
 // Filter states - FIXED: Corrected price range based on API response
-const priceRange = ref([0.03, 209.99]); // Updated to match API data
 const selected = ref("");
 const selectedSize = ref<string | null>(null); // Changed from array to single selection
 const selectedBrand = ref<string | null>(null);
@@ -48,6 +47,7 @@ const { topTrendings } = storeToRefs(topTrendingStore);
 
 // Selected category name - NEW
 const selectedCategoryName = ref("Clothes");
+const priceRange = ref([prices.value.min_price, prices.value.max_price]); // Updated to match API data
 
 // Computed property to build current filters
 const currentFilters = computed(() => {
@@ -242,7 +242,7 @@ const handleAddToCart = async () => {
       item_id: currentProduct.value.id,
       quantity: quantity.value,
       added_at: new Date().toISOString(),
-      
+
       // Full variant data
       variant: {
         id: currentVariant.value.id,
@@ -251,12 +251,13 @@ const handleAddToCart = async () => {
         size_id: currentVariant.value.size_id,
         image: currentVariant.value.image,
         price: currentVariant.value.price,
-        final_price: currentVariant.value.final_price || currentVariant.value.price,
+        final_price:
+          currentVariant.value.final_price || currentVariant.value.price,
         quantity: currentVariant.value.quantity,
         is_favorite: currentVariant.value.is_favorite,
         created_at: currentVariant.value.created_at,
         updated_at: currentVariant.value.updated_at,
-        
+
         // Include color, size, and item data if available
         color: currentVariant.value.color,
         size: currentVariant.value.size,
@@ -274,14 +275,14 @@ const handleAddToCart = async () => {
           discount_id: currentProduct.value.discount_id,
           created_at: currentProduct.value.created_at,
           updated_at: currentProduct.value.updated_at,
-          
+
           // Include related data if available
           brand: currentProduct.value.brand,
           category: currentProduct.value.category,
           season: currentProduct.value.season,
-          discount: currentProduct.value.discount
-        }
-      }
+          discount: currentProduct.value.discount,
+        },
+      },
     };
 
     // Get current cart from localStorage
@@ -509,6 +510,7 @@ onMounted(async () => {
     colorStore.fetchColors(),
     sizeStore.fetchSize(),
     topTrendingStore.fetchTopTrendings(),
+    priceStore.fetchPrices(),
   ]);
 
   // Initial fetch with no filters
@@ -590,8 +592,8 @@ onMounted(async () => {
               <div class="my-10">
                 <v-range-slider
                   v-model="priceRange"
-                  :min="0.03"
-                  :max="209.99"
+                  :min="prices.min_price"
+                  :max="prices.max_price"
                   :step="0.01"
                   color="red"
                   track-color="grey"
@@ -955,9 +957,7 @@ onMounted(async () => {
                                     <v-btn
                                       v-bind="props"
                                       @click.stop="
-                                        handleAddToWishlist(
-                                          kidItem.variants[0]
-                                        )
+                                        handleAddToWishlist(kidItem.variants[0])
                                       "
                                       icon
                                       :class="
@@ -1102,8 +1102,8 @@ onMounted(async () => {
               <div class="my-10">
                 <v-range-slider
                   v-model="priceRange"
-                  :min="0.03"
-                  :max="209.99"
+                  :min="prices.min_price"
+                  :max="prices.max_price"
                   :step="0.01"
                   color="red"
                   track-color="grey"

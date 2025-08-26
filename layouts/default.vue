@@ -56,6 +56,7 @@ const menus = [
   { title: "menu.women", value: "woman", path: "/woman" },
   { title: "menu.men", value: "man", path: "/man" },
   { title: "menu.kid", value: "kid", path: "/kid" },
+  { title: "menu.item", value: "items", path: "/items" },
   { title: "menu.about_us", value: "about_us", path: "/about-us" },
   { title: "menu.contact_us", value: "contact_us", path: "/contact-us" },
 ];
@@ -235,7 +236,6 @@ onMounted(async () => {
   try {
     // Always fetch site info
     await SiteInfoStore.fetchSiteInfo();
-
     // Fetch user profile only if logged in
     if (safeIsAuthenticated.value) {
       await userProfileStore.fetchUserProfile();

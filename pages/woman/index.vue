@@ -18,7 +18,6 @@ const isMobile = computed(() => mdAndDown.value);
 const isLarge = computed(() => lgAndUp.value);
 
 // Filter states - FIXED: Corrected price range based on API response
-const priceRange = ref([0.03, 209.99]); // Updated to match API data
 const selected = ref("");
 const selectedSize = ref<string | null>(null); // Changed from array to single selection
 const selectedBrand = ref<string | null>(null);
@@ -52,6 +51,7 @@ const { topTrendings } = storeToRefs(topTrendingStore);
 
 // Selected category name - NEW
 const selectedCategoryName = ref("Clothes");
+const priceRange = ref([prices.value.min_price, prices.value.max_price]); // Updated to match API data
 
 // Computed property to build current filters
 const currentFilters = computed(() => {
@@ -514,6 +514,7 @@ onMounted(async () => {
     colorStore.fetchColors(),
     sizeStore.fetchSize(),
     topTrendingStore.fetchTopTrendings(),
+    priceStore.fetchPrices(),
   ]);
 
   // Initial fetch with no filters
@@ -595,8 +596,8 @@ onMounted(async () => {
               <div class="my-10">
                 <v-range-slider
                   v-model="priceRange"
-                  :min="0.03"
-                  :max="209.99"
+                  :min="prices.min_price"
+                  :max="prices.max_price"
                   :step="0.01"
                   color="red"
                   track-color="grey"
@@ -1109,8 +1110,8 @@ onMounted(async () => {
               <div class="my-10">
                 <v-range-slider
                   v-model="priceRange"
-                  :min="0.03"
-                  :max="209.99"
+                  :min="prices.min_price"
+                  :max="prices.max_price"
                   :step="0.01"
                   color="red"
                   track-color="grey"

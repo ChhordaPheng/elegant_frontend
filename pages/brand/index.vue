@@ -2,6 +2,13 @@
 import { useDisplay } from "vuetify";
 import type { Size } from "~/types/size/size";
 
+// Get the route to access query parameters
+const route = useRoute();
+const router = useRouter();
+
+// Extract brand ID from URL query parameters
+const brandIdFromUrl = computed(() => route.query.id as string);
+
 // Reactive variables
 const activeIndex = ref<number | null>(null);
 const drawer = ref<boolean>(false);
@@ -13,48 +20,93 @@ const page = ref<number>(1);
 const isMobile = computed(() => mdAndDown.value);
 const isLarge = computed(() => lgAndUp.value);
 
-// Filter states - FIXED: Corrected price range based on API response
+// Filter states
 const selected = ref("");
-const selectedSize = ref<string | null>(null); // Changed from array to single selection
+const selectedSize = ref<string | null>(null);
 const selectedBrand = ref<string | null>(null);
 const sortSelection = ref("");
-const favoriteVariants = ref<Set<string>>(new Set());
 
-const router = useRouter();
 const currentProduct = ref<any>(null);
 const currentVariant = ref<any>(null);
 const quantity = ref<number>(1);
 const snackbar = ref(false);
-const text = ref(""); // message for snackbar
+const text = ref("");
+const favoriteVariants = ref<Set<string>>(new Set());
 
 // Store
-const cartStore = useCartStore();
-const bestSellerStore = useBestSellerStore();
-const { bestSellers } = storeToRefs(bestSellerStore);
+const itemStore = useItemStore();
+const { items } = storeToRefs(itemStore);
 const brandStore = useBrandStore();
 const { brands } = storeToRefs(brandStore);
-const categoryStore = useCategoryStore();
-const { categories } = storeToRefs(categoryStore);
 const colorStore = useColorStore();
 const { colors } = storeToRefs(colorStore);
 const sizeStore = useSizeStore();
 const { sizes } = storeToRefs(sizeStore);
 const priceStore = usePriceStore();
 const { prices } = storeToRefs(priceStore);
-const favoriteStore = useFavoriteStore();
 const topTrendingStore = useTopTrendingStore();
 const { topTrendings } = storeToRefs(topTrendingStore);
 
-// Selected category name - NEW
-const selectedCategoryName = ref("Clothes");
-const priceRange = ref([prices.value.min_price, prices.value.max_price]); // Updated to match API data
+// Selected brand name - dynamically set based on URL
+const selectedBrandName = ref("Select Brand");
+const priceRange = ref([0, 0]);
+
+// Computed property for the current brand based on URL ID
+const currentBrand = computed(() => {
+  if (!brandIdFromUrl.value) return null;
+  return brands.value?.find(
+    (brand) => brand.id.toString() === brandIdFromUrl.value
+  );
+});
+
+const isCurrentBrand = (brandId: string | number): boolean => {
+  // Convert both to strings for comparison
+  const urlBrandId = brandIdFromUrl.value?.toString();
+  const currentBrandId = brandId.toString();
+
+  console.log("Comparing:", { urlBrandId, currentBrandId }); // Debug log
+
+  return urlBrandId === currentBrandId;
+};
+
+// Alternative: You could also use a computed property
+const activeBrandId = computed(() => {
+  return brandIdFromUrl.value?.toString() || null;
+});
+
+// Watch for changes in the current brand and update selected brand name
+watch(
+  currentBrand,
+  (newBrand) => {
+    if (newBrand) {
+      selectedBrandName.value = newBrand.name;
+      selectedBrand.value = newBrand.id;
+      activeIndex.value = Number(newBrand.id);
+    }
+  },
+  { immediate: true }
+);
+
+// Watch for URL changes and update filters accordingly
+watch(
+  () => brandIdFromUrl.value,
+  async (newBrandId, oldBrandId) => {
+    if (newBrandId && newBrandId !== oldBrandId) {
+      selectedBrand.value = newBrandId;
+      await applyBrandFilter();
+    }
+  }
+);
 
 // Computed property to build current filters
 const currentFilters = computed(() => {
   const filters: any = {};
 
   // Price filter
-  if (priceRange.value[0] !== 0.03 || priceRange.value[1] !== 209.99) {
+  if (
+    priceRange.value[0] !== prices.value.min_price ||
+    priceRange.value[1] !== prices.value.max_price
+  ) {
     filters.min_price = priceRange.value[0];
     filters.max_price = priceRange.value[1];
   }
@@ -72,18 +124,20 @@ const currentFilters = computed(() => {
     filters.size_id = selectedSize.value;
   }
 
-  // Brand filter
-  if (selectedBrand.value) {
+  // Brand filter - prioritize URL brand ID
+  if (brandIdFromUrl.value) {
+    filters.brand_id = brandIdFromUrl.value;
+  } else if (selectedBrand.value) {
     filters.brand_id = selectedBrand.value;
-  }
-
-  // Category filter (if you have activeIndex for category)
-  if (activeIndex.value) {
-    filters.category_id = activeIndex.value;
   }
 
   return filters;
 });
+
+// Apply brand filter based on URL or selection
+const applyBrandFilter = async () => {
+  await itemStore.applyFilters(currentFilters.value);
+};
 
 // Debounce utility function
 function debounce(func: Function, wait: number) {
@@ -100,74 +154,48 @@ function debounce(func: Function, wait: number) {
 
 // Debounced function to apply filters
 const debouncedApplyFilters = debounce(async () => {
-  await bestSellerStore.applyFilters(currentFilters.value);
-}, 500); // 500ms delay
+  await itemStore.applyFilters(currentFilters.value);
+}, 500);
 
 // Watch for filter changes and apply them
 watch(
-  [priceRange, selected, selectedSize, selectedBrand, activeIndex],
+  [priceRange, selected, selectedSize],
   () => {
-    // Debounce the filter application to avoid too many API calls
     debouncedApplyFilters();
   },
   { deep: true }
 );
 
-// Function to get image path based on category slug - NEW
-const getCategoryImage = (slug: string) => {
-  const imageMap: { [key: string]: string } = {
-    "womens-tops-blouses":
-      "https://i.pinimg.com/1200x/ff/77/bb/ff77bb54104159804f94781b5da0e762.jpg",
-    "mens-jackets-coats":
-      "https://i.pinimg.com/1200x/f0/05/e2/f005e2c108fb06178812753158a344ba.jpg",
-    "kids-boys-clothing":
-      "https://i.pinimg.com/1200x/56/9a/06/569a064e2b1d5d781d4a1e7156d1fb80.jpg",
-    "kids-baby-toddler":
-      "https://i.pinimg.com/736x/ad/78/6f/ad786f96ef655f7a216e5d455872c9a6.jpg",
-    "mens-suits-formal":
-      "https://i.pinimg.com/736x/4d/21/c2/4d21c2427196914481a05bbff2e80a91.jpg",
-    "mens-jeans-pants":
-      "https://i.pinimg.com/1200x/c6/fb/f9/c6fbf9d664b617c74cf956f1edf15c39.jpg",
-    "mens-shoes":
-      "https://i.pinimg.com/1200x/8b/3b/fa/8b3bfaf6d9a9ad6cc09c45f3d1b06395.jpg",
-    "womens-skirts":
-      "https://i.pinimg.com/1200x/89/f1/85/89f1853d61a0895406183def9ede595d.jpg",
-    "kids-girls-clothing":
-      "https://i.pinimg.com/736x/94/be/72/94be728a18d26fbcfe35f0a51038e7ff.jpg",
-    "womens-jewelry":
-      "https://i.pinimg.com/736x/4a/f0/95/4af095b9178fa98828b0fff937a08e9c.jpg",
-    "womens-jackets-coats":
-      "https://i.pinimg.com/1200x/9d/e4/fa/9de4fa6a964166ad640af14855fb2fef.jpg",
-    "kids-shoes":
-      "https://i.pinimg.com/736x/da/96/75/da9675ed0b94e99b62c395af7e039d8f.jpg",
-    "mens-shirts":
-      "https://i.pinimg.com/1200x/f1/15/e4/f115e4321d524351b04c7ecbf24b00c2.jpg",
-    "womens-handbags":
-      "https://i.pinimg.com/1200x/48/0d/57/480d57c02cdbc6c26a613778b6facd42.jpg",
-    "womens-pants-jeans":
-      "https://i.pinimg.com/736x/6a/d7/51/6ad7512d276c29f6909b2b8b648fe516.jpg",
-    "womens-shoes":
-      "https://i.pinimg.com/736x/28/a8/7f/28a87f7b9a4f4cdcfb1aa96e1d74a6ad.jpg",
-    "mens-tshirts-polos":
-      "https://i.pinimg.com/736x/34/68/4f/34684fefc4cdb721100a442c23e4c8f8.jpg",
-    "womens-dresses":
-      "https://i.pinimg.com/736x/67/3a/e5/673ae596d272dd6412c493bb6167d4bb.jpg",
-  };
+// Handle brand selection - UPDATED to update URL
+const handleBrandClick = async (brand: any) => {
+  if (brandIdFromUrl.value === brand.id.toString()) {
+    // Same brand clicked, no need to navigate
+    return;
+  }
+  // Update URL with new brand ID
+  await router.push({
+    path: route.path,
+    query: { ...route.query, id: brand.id.toString() },
+  });
 
-  return (
-    imageMap[slug] ||
-    "https://i.pinimg.com/1200x/ff/77/bb/ff77bb54104159804f94781b5da0e762.jpg"
-  );
+  activeIndex.value = brand.id;
+  selectedBrandName.value = brand.name;
+  selectedBrand.value = brand.id;
+  await itemStore.applyFilters(currentFilters.value);
 };
 
-// Handle category selection - UPDATED
-const handleCategoryClick = async (category: any) => {
-  activeIndex.value = category.id;
-  selectedCategoryName.value = category.name;
-  await bestSellerStore.applyFilters(currentFilters.value);
-};
+// Initialize price range when prices are loaded
+watch(
+  prices,
+  (newPrices) => {
+    if (newPrices && newPrices.min_price !== undefined) {
+      priceRange.value = [newPrices.min_price, newPrices.max_price];
+    }
+  },
+  { immediate: true }
+);
 
-// In your kid page, update the quickView function:
+// Other functions remain the same...
 const quickView = (productId: string | number) => {
   router.push({
     path: "/product-detail",
@@ -175,7 +203,6 @@ const quickView = (productId: string | number) => {
   });
 };
 
-// Optional: Add to Wishlist  function
 const handleAddToWishlist = (variant: any) => {
   if (!variant || !variant.id) {
     text.value = "No item available to add to wishlist.";
@@ -188,19 +215,16 @@ const handleAddToWishlist = (variant: any) => {
       localStorage.getItem("wishlist") || "[]"
     );
 
-    // Check if variant already exists in wishlist
     const existingIndex = existingWishlist.findIndex(
       (item) => item.id === variant.id
     );
 
     if (existingIndex !== -1) {
-      // Remove from wishlist
       existingWishlist.splice(existingIndex, 1);
       localStorage.setItem("wishlist", JSON.stringify(existingWishlist));
       favoriteVariants.value.delete(variant.id);
       text.value = "Removed from wishlist!";
     } else {
-      // Add full variant data to wishlist
       existingWishlist.push(variant);
       localStorage.setItem("wishlist", JSON.stringify(existingWishlist));
       favoriteVariants.value.add(variant.id);
@@ -214,108 +238,9 @@ const handleAddToWishlist = (variant: any) => {
   }
 };
 
-// Core add to cart logic
-const handleAddToCart = async () => {
-  if (!currentProduct.value || !currentVariant.value) {
-    text.value = "No item available to add to cart.";
-    snackbar.value = true;
-    return;
-  }
-
-  if (currentVariant.value.quantity === 0) {
-    text.value = "Item is out of stock.";
-    snackbar.value = true;
-    return;
-  }
-
-  if (quantity.value > currentVariant.value.quantity) {
-    text.value = "Requested quantity exceeds available stock.";
-    snackbar.value = true;
-    return;
-  }
-
-  try {
-    // Create cart item with full data (similar to wishlist structure)
-    const cartItem = {
-      id: currentVariant.value.id, // variant ID as main ID
-      variant_id: currentVariant.value.id,
-      item_id: currentProduct.value.id,
-      quantity: quantity.value,
-      added_at: new Date().toISOString(),
-      
-      // Full variant data
-      variant: {
-        id: currentVariant.value.id,
-        item_id: currentProduct.value.id,
-        color_id: currentVariant.value.color_id,
-        size_id: currentVariant.value.size_id,
-        image: currentVariant.value.image,
-        price: currentVariant.value.price,
-        final_price: currentVariant.value.final_price || currentVariant.value.price,
-        quantity: currentVariant.value.quantity,
-        is_favorite: currentVariant.value.is_favorite,
-        created_at: currentVariant.value.created_at,
-        updated_at: currentVariant.value.updated_at,
-        
-        // Include color, size, and item data if available
-        color: currentVariant.value.color,
-        size: currentVariant.value.size,
-        item: {
-          id: currentProduct.value.id,
-          name: currentProduct.value.name,
-          description: currentProduct.value.description,
-          total_sold: currentProduct.value.total_sold,
-          last_sale_at: currentProduct.value.last_sale_at,
-          is_featured_new_arrival: currentProduct.value.is_featured_new_arrival,
-          is_featured_trending: currentProduct.value.is_featured_trending,
-          category_id: currentProduct.value.category_id,
-          season_id: currentProduct.value.season_id,
-          brand_id: currentProduct.value.brand_id,
-          discount_id: currentProduct.value.discount_id,
-          created_at: currentProduct.value.created_at,
-          updated_at: currentProduct.value.updated_at,
-          
-          // Include related data if available
-          brand: currentProduct.value.brand,
-          category: currentProduct.value.category,
-          season: currentProduct.value.season,
-          discount: currentProduct.value.discount
-        }
-      }
-    };
-
-    // Get current cart from localStorage
-    const existingCart = JSON.parse(localStorage.getItem("cart") || "[]");
-
-    // Check if the item already exists in the cart
-    const index = existingCart.findIndex(
-      (item: any) => item.variant_id === cartItem.variant_id
-    );
-
-    if (index !== -1) {
-      // Update quantity if item exists
-      existingCart[index].quantity += cartItem.quantity;
-      existingCart[index].added_at = cartItem.added_at; // Update timestamp
-    } else {
-      // Add new item with full data
-      existingCart.push(cartItem);
-    }
-
-    // Save back to localStorage
-    localStorage.setItem("cart", JSON.stringify(existingCart));
-
-    text.value = "Item successfully added to cart!";
-    quantity.value = 1;
-  } catch (error) {
-    text.value = "Something went wrong while adding to cart.";
-    console.error(error);
-  } finally {
-    snackbar.value = true;
-  }
-};
-// Optional: Add to cart function
+// Add to cart functionality
 const addToCart = (variantId: string) => {
-  const product = bestSellers.value.find((item) =>
+  const product = items.value.find((item) =>
     item.variants?.some((v) => v.id === variantId)
   );
 
@@ -335,22 +260,76 @@ const addToCart = (variantId: string) => {
   currentVariant.value = variant;
   quantity.value = 1;
 
-  handleAddToCart();
+  // Add to cart logic here
+  text.value = "Item added to cart!";
+  snackbar.value = true;
 };
 
-// Computed properties for active filters - UPDATED for single size selection
+// Handle size selection
+const selectSize = async (sizeId: string) => {
+  selectedSize.value = selectedSize.value === sizeId ? null : sizeId;
+  await itemStore.applyFilters(currentFilters.value);
+};
+
+// Handle brand toggle (for brand filter section)
+const toggleBrand = async (brandId: string) => {
+  // Don't allow toggling off the URL brand, redirect instead
+  if (brandId !== brandIdFromUrl.value) {
+    await router.push({
+      path: route.path,
+      query: { ...route.query, id: brandId },
+    });
+  }
+};
+
+// Reset functions
+const resetPrice = async () => {
+  priceRange.value = [prices.value.min_price, prices.value.max_price];
+  await itemStore.applyFilters(currentFilters.value);
+};
+
+const resetColor = async () => {
+  selected.value = "";
+  await itemStore.applyFilters(currentFilters.value);
+};
+
+const resetSizes = async () => {
+  selectedSize.value = null;
+  await itemStore.applyFilters(currentFilters.value);
+};
+
+const resetBrands = async () => {
+  // For brand page, redirect to main shop or keep current brand
+  // Since this is a brand-specific page, we'll just keep the current brand
+  // but you could redirect to a general shop page if needed
+  await itemStore.applyFilters(currentFilters.value);
+};
+
+const clearAllFilters = async () => {
+  priceRange.value = [prices.value.min_price, prices.value.max_price];
+  selected.value = "";
+  selectedSize.value = null;
+  // Keep the brand filter from URL
+  await itemStore.applyFilters(currentFilters.value);
+};
+
+// Active filters computed property
 const activeFilters = computed(() => {
   const filters = [];
 
-  // FIXED: Updated price range check to use API values
-  if (priceRange.value[0] !== 0.03 || priceRange.value[1] !== 209.99) {
+  // Price filter
+  if (
+    priceRange.value[0] !== prices.value.min_price ||
+    priceRange.value[1] !== prices.value.max_price
+  ) {
     filters.push({
       type: "price",
-      label: `$${priceRange.value[0]} - $${priceRange.value[1]}`,
+      label: `${priceRange.value[0]} - ${priceRange.value[1]}`,
       value: priceRange.value,
     });
   }
 
+  // Color filter
   if (selected.value) {
     filters.push({
       type: "color",
@@ -359,7 +338,7 @@ const activeFilters = computed(() => {
     });
   }
 
-  // UPDATED: Single size selection
+  // Size filter
   if (selectedSize.value) {
     const size = sizes.value?.find((s: Size) => s.id === selectedSize.value);
     if (size) {
@@ -371,84 +350,47 @@ const activeFilters = computed(() => {
     }
   }
 
-  if (selectedBrand.value) {
-    const brand = brands.value?.find((b) => b.id === selectedBrand.value);
-    if (brand) {
-      filters.push({
-        type: "brand",
-        label: brand.name,
-        value: brand.id,
-      });
-    }
-  }
-
   return filters;
 });
 
-// Reset functions - UPDATED to apply filters
-const resetPrice = async () => {
-  priceRange.value = [0.03, 209.99]; // Updated to API values
-  await bestSellerStore.applyFilters(currentFilters.value);
-};
-
-const resetColor = async () => {
-  selected.value = "";
-  await bestSellerStore.applyFilters(currentFilters.value);
-};
-
-const resetSizes = async () => {
-  selectedSize.value = null; // Updated for single selection
-  await bestSellerStore.applyFilters(currentFilters.value);
-};
-
-const resetBrands = async () => {
-  selectedBrand.value = null;
-  await bestSellerStore.applyFilters(currentFilters.value);
-};
-
-const clearAllFilters = async () => {
-  priceRange.value = [0.03, 209.99];
-  selected.value = "";
-  selectedSize.value = null;
-  selectedBrand.value = null;
-  activeIndex.value = null;
-  await bestSellerStore.applyFilters({});
-};
-
-// Remove individual filter - UPDATED
+// Remove individual filter
 const removeFilter = async (filter: any) => {
   switch (filter.type) {
     case "price":
-      priceRange.value = [0.03, 209.99];
+      priceRange.value = [prices.value.min_price, prices.value.max_price];
       break;
     case "color":
       selected.value = "";
       break;
     case "size":
-      selectedSize.value = null; // Updated for single selection
+      selectedSize.value = null;
       break;
-    case "brand":
-      if (selectedBrand.value === filter.value) {
-        selectedBrand.value = null;
-      }
-      break;
+    // Note: We don't allow removing brand filter on brand page
   }
-  await bestSellerStore.applyFilters(currentFilters.value);
+  await itemStore.applyFilters(currentFilters.value);
 };
 
-// Handle size selection - UPDATED: Single selection only
-const selectSize = async (sizeId: string) => {
-  selectedSize.value = selectedSize.value === sizeId ? null : sizeId;
-  await bestSellerStore.applyFilters(currentFilters.value);
+// Handle items per page change
+const handleItemsPerPageChange = async (count: number | string) => {
+  active.value = count;
+
+  let perPage = 20; // default
+  if (count === 10) perPage = 10;
+  else if (count === 20) perPage = 20;
+  else if (count === "all") perPage = itemStore.total || 1000;
+
+  itemStore.perPage = perPage;
+
+  const filtersWithPerPage = {
+    ...currentFilters.value,
+    per_page: perPage,
+    page: 1, // Reset to first page
+  };
+
+  await itemStore.applyFilters(filtersWithPerPage);
 };
 
-// Handle brand selection
-const toggleBrand = async (brandId: string) => {
-  selectedBrand.value = selectedBrand.value === brandId ? null : brandId;
-  await bestSellerStore.applyFilters(currentFilters.value);
-};
-
-// Handle sort change
+// Handle sorting
 const handleSortChange = (value: string) => {
   if (!value) {
     applySorting("", "asc");
@@ -460,7 +402,6 @@ const handleSortChange = (value: string) => {
   applySorting(field, sortOrder);
 };
 
-// Apply sorting
 const applySorting = async (
   sortField: string,
   order: "asc" | "desc" = "asc"
@@ -471,52 +412,31 @@ const applySorting = async (
     sort_order: order,
   };
 
-  await bestSellerStore.applyFilters(filtersWithSort);
+  await itemStore.applyFilters(filtersWithSort);
 };
 
-// Handle pagination
+// Pagination
 const handlePageChange = async (newPage: number) => {
   page.value = newPage;
-  await bestSellerStore.setPage(newPage);
-};
-
-// Handle items per page change
-const handleItemsPerPageChange = async (count: number | string) => {
-  active.value = count;
-
-  let perPage = 20; // default
-  if (count === 10) perPage = 10;
-  else if (count === 20) perPage = 20;
-  else if (count === "all") perPage = bestSellerStore.total; // Large number for "all"
-
-  bestSellerStore.perPage = perPage;
-
-  const filtersWithPerPage = {
-    ...currentFilters.value,
-    per_page: perPage,
-    page: 1, // Reset to first page
-  };
-
-  await bestSellerStore.applyFilters(filtersWithPerPage);
+  await itemStore.setPage(newPage);
 };
 
 // Lifecycle
 onMounted(async () => {
   await Promise.all([
     brandStore.fetchBrands(),
-    categoryStore.fetchCategories(),
     colorStore.fetchColors(),
     sizeStore.fetchSize(),
     topTrendingStore.fetchTopTrendings(),
     priceStore.fetchPrices(),
   ]);
 
-  // Initial fetch with no filters
-  await bestSellerStore.fetchBestSellers;
-  const storedWishlist: string[] = JSON.parse(
-    localStorage.getItem("wishlist") || "[]"
-  );
-  favoriteVariants.value = new Set(storedWishlist);
+  // Apply initial filters based on URL
+  if (brandIdFromUrl.value) {
+    await applyBrandFilter();
+  } else {
+    await itemStore.fetchItems();
+  }
 });
 </script>
 
@@ -526,39 +446,46 @@ onMounted(async () => {
     <div
       class="banner w-full flex flex-col justify-center items-center min-h-[300px] md:h-[400px] px-4"
     >
-      <!-- Dynamic category name display -->
       <p
         class="text-white text-[24px] sm:text-[32px] md:text-[40px] font-medium"
       >
-        {{ selectedCategoryName }}
+        {{ selectedBrandName }}
       </p>
 
       <div class="mx-auto w-full max-w-screen-lg my-5">
         <v-slide-group class="bg-transparent">
           <v-slide-group-item
-            v-for="category in categories"
-            :key="category.id"
+            v-for="brand in brands"
+            :key="brand.id"
             v-slot="{ isSelected, toggle }"
           >
             <div
               class="flex flex-col justify-center items-center mr-3 sm:mr-5 cursor-pointer"
-              @click="handleCategoryClick(category)"
+              @click="handleBrandClick(brand)"
             >
               <div
+                class="rounded-full p-1"
                 :class="{
-                  'border-[1px] border-white': activeIndex === category.id,
-                  'rounded-full p-1': true,
+                  'border-[3px] border-white': isCurrentBrand(brand.id),
                 }"
               >
-                <!-- Dynamic image based on category slug -->
                 <img
-                  :src="getCategoryImage(category.slug)"
-                  class="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full border-white border-2 object-cover"
-                  :alt="category.name"
+                  :src="brand.logo_url"
+                  class="w-20 h-20 sm:w-28 sm:h-28 md:w-32 md:h-32 lg:w-40 lg:h-40 rounded-full object-cover bg-white transition-transform duration-300"
+                  :class="{
+                    'border-red': isCurrentBrand(brand.id),
+                  }"
+                  :alt="brand.name"
                 />
               </div>
-              <p class="text-white mt-2 text-sm md:text-base">
-                {{ category.name }}
+              <p
+                class="mt-2 text-sm md:text-base transition-all duration-300"
+                :class="{
+                  'text-blue-200 font-bold': isCurrentBrand(brand.id),
+                  'text-white': !isCurrentBrand(brand.id),
+                }"
+              >
+                {{ brand.name }}
               </p>
             </div>
           </v-slide-group-item>
@@ -674,7 +601,7 @@ onMounted(async () => {
               </v-container>
 
               <!-- Brand Filter - Fixed to use brands from store -->
-              <div class="flex justify-between items-center border-b-2 my-5">
+              <!-- <div class="flex justify-between items-center border-b-2 my-5">
                 <p class="uppercase font-bold text-[25px]">brands</p>
                 <v-btn
                   variant="text"
@@ -714,7 +641,7 @@ onMounted(async () => {
                     <p class="text-center text-gray-500">Loading brands...</p>
                   </v-col>
                 </v-row>
-              </v-container>
+              </v-container> -->
 
               <!-- Trending Products -->
               <div class="border-b-2 my-5">
@@ -792,7 +719,7 @@ onMounted(async () => {
                     <v-col>
                       <div class="pl-3">
                         <p>
-                          Clothing ({{ bestSellers?.length || 0 }}
+                          Clothing ({{ items?.length || 0 }}
                           items)
                         </p>
                         <div class="my-3 flex items-center flex-wrap">
@@ -887,7 +814,7 @@ onMounted(async () => {
                   <!-- Products Grid -->
                   <div class="d-flex flex-wrap">
                     <!-- Loading skeleton -->
-                    <div v-if="bestSellerStore.isLoading" class="w-full">
+                    <div v-if="itemStore.isLoading" class="w-full">
                       <v-row>
                         <v-col v-for="n in 8" :key="n" cols="12" sm="6" md="3">
                           <v-skeleton-loader
@@ -900,9 +827,7 @@ onMounted(async () => {
 
                     <!-- No items found -->
                     <div
-                      v-else-if="
-                        !bestSellerStore.hasItems && !bestSellerStore.isLoading
-                      "
+                      v-else-if="!itemStore.hasItems && !itemStore.isLoading"
                       class="w-full text-center py-8"
                     >
                       <v-icon
@@ -928,8 +853,8 @@ onMounted(async () => {
                     <!-- Products -->
                     <v-card
                       v-else
-                      v-for="bestSeller in bestSellers"
-                      :key="bestSeller.id"
+                      v-for="item in items"
+                      :key="item.id"
                       class="relative w-[280px] mr-5"
                       variant="text"
                     >
@@ -941,12 +866,12 @@ onMounted(async () => {
                           <!-- Product Image -->
                           <img
                             :src="
-                              bestSeller.variants[0].image ||
+                              item.variants[0].image ||
                               'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                             "
-                            :alt="bestSeller.name"
-                            class="w-full cursor-pointer h-[300px] object-cover"
-                            @click="quickView(bestSeller.id)"
+                            :alt="item.name"
+                            class="w-full cursor-pointer h-[400px] object-cover"
+                            @click="quickView(item.id)"
                           />
 
                           <!-- Animated Buttons on Hover (narrow wrapper for better positioning) -->
@@ -961,14 +886,12 @@ onMounted(async () => {
                                     <v-btn
                                       v-bind="props"
                                       @click.stop="
-                                        handleAddToWishlist(
-                                          bestSeller.variants[0]
-                                        )
+                                        handleAddToWishlist(item.variants[0])
                                       "
                                       icon
                                       :class="
                                         favoriteVariants.has(
-                                          bestSeller.variants[0].id
+                                          item.variants[0].id
                                         )
                                           ? 'text-red'
                                           : 'bg-white text-black'
@@ -977,7 +900,7 @@ onMounted(async () => {
                                       <v-icon
                                         :icon="
                                           favoriteVariants.has(
-                                            bestSeller.variants[0].id
+                                            item.variants[0].id
                                           )
                                             ? 'mdi-heart'
                                             : 'mdi-heart-outline'
@@ -998,7 +921,7 @@ onMounted(async () => {
                                       v-bind="props"
                                       icon
                                       class="bg-white text-black"
-                                      @click.stop="quickView(bestSeller.id)"
+                                      @click.stop="quickView(item.id)"
                                     >
                                       <v-icon icon="carbon:image-copy" />
                                     </v-btn>
@@ -1016,9 +939,7 @@ onMounted(async () => {
                                       v-bind="props"
                                       icon
                                       class="bg-white text-black"
-                                      @click="
-                                        addToCart(bestSeller.variants[0].id)
-                                      "
+                                      @click="addToCart(item.variants[0].id)"
                                     >
                                       <v-icon icon="pepicons-pencil:cart" />
                                     </v-btn>
@@ -1034,12 +955,12 @@ onMounted(async () => {
                       <div class="text-center my-5">
                         <p
                           class="font-bold text-[20px] cursor-pointer hover:text-blue-500 transition-colors"
-                          @click="quickView(bestSeller.id)"
+                          @click="quickView(item.id)"
                         >
-                          {{ bestSeller.name }}
+                          {{ item.name }}
                         </p>
                         <p class="text-blue-700 font-bold uppercase my-1">
-                          {{ bestSeller.brand.name }}
+                          {{ item.brand.name }}
                         </p>
                         <div class="d-flex justify-center">
                           <Icon icon="noto:star" width="20" height="20" />
@@ -1054,10 +975,10 @@ onMounted(async () => {
                         </div>
                         <div class="flex justify-center items-center mt-2">
                           <p class="text-red mr-2">
-                            ${{ bestSeller.variants[0].final_price }} USD
+                            ${{ item.variants[0].final_price }} USD
                           </p>
                           <p class="line-through text-gray-500">
-                            ${{ bestSeller.variants[0].price }} USD
+                            ${{ item.variants[0].price }} USD
                           </p>
                         </div>
                       </div>
@@ -1073,8 +994,8 @@ onMounted(async () => {
                     <v-col cols="8">
                       <v-container class="max-width">
                         <v-pagination
-                          :model-value="bestSellerStore.page"
-                          :length="bestSellerStore.totalPages"
+                          :model-value="itemStore.page"
+                          :length="itemStore.totalPages"
                           rounded="circle"
                           class="my-4"
                           @update:model-value="handlePageChange"
@@ -1190,7 +1111,7 @@ onMounted(async () => {
               </v-container>
 
               <!-- Brand Filter for Mobile -->
-              <div class="flex justify-between items-center border-b-2 my-5">
+              <!-- <div class="flex justify-between items-center border-b-2 my-5">
                 <p class="uppercase font-bold text-[25px]">brands</p>
                 <v-btn
                   variant="text"
@@ -1225,7 +1146,7 @@ onMounted(async () => {
                     </v-card>
                   </v-col>
                 </v-row>
-              </v-container>
+              </v-container> -->
             </div>
           </v-container>
         </v-navigation-drawer>
@@ -1233,7 +1154,7 @@ onMounted(async () => {
         <v-main>
           <v-container>
             <div class="pl-3">
-              <p>Clothing ({{ bestSellers?.length || 0 }} items)</p>
+              <p>Clothing ({{ items?.length || 0 }} items)</p>
               <div class="my-3 flex items-center flex-wrap">
                 <p class="text-[14px] mr-2 mb-2">FILTERS :</p>
                 <div
@@ -1281,7 +1202,7 @@ onMounted(async () => {
             <!-- Mobile Products Grid -->
             <div class="d-flex flex-wrap justify-center">
               <!-- Loading skeleton for mobile -->
-              <div v-if="bestSellerStore.isLoading" class="w-full">
+              <div v-if="itemStore.isLoading" class="w-full">
                 <v-row>
                   <v-col v-for="n in 6" :key="n" cols="6">
                     <v-skeleton-loader
@@ -1294,9 +1215,7 @@ onMounted(async () => {
 
               <!-- No items found for mobile -->
               <div
-                v-else-if="
-                  !bestSellerStore.hasItems && !bestSellerStore.isLoading
-                "
+                v-else-if="!itemStore.hasItems && !itemStore.isLoading"
                 class="w-full text-center py-8"
               >
                 <v-icon
@@ -1321,26 +1240,24 @@ onMounted(async () => {
               <!-- Mobile Products -->
               <v-card
                 v-else
-                v-for="bestSeller in bestSellers"
-                :key="bestSeller.id"
+                v-for="item in items"
+                :key="item.id"
                 class="ma-2 w-[160px] sm:w-[180px]"
                 variant="text"
               >
                 <!-- Mobile product content -->
-                <div
-                  v-if="bestSeller.variants && bestSeller.variants.length > 0"
-                >
+                <div v-if="item.variants && item.variants.length > 0">
                   <v-hover v-slot="{ isHovering, props }">
                     <div v-bind="props" class="relative w-full cursor-pointer">
                       <!-- Product Image -->
                       <img
                         :src="
-                          bestSeller.variants[0].image ||
+                          item.variants[0].image ||
                           'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                         "
-                        :alt="bestSeller.name"
+                        :alt="item.name"
                         class="w-full h-[200px] sm:h-[250px] cursor-pointer object-cover"
-                        @click="quickView(bestSeller.id)"
+                        @click="quickView(item.id)"
                       />
 
                       <!-- Animated Buttons on Hover for Mobile -->
@@ -1355,24 +1272,18 @@ onMounted(async () => {
                                 <v-btn
                                   v-bind="props"
                                   @click.stop="
-                                    handleAddToWishlist(
-                                      bestSeller.variants[0]
-                                    )
+                                    handleAddToWishlist(item.variants[0])
                                   "
                                   icon
                                   :class="
-                                    favoriteVariants.has(
-                                      bestSeller.variants[0].id
-                                    )
+                                    favoriteVariants.has(item.variants[0].id)
                                       ? 'text-red'
                                       : 'bg-white text-black'
                                   "
                                 >
                                   <v-icon
                                     :icon="
-                                      favoriteVariants.has(
-                                        bestSeller.variants[0].id
-                                      )
+                                      favoriteVariants.has(item.variants[0].id)
                                         ? 'mdi-heart'
                                         : 'mdi-heart-outline'
                                     "
@@ -1393,7 +1304,7 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
-                                  @click.stop="quickView(bestSeller.id)"
+                                  @click.stop="quickView(item.id)"
                                 >
                                   <v-icon icon="carbon:image-copy" size="16" />
                                 </v-btn>
@@ -1412,7 +1323,7 @@ onMounted(async () => {
                                   icon
                                   size="small"
                                   class="bg-white text-black"
-                                  @click="addToCart(bestSeller.variants[0].id)"
+                                  @click="addToCart(item.variants[0].id)"
                                 >
                                   <v-icon
                                     icon="pepicons-pencil:cart"
@@ -1431,14 +1342,14 @@ onMounted(async () => {
                   <div class="text-center my-3">
                     <p
                       class="font-bold text-[14px] sm:text-[16px] cursor-pointer hover:text-blue-500 transition-colors line-clamp-2"
-                      @click="quickView(bestSeller.id)"
+                      @click="quickView(item.id)"
                     >
-                      {{ bestSeller.name }}
+                      {{ item.name }}
                     </p>
                     <p
                       class="text-blue-700 font-bold uppercase my-1 text-[12px]"
                     >
-                      {{ bestSeller.brand.name }}
+                      {{ item.brand.name }}
                     </p>
                     <div class="d-flex justify-center mb-2">
                       <Icon icon="noto:star" width="16" height="16" />
@@ -1453,10 +1364,10 @@ onMounted(async () => {
                     </div>
                     <div class="flex justify-center items-center">
                       <p class="text-red mr-1 text-[14px] font-bold">
-                        ${{ bestSeller.variants[0].final_price }}
+                        ${{ item.variants[0].final_price }}
                       </p>
                       <p class="line-through text-gray-500 text-[12px]">
-                        ${{ bestSeller.variants[0].price }}
+                        ${{ item.variants[0].price }}
                       </p>
                     </div>
                   </div>
@@ -1467,8 +1378,8 @@ onMounted(async () => {
             <!-- Mobile Pagination -->
             <div class="text-center mt-6">
               <v-pagination
-                :model-value="bestSellerStore.page"
-                :length="bestSellerStore.totalPages"
+                :model-value="itemStore.page"
+                :length="itemStore.totalPages"
                 rounded="circle"
                 class="my-4"
                 total-visible="5"
