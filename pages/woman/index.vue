@@ -488,19 +488,16 @@ const handlePageChange = async (newPage: number) => {
 
 // Handle items per page change
 const handleItemsPerPageChange = async (count: number | string) => {
-  active.value = count;
-
-  let perPage = 20; // default
-  if (count === 10) perPage = 10;
-  else if (count === 20) perPage = 20;
-  else if (count === "all") perPage = womanStore.total || 1000; // Large number for "all"
-
-  womanStore.perPage = perPage;
-
+  if (count === "all") {
+    active.value = "all";
+    count = women.value?.length || 100;
+  } else {
+    active.value = count as number;
+  }
   const filtersWithPerPage = {
     ...currentFilters.value,
-    per_page: perPage,
-    page: 1, // Reset to first page
+    per_page: count,
+    page: 1,
   };
 
   await womanStore.applyFilters(filtersWithPerPage);
@@ -851,7 +848,9 @@ onMounted(async () => {
                               'uppercase px-2 cursor-pointer',
                               active === 'all' ? 'text-red-500' : '',
                             ]"
-                            @click="handleItemsPerPageChange('all')"
+                            @click="
+                              handleItemsPerPageChange(women?.length || 100)
+                            "
                           >
                             all
                           </p>
@@ -1073,12 +1072,13 @@ onMounted(async () => {
                     <v-col cols="8">
                       <v-container class="max-width">
                         <v-pagination
+                          v-if="womanStore.totalPages > 1"
                           :model-value="womanStore.page"
                           :length="womanStore.totalPages"
                           rounded="circle"
                           class="my-4"
                           @update:model-value="handlePageChange"
-                        ></v-pagination>
+                        />
                       </v-container>
                     </v-col>
                   </v-row>
@@ -1461,13 +1461,14 @@ onMounted(async () => {
             <!-- Mobile Pagination -->
             <div class="text-center mt-6">
               <v-pagination
+                v-if="womanStore.totalPages > 1"
                 :model-value="womanStore.page"
                 :length="womanStore.totalPages"
                 rounded="circle"
                 class="my-4"
                 total-visible="5"
                 @update:model-value="handlePageChange"
-              ></v-pagination>
+              />
             </div>
           </v-container>
         </v-main>
@@ -1517,7 +1518,7 @@ onMounted(async () => {
 
 .line-clamp-2 {
   display: -webkit-box;
-  -webkit-line-clamp: 2;
+  /* -webkit-line-clamp: 2; */
   -webkit-box-orient: vertical;
   overflow: hidden;
 }

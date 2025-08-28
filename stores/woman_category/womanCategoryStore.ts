@@ -26,11 +26,11 @@ export const useWomanIteStore = defineStore('useWomanIteStore', {
     // Build query string from filters
     buildQueryString(filters: FilterParams): string {
       const params = new URLSearchParams();
-      
+
       // Add pagination
       params.append('page', (filters.page || this.page).toString());
       params.append('per_page', (filters.per_page || this.perPage).toString());
-      
+
       // Add filters if they exist
       if (filters.brand_id) params.append('brand_id', filters.brand_id);
       if (filters.color_id) params.append('color_id', filters.color_id);
@@ -40,14 +40,14 @@ export const useWomanIteStore = defineStore('useWomanIteStore', {
       if (filters.category_id) params.append('category_id', filters.category_id);
       if (filters.sort_order) params.append('sort_order', filters.sort_order);
       if (filters.sort_by) params.append('sort_by', filters.sort_by);
-      
+
       return params.toString();
     },
 
     async fetchWomanItems(filters: FilterParams = {}) {
       this.loading = true;
       this.error = null;
-      
+
       // Store current filters for reference
       this.currentFilters = { ...filters };
 
@@ -55,7 +55,7 @@ export const useWomanIteStore = defineStore('useWomanIteStore', {
         const baseURL = getBaseURL();
         const queryString = this.buildQueryString(filters);
         const endpoint = `/items/group/women?${queryString}`;
-                
+
         const responseRef = await useFetchDataApi<WomenResponse>(endpoint);
         const response = responseRef.data.value;
 
@@ -64,15 +64,15 @@ export const useWomanIteStore = defineStore('useWomanIteStore', {
             ...item,
             variants: item.variants?.map(variant => ({
               ...variant,
-              image: variant.image?.startsWith('http') 
-                ? variant.image 
+              image: variant.image?.startsWith('http')
+                ? variant.image
                 : baseURL + variant.image,
               final_price: variant.final_price || parseFloat(variant.price || '0'),
             })) || [],
             brand: item.brand ? {
               ...item.brand,
-              logo_url: item.brand.logo_url?.startsWith('http') 
-                ? item.brand.logo_url 
+              logo_url: item.brand.logo_url?.startsWith('http')
+                ? item.brand.logo_url
                 : baseURL + item.brand.logo_url,
             } : {
               id: '',
@@ -86,7 +86,8 @@ export const useWomanIteStore = defineStore('useWomanIteStore', {
             },
           }));
           this.total = response.total || 0;
-          this.page = response.page || 1;
+          this.page = response.page || filters.page || 1;
+          this.perPage = filters.per_page || this.perPage;
         } else {
           this.error = response?.message || 'Unexpected error occurred.';
           this.women = [];
@@ -102,8 +103,8 @@ export const useWomanIteStore = defineStore('useWomanIteStore', {
 
     // Apply filters method
     async applyFilters(filters: FilterParams) {
-      // Reset to page 1 when applying new filters
-      const filtersWithPage = { ...filters, page: 1 };
+      const filtersWithPage = { ...filters };
+      if (!filtersWithPage.page) filtersWithPage.page = 1; // Only force page if not provided
       await this.fetchWomanItems(filtersWithPage);
     },
 

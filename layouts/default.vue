@@ -168,7 +168,7 @@ const handleNavigation = async (path, menuValue) => {
     }
 
     // Add small delay to let current page cleanup properly
-    await nextTick();
+    // await nextTick();
 
     // Navigate programmatically
     await router.push(path);
@@ -306,7 +306,7 @@ onBeforeUnmount(() => {
                 v-if="isNavigating && group === menu.value"
                 class="loading-spinner"
               ></span>
-              {{ $t(menu.title) }}
+              <span v-else> {{ $t(menu.title) }}</span>
             </button>
           </div>
         </v-col>

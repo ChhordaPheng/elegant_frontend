@@ -488,19 +488,17 @@ const handlePageChange = async (newPage: number) => {
 
 // Handle items per page change
 const handleItemsPerPageChange = async (count: number | string) => {
-  active.value = count;
-
-  let perPage = 20; // default
-  if (count === 10) perPage = 10;
-  else if (count === 20) perPage = 20;
-  else if (count === "all") perPage = manStore.total || 1000; // Large number for "all"
-
-  manStore.perPage = perPage;
+  if (count === "all") {
+    active.value = "all";
+    count = men.value?.length || 100;
+  } else {
+    active.value = count as number;
+  }
 
   const filtersWithPerPage = {
     ...currentFilters.value,
-    per_page: perPage,
-    page: 1, // Reset to first page
+    per_page: count,
+    page: 1,
   };
 
   await manStore.applyFilters(filtersWithPerPage);
@@ -1069,12 +1067,13 @@ onMounted(async () => {
                     <v-col cols="8">
                       <v-container class="max-width">
                         <v-pagination
+                          v-if="manStore.totalPages > 1"
                           :model-value="manStore.page"
                           :length="manStore.totalPages"
                           rounded="circle"
                           class="my-4"
                           @update:model-value="handlePageChange"
-                        ></v-pagination>
+                        />
                       </v-container>
                     </v-col>
                   </v-row>
@@ -1455,13 +1454,14 @@ onMounted(async () => {
             <!-- Mobile Pagination -->
             <div class="text-center mt-6">
               <v-pagination
+                v-if="manStore.totalPages > 1"
                 :model-value="manStore.page"
                 :length="manStore.totalPages"
                 rounded="circle"
                 class="my-4"
                 total-visible="5"
                 @update:model-value="handlePageChange"
-              ></v-pagination>
+              />
             </div>
           </v-container>
         </v-main>

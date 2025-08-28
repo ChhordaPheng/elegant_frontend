@@ -486,20 +486,54 @@ const handlePageChange = async (newPage: number) => {
 const handleItemsPerPageChange = async (count: number | string) => {
   active.value = count;
 
-  let perPage = 20; // default
-  if (count === 10) perPage = 10;
-  else if (count === 20) perPage = 20;
-  else if (count === "all") perPage = itemStore.total || 1000; // Large number for "all"
+  if (count === "all") {
+    // Fetch all items by getting all pages
+    const allItems = [];
+    let currentPage = 1;
+    let hasMorePages = true;
 
-  itemStore.perPage = perPage;
+    while (hasMorePages) {
+      const filtersWithPage = {
+        ...currentFilters.value,
+        per_page: 100, // Use max API limit
+        page: currentPage,
+      };
 
-  const filtersWithPerPage = {
-    ...currentFilters.value,
-    per_page: perPage,
-    page: 1, // Reset to first page
-  };
+      await itemStore.fetchItems(filtersWithPage);
 
-  await itemStore.applyFilters(filtersWithPerPage);
+      if (itemStore.items.length === 0) {
+        hasMorePages = false;
+      } else {
+        allItems.push(...itemStore.items);
+        currentPage++;
+
+        // Check if we've reached the last page
+        if (currentPage > itemStore.totalPages) {
+          hasMorePages = false;
+        }
+      }
+    }
+
+    // Update store with all items
+    itemStore.items = allItems;
+    itemStore.page = 1;
+    itemStore.perPage = allItems.length;
+  } else {
+    // Regular pagination
+    let perPage = 20;
+    if (count === 10) perPage = 10;
+    else if (count === 20) perPage = 20;
+
+    itemStore.perPage = perPage;
+
+    const filtersWithPerPage = {
+      ...currentFilters.value,
+      per_page: perPage,
+      page: 1,
+    };
+
+    await itemStore.applyFilters(filtersWithPerPage);
+  }
 };
 
 // Lifecycle
@@ -1065,12 +1099,13 @@ onMounted(async () => {
                     <v-col cols="8">
                       <v-container class="max-width">
                         <v-pagination
+                          v-if="itemStore.totalPages > 1"
                           :model-value="itemStore.page"
                           :length="itemStore.totalPages"
                           rounded="circle"
                           class="my-4"
                           @update:model-value="handlePageChange"
-                        ></v-pagination>
+                        />
                       </v-container>
                     </v-col>
                   </v-row>
@@ -1449,13 +1484,14 @@ onMounted(async () => {
             <!-- Mobile Pagination -->
             <div class="text-center mt-6">
               <v-pagination
+                v-if="itemStore.totalPages > 1"
                 :model-value="itemStore.page"
                 :length="itemStore.totalPages"
                 rounded="circle"
                 class="my-4"
                 total-visible="5"
                 @update:model-value="handlePageChange"
-              ></v-pagination>
+              />
             </div>
           </v-container>
         </v-main>
