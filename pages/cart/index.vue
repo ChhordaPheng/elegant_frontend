@@ -9,13 +9,14 @@ const config = useRuntimeConfig();
 const qrCodeDataUrl = ref<string>("");
 
 // Use stores (only for deliveries and addresses)
-const profileStore = useProfileStore();
 const deliveryStore = useDeliveryStore();
 
 // Authentication stores and state
 const loginStore = useLoginStore();
 const { authenticated } = storeToRefs(loginStore);
 const token = useCookie("accessToken");
+const profileStore = useProfileStore();
+const { userProfile } = storeToRefs(profileStore);
 
 // Types
 interface Delivery {
@@ -221,12 +222,11 @@ const deliveryFee = computed(() => {
 
 const total = computed(() => subtotal.value + deliveryFee.value);
 
-// Form data
+// Form data - simplified to single form
 const form = ref({
   name: "",
   phoneNumber: "",
   address: "",
-  selectedItem: null as any | null,
   note: "",
   useExistingAddress: false,
 });
@@ -245,11 +245,21 @@ const formattedAddress = computed(() => {
   return `${addr.home}, ${addr.street}, ${addr.city}, ${addr.country}`;
 });
 
-// FIXED: Check authentication before checkout using consistent method
+// Get effective phone number (from profile or form)
+const getEffectivePhoneNumber = () => {
+  if (form.value.useExistingAddress) {
+    // Use profile phone number when using existing address
+    return userProfile.value?.phone_number || "";
+  } else {
+    // Use form phone number for new address
+    return form.value.phoneNumber;
+  }
+};
+
+// Check authentication before checkout
 const proceedToCheckout = () => {
   if (!process.client) return;
 
-  // Use the authentication store directly (same as header component)
   const accessToken = token.value;
   const isAuthenticated = authenticated.value;
 
@@ -267,7 +277,7 @@ const showSnackbar = (message: string, color: string = "success") => {
   snackbar.value = true;
 };
 
-// FIXED: Login functions - consistent with header component authentication
+// Login functions
 const handleLoginInDialog = async () => {
   try {
     loginErrors.value = {};
@@ -289,10 +299,8 @@ const handleLoginInDialog = async () => {
     const response = await loginStore.fetchLogin();
 
     if (response && response.customer) {
-      // Store user data consistently with header component
       if (process.client) {
         localStorage.setItem("user", JSON.stringify(response.customer));
-        // Don't manually set tokens - let the fetchLogin handle cookies
       }
 
       loginMessage.value = "Login successful! Proceeding to checkout...";
@@ -350,9 +358,11 @@ const fetchAddresses = async () => {
       if (defaultAddress) {
         selectedAddress.value = defaultAddress;
         form.value.useExistingAddress = true;
+        // Set form values when default address is selected
         form.value.name = defaultAddress.name;
-        form.value.phoneNumber = defaultAddress.phone || "";
         form.value.address = formattedAddress.value;
+        // Always use profile phone number when using existing address
+        form.value.phoneNumber = userProfile.value?.phone_number || "";
       }
     }
   } catch (err) {
@@ -363,77 +373,70 @@ const fetchAddresses = async () => {
 
 // Transform cart items for order
 const transformCartItemsForOrder = (items: any[]) => {
-  return items.map((item) => ({
-    item_variant_id: item.variant?.id || item.variant_id || item.id,
-    quantity: item.quantity,
-    item_name: item.variant?.item?.name || item.name,
-    item_sku: item.variant?.item?.sku || null,
-    size: item.variant?.size?.name || item.size,
-    color: item.variant?.color?.name || item.color,
-    item_image: item.variant?.image || item.image,
-    original_price:
-      item.variant?.price ||
-      item.price ||
-      item.variant?.final_price ||
-      item.final_price,
-    final_price:
-      item.variant?.final_price ||
-      item.final_price ||
-      item.variant?.price ||
-      item.price,
-    total_price:
-      (item.variant?.final_price ||
-        item.final_price ||
-        item.variant?.price ||
-        item.price) * item.quantity,
-    discount_amount: Math.max(
-      0,
-      (item.variant?.price || item.price || 0) -
-        (item.variant?.final_price ||
-          item.final_price ||
-          item.variant?.price ||
-          item.price)
-    ),
-    discount_type: null,
-    discount_value: null,
-  }));
+  return items.map((item) => {
+    const variantId = item.variant_id || item.variant?.id;
+    
+    return {
+      item_variant_id: variantId,
+      quantity: item.quantity,
+      item_name: item.variant?.item?.name || 'Unknown Item',
+      item_sku: item.variant?.item?.sku || null,
+      size: item.variant?.size?.name || 'Unknown Size',
+      color: item.variant?.color?.name || 'Unknown Color',
+      item_image: item.variant?.image || '',
+      original_price: parseFloat(item.variant?.price || '0'),
+      final_price: parseFloat(item.variant?.final_price || '0'),
+      total_price: parseFloat(item.variant?.final_price || '0') * item.quantity,
+      discount_amount: Math.max(0, parseFloat(item.variant?.price || '0') - parseFloat(item.variant?.final_price || '0')),
+      discount_type: null,
+      discount_value: null,
+    };
+  });
 };
 
 // Place order
 const placeOrder = async () => {
-  if (
-    !selectedDelivery.value ||
-    !selectedPaymentMethod.value ||
-    (!form.value.useExistingAddress &&
-      (!form.value.name || !form.value.phoneNumber || !form.value.address)) ||
-    (form.value.useExistingAddress && !selectedAddress.value)
-  ) {
-    showSnackbar("Please complete all required fields.", "error");
+  const effectivePhone = getEffectivePhoneNumber();
+  
+  // Validation
+  if (!selectedDelivery.value || !selectedPaymentMethod.value) {
+    showSnackbar("Please select delivery method and payment method.", "error");
     return;
   }
-  if (
-    form.value.useExistingAddress &&
-    selectedAddress.value &&
-    !selectedAddress.value.phone
-  ) {
-    showSnackbar("Selected address must have a phone number", "error");
+
+  if (!effectivePhone) {
+    showSnackbar("Phone number is required.", "error");
     return;
   }
+
+  if (form.value.useExistingAddress) {
+    if (!selectedAddress.value) {
+      showSnackbar("Please select an address.", "error");
+      return;
+    }
+  } else {
+    if (!form.value.name || !form.value.address) {
+      showSnackbar("Please fill in all required fields.", "error");
+      return;
+    }
+  }
+
   try {
     loading.value = true;
     error.value = null;
+    
     const orderData: OrderRequest = {
       items: transformCartItemsForOrder(cartItems.value),
       delivery_id: selectedDelivery.value.id,
       payment_method: selectedPaymentMethod.value,
-      phone: form.value.useExistingAddress
-        ? selectedAddress.value?.phone || ""
-        : form.value.phoneNumber,
+      phone: effectivePhone,
       note: form.value.note || "",
     };
+
     if (form.value.useExistingAddress && selectedAddress.value) {
       orderData.address_id = selectedAddress.value.id;
     }
+
     const response = await useFetchDataApi<{ status: string; data: Order }>(
       "/orders",
       {
@@ -441,9 +444,10 @@ const placeOrder = async () => {
         body: orderData,
       }
     );
+
     if (response.data.value?.status === "success" && response.data.value.data) {
       currentOrder.value = response.data.value.data;
-      dialog.value = false; // Close checkout dialog
+      dialog.value = false;
       console.log("📦 Order created:", currentOrder.value);
 
       if (selectedPaymentMethod.value === "bank_transfer") {
@@ -453,10 +457,13 @@ const placeOrder = async () => {
             await generateQRCode(currentOrder.value.qr_string);
             console.log("✅ QR Code generated, opening dialog...");
             paymentDialog.value = true;
-            startPaymentCheck(); // Payment check will handle clearCart on success
+            startPaymentCheck();
           } catch (qrError) {
             console.error("❌ Failed to generate QR code:", qrError);
-            showSnackbar("Failed to generate QR code. Please try again.", "error");
+            showSnackbar(
+              "Failed to generate QR code. Please try again.",
+              "error"
+            );
             paymentStatus.value = "failed";
             return;
           }
@@ -467,7 +474,6 @@ const placeOrder = async () => {
           return;
         }
       } else {
-        // For cash_on_delivery or cash, clear cart immediately
         clearCart();
         const paymentTypeText =
           selectedPaymentMethod.value === "cash_on_delivery"
@@ -540,9 +546,16 @@ const startPaymentCheck = () => {
 
 // Cart item actions
 const increaseCartItem = (index: number) => {
-  cartItems.value[index].quantity++;
-  updateItemTotal(index);
-  saveCartToStorage();
+  const item = cartItems.value[index];
+  const maxStock = item.variant?.quantity ?? Infinity;
+
+  if (item.quantity < maxStock) {
+    item.quantity++;
+    updateItemTotal(index);
+    saveCartToStorage();
+  } else {
+    showSnackbar(`Only ${maxStock} items available in stock.`, "warning");
+  }
 };
 
 const decreaseCartItem = (index: number) => {
@@ -577,20 +590,24 @@ const openAddressSelection = () => {
 };
 
 const selectAddress = (address: Address) => {
-  if (!address.phone || !address.phone.trim()) {
-    // Show warning but still allow selection
+  selectedAddress.value = address;
+  form.value.useExistingAddress = true;
+  
+  // Set form values when address is selected
+  form.value.name = address.name;
+  form.value.address = formattedAddress.value;
+  // Always use profile phone number, not address phone
+  form.value.phoneNumber = userProfile.value?.phone_number || "";
+  
+  addressDialog.value = false;
+  
+  // Show warning if profile phone is missing
+  if (!userProfile.value?.phone_number) {
     showSnackbar(
-      "Warning: This address has no phone number. Please add one before checkout.",
+      "Warning: No phone number in profile. Please update your profile.",
       "warning"
     );
   }
-
-  selectedAddress.value = address;
-  form.value.useExistingAddress = true;
-  form.value.name = address.name;
-  form.value.phoneNumber = address.phone || "";
-  form.value.address = formattedAddress.value;
-  addressDialog.value = false;
 };
 
 const useNewAddress = () => {
@@ -626,7 +643,7 @@ const generateQRCode = async (qrString: string) => {
   }
 };
 
-// ADDED: Helper function to get cookie value (same as header component)
+// Helper function to get cookie value
 const getCookie = (name: string) => {
   if (typeof document === "undefined") return null;
   try {
@@ -640,7 +657,7 @@ const getCookie = (name: string) => {
   }
 };
 
-// ADDED: Check authentication status (same logic as header component)
+// Check authentication status
 const checkAuthStatus = () => {
   if (typeof window === "undefined") return;
 
@@ -655,14 +672,12 @@ const checkAuthStatus = () => {
           try {
             loginStore.user = JSON.parse(userData);
           } catch (error) {
-            // Provide default user object with required properties
             loginStore.user = {
               phone_number: "",
               password: "",
             };
           }
         } else {
-          // Provide default user object with required properties
           loginStore.user = {
             phone_number: "",
             password: "",
@@ -672,7 +687,6 @@ const checkAuthStatus = () => {
     } else {
       if (authenticated.value) {
         loginStore.authenticated = false;
-        // Reset with proper structure
         loginStore.user = {
           phone_number: "",
           password: "",
@@ -687,9 +701,8 @@ const checkAuthStatus = () => {
     };
   }
 };
-// Payment Dialog Helper Functions
 
-// Cancel payment and close dialog
+// Payment Dialog Helper Functions
 const cancelPayment = () => {
   stopPaymentCheck();
   paymentDialog.value = false;
@@ -699,7 +712,6 @@ const cancelPayment = () => {
   showSnackbar("Order cancelled.", "info");
 };
 
-// Retry payment - restart the checking process
 const retryPayment = () => {
   paymentStatus.value = "pending";
   if (currentOrder.value && currentOrder.value.qr_string) {
@@ -716,13 +728,11 @@ const retryPayment = () => {
   }
 };
 
-// Go to orders page
 const goToOrders = () => {
   paymentDialog.value = false;
   router.push("/cart");
 };
 
-// Enhanced stop payment check function
 const stopPaymentCheck = () => {
   if (paymentCheckInterval.value) {
     clearInterval(paymentCheckInterval.value);
@@ -739,15 +749,11 @@ watch(paymentDialog, (newValue) => {
 onMounted(async () => {
   try {
     isLoading.value = true;
-
-    // ADDED: Check authentication status on mount
     checkAuthStatus();
-
-    // Load cart from localStorage
     loadCartFromStorage();
     await fetchDeliveries();
-
-    // Only fetch addresses if authenticated
+    await profileStore.fetchUserProfile();
+    
     if (token.value && authenticated.value) {
       await fetchAddresses();
     }
@@ -1089,11 +1095,6 @@ onUnmounted(() => {
         </v-card>
       </v-dialog>
 
-      <!-- Login Dialog -->
-      <!-- <v-dialog v-model="loginDialog" max-width="500px" persistent>
-        <Login />
-      </v-dialog> -->
-
       <!-- Checkout Dialog -->
       <v-dialog v-model="dialog" max-width="600px">
         <v-card class="pa-5">
@@ -1118,14 +1119,14 @@ onUnmounted(() => {
                 <img
                   :src="selectedDelivery.logo"
                   :alt="selectedDelivery.name"
-                  class="w-12 h-12 object-cover rounded"
+                  class="w-10 h-10 object-cover rounded"
                 />
                 <div>
                   <p class="font-semibold">{{ selectedDelivery.name }}</p>
                   <p class="text-sm text-grey">
                     {{ selectedDelivery.description }}
                   </p>
-                  <p class="font-bold text-primary">
+                  <p class="text-sm font-bold text-primary">
                     ${{ selectedDelivery.delivery_fee }}
                   </p>
                 </div>
@@ -1268,23 +1269,11 @@ onUnmounted(() => {
               <!-- Selected Address Preview -->
               <div
                 v-if="form.useExistingAddress && selectedAddress"
-                class="selected-address-preview mt-3 pa-3 bg-white rounded border"
-                :class="
-                  selectedAddress.phone ? 'border-primary' : 'border-warning'
-                "
+                class="selected-address-preview mt-3 pa-3 bg-white rounded border border-primary"
               >
                 <div class="flex items-start space-x-3">
                   <div class="selected-address-icon">
-                    <v-icon
-                      size="18"
-                      :color="selectedAddress.phone ? 'primary' : 'warning'"
-                    >
-                      {{
-                        selectedAddress.phone
-                          ? "mdi-check-circle"
-                          : "mdi-alert-circle"
-                      }}
-                    </v-icon>
+                    <v-icon size="18" color="primary">mdi-check-circle</v-icon>
                   </div>
                   <div class="flex-1">
                     <h4 class="font-bold text-gray-800">
@@ -1293,17 +1282,9 @@ onUnmounted(() => {
                     <p class="text-sm text-gray-600 mt-1">
                       {{ formattedAddress }}
                     </p>
-                    <p
-                      class="text-sm mt-1 flex items-center"
-                      :class="
-                        selectedAddress.phone ? 'text-gray-600' : 'text-warning'
-                      "
-                    >
+                    <p class="text-sm mt-1 flex items-center text-gray-600">
                       <v-icon size="12" class="mr-1">mdi-phone</v-icon>
-                      {{
-                        selectedAddress.phone ||
-                        "No phone number - please add one"
-                      }}
+                      {{ userProfile?.phone_number || "No phone in profile" }}
                     </p>
                   </div>
                   <div
@@ -1316,85 +1297,52 @@ onUnmounted(() => {
                     </v-chip>
                   </div>
                 </div>
-
-                <!-- Warning message for missing phone -->
-                <v-alert
-                  v-if="!selectedAddress.phone"
-                  type="warning"
-                  variant="tonal"
-                  class="mt-3"
-                  density="compact"
-                >
-                  <template v-slot:prepend>
-                    <v-icon>mdi-alert</v-icon>
-                  </template>
-                  This address is missing a phone number. Please select a
-                  different address or enter your phone number above.
-                </v-alert>
               </div>
             </div>
 
+            <!-- Single Form Section -->
             <v-form v-model="isValid" @submit.prevent="submitForm">
-              <!-- Form fields - only show when not using existing address -->
-              <template v-if="!form.useExistingAddress">
-                <v-text-field
-                  v-model="form.name"
-                  label="Full Name"
-                  :rules="[rules.required]"
-                  required
-                  class="mb-3"
-                  prepend-inner-icon="mdi-account"
-                />
+              <!-- Name Field -->
+              <v-text-field
+                v-model="form.name"
+                label="Full Name"
+                :rules="[rules.required]"
+                :readonly="form.useExistingAddress"
+                :variant="form.useExistingAddress ? 'filled' : 'outlined'"
+                required
+                class="mb-3"
+                prepend-inner-icon="mdi-account"
+              />
 
-                <v-text-field
-                  v-model="form.phoneNumber"
-                  label="Phone Number"
-                  :rules="[rules.required, rules.phoneNumber]"
-                  required
-                  class="mb-3"
-                  prepend-inner-icon="mdi-phone"
-                />
+              <!-- Phone Number Field -->
+              <v-text-field
+                v-model="form.phoneNumber"
+                label="Phone Number"
+                :rules="[rules.required, rules.phoneNumber]"
+                :readonly="form.useExistingAddress"
+                :variant="form.useExistingAddress ? 'filled' : 'outlined'"
+                :hint="form.useExistingAddress ? 'Using phone from your profile' : ''"
+                persistent-hint
+                required
+                class="mb-3"
+                prepend-inner-icon="mdi-phone"
+              />
 
-                <v-text-field
-                  v-model="form.address"
-                  label="Shipping Address"
-                  :rules="[rules.required, rules.address]"
-                  required
-                  class="mb-3"
-                  prepend-inner-icon="mdi-map-marker"
-                />
-              </template>
+              <!-- Address Field -->
+              <v-text-field
+                v-model="form.address"
+                label="Shipping Address"
+                :rules="[rules.required, rules.address]"
+                :readonly="form.useExistingAddress"
+                :variant="form.useExistingAddress ? 'filled' : 'outlined'"
+                :hint="form.useExistingAddress ? 'Using selected saved address' : ''"
+                persistent-hint
+                required
+                class="mb-3"
+                prepend-inner-icon="mdi-map-marker"
+              />
 
-              <!-- Show readonly fields when using existing address -->
-              <template v-else-if="selectedAddress">
-                <v-text-field
-                  :model-value="selectedAddress.name"
-                  label="Full Name"
-                  readonly
-                  class="mb-3"
-                  prepend-inner-icon="mdi-account"
-                  variant="filled"
-                />
-
-                <v-text-field
-                  :model-value="selectedAddress.phone || 'No phone number'"
-                  label="Phone Number"
-                  class="mb-3"
-                  required
-                  prepend-inner-icon="mdi-phone"
-                  variant="filled"
-                />
-
-                <v-text-field
-                  :model-value="formattedAddress"
-                  label="Shipping Address"
-                  readonly
-                  class="mb-3"
-                  prepend-inner-icon="mdi-map-marker"
-                  variant="filled"
-                />
-              </template>
-
+              <!-- Note Field -->
               <v-textarea
                 v-model="form.note"
                 label="Order Note (Optional)"
@@ -1403,6 +1351,7 @@ onUnmounted(() => {
                 rows="3"
               />
 
+              <!-- Submit Button -->
               <v-btn
                 type="submit"
                 :disabled="
@@ -1410,7 +1359,8 @@ onUnmounted(() => {
                   loading ||
                   !selectedDelivery ||
                   !selectedPaymentMethod ||
-                  (form.useExistingAddress && !selectedAddress)
+                  (form.useExistingAddress && !selectedAddress) ||
+                  !getEffectivePhoneNumber()
                 "
                 color="primary"
                 class="mt-2 w-full"
@@ -1561,12 +1511,9 @@ onUnmounted(() => {
                         <v-icon size="14" color="gray">mdi-map-marker</v-icon>
                         <span>{{ address.city }}, {{ address.country }}</span>
                       </div>
-                      <div
-                        class="address-line flex items-center space-x-2"
-                        v-if="address.phone"
-                      >
+                      <div class="address-line flex items-center space-x-2">
                         <v-icon size="14" color="gray">mdi-phone</v-icon>
-                        <span>{{ address.phone }}</span>
+                        <span>{{ userProfile?.phone_number || "No phone in profile" }}</span>
                       </div>
                     </div>
                   </div>
@@ -1645,17 +1592,6 @@ onUnmounted(() => {
             <!-- Order Summary -->
             <v-card v-if="currentOrder" class="mb-4 pa-4 bg-gray-50">
               <p class="font-bold">Order #{{ currentOrder.order_number }}</p>
-              <!-- <p class="text-lg font-bold text-primary">
-                Total: ${{
-                  currentOrder.total_amount
-                    ? currentOrder.total_amount.toFixed(2)
-                    : "0.00"
-                }}
-              </p> -->
-              <p v-if="form.selectedItem" class="text-sm text-grey">
-                (Single item purchase)
-              </p>
-              <p v-else class="text-sm text-grey">(Full cart purchase)</p>
               <p class="text-sm text-grey">
                 Delivery: {{ currentOrder.delivery_method }}
               </p>
@@ -1717,7 +1653,7 @@ onUnmounted(() => {
               </div>
             </div>
 
-            <!-- Rest of the dialog (payment status, instructions, etc.) -->
+            <!-- Payment Status -->
             <div class="mb-4">
               <v-alert
                 v-if="paymentStatus === 'pending'"

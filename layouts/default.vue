@@ -1,24 +1,21 @@
-<script setup>
-import {
-  ref,
-  computed,
-  watchEffect,
-  watch,
-  nextTick,
-  onMounted,
-  onBeforeUnmount,
-} from "vue";
+<script setup lang="ts">
 import { useDisplay } from "vuetify";
 import { useRoute, useRouter } from "vue-router";
-import { storeToRefs } from "pinia";
 import { useI18n } from "vue-i18n";
 
+type Language = {
+  id: number;
+  name: string;
+  flag: string;
+  language_code: string;
+};
+
 const drawer = ref(false);
-const group = ref(null);
 const dialog = ref(false);
 const showLogoutDialog = ref(false);
 const activeButton = ref("login");
 const display = useDisplay();
+const group = ref<string | null>(null);
 const { locale } = useI18n();
 
 // Safe access to display properties
@@ -61,6 +58,21 @@ const menus = [
   { title: "menu.contact_us", value: "contact_us", path: "/contact-us" },
 ];
 
+const languages: Record<string, Language> = {
+  kh: {
+    id: 1,
+    language_code: "kh",
+    flag: "flags/Flag_of_Cambodia.svg.png",
+    name: "ខ្មែរ",
+  },
+  en: {
+    id: 2,
+    language_code: "en",
+    flag: "flags/us_flag.png",
+    name: "English",
+  },
+};
+
 const btnSize = computed(() => (smAndDown.value ? "x-small" : "small"));
 const btnDensity = computed(() => (smAndDown.value ? "compact" : "default"));
 const avatarSize = computed(() => (smAndDown.value ? 24 : 40));
@@ -92,17 +104,45 @@ const performLogout = () => {
   localStorage.removeItem("auth_token");
 
   loginStore.authenticated = false;
-  loginStore.user = {};
+  loginStore.user = {
+    phone_number: "",
+    password: "",
+  };
   router.push("/");
 };
 
+// Current language computed property
+const currentLanguage = computed(() => {
+  return languages[locale.value] || languages.kh;
+});
+
+// Toggle language function
+const toggleLanguage = () => {
+  if (isNavigating.value) return;
+
+  try {
+    // Toggle between 'kh' and 'en'
+    const newLanguage = locale.value === "kh" ? "en" : "kh";
+
+    // Update the locale
+    locale.value = newLanguage;
+
+    // Store in localStorage
+    localStorage.setItem("app_language", newLanguage);
+
+    console.log(`Language switched to: ${newLanguage}`);
+  } catch (error) {
+    console.error("Error toggling language:", error);
+  }
+};
+
 // Function to get cookie value (for checking auth status)
-const getCookie = (name) => {
+const getCookie = (name: string) => {
   if (typeof document === "undefined") return null;
   try {
     const value = `; ${document.cookie}`;
     const parts = value.split(`; ${name}=`);
-    if (parts.length === 2) return parts.pop().split(";").shift();
+    if (parts.length === 2) return parts.pop()?.split(";").shift();
     return null;
   } catch (error) {
     console.error("Error getting cookie:", error);
@@ -130,28 +170,28 @@ const checkAuthStatus = () => {
           try {
             loginStore.user = JSON.parse(userData);
           } catch (error) {
-            loginStore.user = { name: "User" }; // Fallback
+            loginStore.user = { phone_number: "", password: "" };
           }
         } else {
-          loginStore.user = { name: "User" }; // Default user object
+          loginStore.user = { phone_number: "", password: "" };
         }
       }
     } else {
       // No token found
       if (safeIsAuthenticated.value) {
         loginStore.authenticated = false;
-        loginStore.user = {};
+        loginStore.user = { phone_number: "", password: "" };
       }
     }
   } catch (error) {
     // Set safe defaults on error
     loginStore.authenticated = false;
-    loginStore.user = {};
+    loginStore.user = { phone_number: "", password: "" };
   }
 };
 
 // Enhanced navigation with error handling and loading state
-const handleNavigation = async (path, menuValue) => {
+const handleNavigation = async (path: string, menuValue?: string) => {
   if (isNavigating.value) {
     return;
   }
@@ -253,14 +293,18 @@ onMounted(async () => {
     process.env.NUXT_PUBLIC_APP_DEFAULT_LANGUAGE ||
     "kh";
 
-  if (storedLanguage) {
+  // Ensure the stored language is valid
+  if (languages[storedLanguage]) {
     locale.value = storedLanguage;
+  } else {
+    locale.value = "kh";
+    localStorage.setItem("app_language", "kh");
   }
 });
 
 onBeforeUnmount(() => {
   try {
-    clearInterval(authCheckInterval); // ✅ This will now work correctly
+    // clearInterval(authCheckInterval); // Removed: authCheckInterval is not defined
     window.removeEventListener("scroll", handleScroll);
   } catch (error) {
     console.error("Error in cleanup:", error);
@@ -288,7 +332,7 @@ onBeforeUnmount(() => {
 
       <v-row class="w-100 d-flex align-center justify-space-between no-gutters">
         <!-- Desktop Menu -->
-        <v-col cols="6" sm="4" md="4" v-if="!smAndDown">
+        <v-col cols="6" sm="4" md="5" v-if="!smAndDown">
           <div class="d-flex justify-space-between align-center">
             <button
               v-for="menu in menus"
@@ -323,7 +367,6 @@ onBeforeUnmount(() => {
               :class="{ 'opacity-50': isNavigating }"
               :src="site_info?.site_logo || '/logo/logo.png'"
               alt="Site Logo"
-              @error="$event.target.src = '/logo/logo.png'"
             />
           </button>
         </v-col>
@@ -351,7 +394,7 @@ onBeforeUnmount(() => {
             icon="solar:heart-linear"
             variant="elevated"
             :disabled="isNavigating"
-            @click="handleNavigation('/favorite', null)"
+            @click="handleNavigation('/favorite')"
           />
 
           <!-- Cart button -->
@@ -361,7 +404,7 @@ onBeforeUnmount(() => {
             icon="solar:bag-4-outline"
             variant="elevated"
             :disabled="isNavigating"
-            @click="handleNavigation('/cart', null)"
+            @click="handleNavigation('/cart')"
           />
 
           <!-- Profile button -->
@@ -371,7 +414,7 @@ onBeforeUnmount(() => {
             icon="iconoir:user"
             variant="elevated"
             :disabled="isNavigating"
-            @click="handleNavigation('/my-account', null)"
+            @click="handleNavigation('/my-account')"
           />
 
           <!-- Language selector -->
@@ -384,18 +427,19 @@ onBeforeUnmount(() => {
                 opacity: isNavigating ? 0.5 : 1,
               }"
               class="rounded-full hover:opacity-80 transition-all duration-200"
-              src="flags/Flag_of_Cambodia.svg.png"
-              alt="Cambodian Flag"
-              @click="!isNavigating && (dialog = true)"
+              :src="currentLanguage.flag"
+              :alt="`${currentLanguage.name} Flag`"
+              :title="`Switch to ${locale === 'kh' ? 'English' : 'ខ្មែរ'}`"
+              @click="toggleLanguage"
             />
 
-            <v-dialog v-model="dialog" max-width="400">
+            <!-- <v-dialog v-model="dialog" max-width="400">
               <v-card>
                 <v-card-text>
                   <Language />
                 </v-card-text>
               </v-card>
-            </v-dialog>
+            </v-dialog> -->
           </div>
 
           <!-- Authentication buttons -->
@@ -410,7 +454,7 @@ onBeforeUnmount(() => {
                 :class="{ active: activeButton === 'login' }"
                 :disabled="isNavigating"
                 @click="
-                  handleNavigation('/login', null);
+                  handleNavigation('/login');
                   activeButton = 'login';
                 "
               >
@@ -422,7 +466,7 @@ onBeforeUnmount(() => {
                 :class="{ active: activeButton === 'register' }"
                 :disabled="isNavigating"
                 @click="
-                  handleNavigation('/login', null);
+                  handleNavigation('/login');
                   activeButton = 'register';
                 "
               >
@@ -521,7 +565,7 @@ onBeforeUnmount(() => {
         <template v-if="!safeIsAuthenticated">
           <v-list-item
             @click="
-              handleNavigation('/login', null);
+              handleNavigation('/login');
               activeButton = 'login';
             "
             :disabled="isNavigating"
@@ -536,7 +580,7 @@ onBeforeUnmount(() => {
 
           <v-list-item
             @click="
-              handleNavigation('/login', null);
+              handleNavigation('/login');
               activeButton = 'register';
             "
             :disabled="isNavigating"
@@ -578,11 +622,12 @@ onBeforeUnmount(() => {
       style="z-index: 9999"
       opacity="0.3"
     >
-      <v-progress-circular
+      <!-- <v-progress-circular
         indeterminate
         size="64"
         color="primary"
-      ></v-progress-circular>
+      ></v-progress-circular> -->
+      <Loading />
     </v-overlay>
 
     <!-- Main content -->

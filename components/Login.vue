@@ -220,6 +220,28 @@ const closeOTPDialog = () => {
   otpStore.otpRequest.otp_code = "";
 };
 
+const onlyPhoneChars = (e: KeyboardEvent) => {
+  const char = e.key;
+  const value = (e.target as HTMLInputElement).value;
+
+  // Allow digits
+  if (/[0-9]/.test(char)) return;
+
+  // Allow space
+  // if (char === " ") return;
+
+  // Allow '+' only if it's the first character
+  if (char === "+" && value.length === 0) return;
+
+  // Otherwise block
+  e.preventDefault();
+};
+
+const sanitizePhoneInput = (value: string) => {
+  registerStore.user.phone_number = value
+    .replace(/[^0-9+ ]/g, "") // keep digits, +, and spaces
+    .replace(/(?!^)\+/g, ""); // remove + if not at the start
+};
 // Forget Password Functions
 const openForgetPasswordDialog = () => {
   forgetPasswordDialog.value = true;
@@ -455,6 +477,9 @@ const resendForgetPasswordOTP = async () => {
                 prepend-inner-icon="mdi-phone"
                 variant="underlined"
                 :error-messages="errors.username"
+                @keypress="onlyPhoneChars"
+                @input="sanitizePhoneInput"
+                @paste.prevent
               />
 
               <v-text-field
@@ -533,6 +558,9 @@ const resendForgetPasswordOTP = async () => {
                 variant="underlined"
                 class="text-black blur-input"
                 :error-messages="errors.phone_number"
+                @keypress="onlyPhoneChars"
+                @input="sanitizePhoneInput"
+                @paste.prevent
               />
               <v-text-field
                 v-model="registerStore.user.password"
@@ -701,6 +729,9 @@ const resendForgetPasswordOTP = async () => {
               variant="underlined"
               :error-messages="errors.phone_number"
               placeholder="Enter your phone number"
+              @keypress="onlyPhoneChars"
+              @input="sanitizePhoneInput"
+              @paste.prevent
             />
 
             <div class="d-flex gap-2 mt-4">
@@ -876,14 +907,6 @@ const resendForgetPasswordOTP = async () => {
   /* color: rgba(255, 255, 255, 0.9) !important; */
 }
 
-.blur-input :deep(.v-field__input input::placeholder) {
-  /* color: rgba(255, 255, 255, 0.6) !important; */
-}
-
-.blur-input :deep(.v-label) {
-  /* color: white !important; */
-}
-
 .blur-input :deep(.v-field__underlay) {
   background-color: transparent !important;
 }
@@ -893,17 +916,44 @@ const resendForgetPasswordOTP = async () => {
   background-color: rgba(255, 255, 255, 0) !important;
 }
 
-/* Icons styling */
-.blur-input :deep(.v-field__prepend-inner .v-icon) {
-  /* color: rgba(255, 255, 255, 0.8) !important; */
-}
-
-.blur-input :deep(.v-field__append-inner .v-icon) {
-  /* color: rgba(255, 255, 255, 0.8) !important; */
-}
-
 /* Error messages styling */
 .blur-input :deep(.v-messages__message) {
   color: #ff5252 !important;
 }
+
+/* Autofill background fix */
+.blur-input :deep(input:-webkit-autofill) {
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
+  transition: background-color 9999s ease-in-out 0s; /* prevents flashing */
+}
+
+/* When autofill is focused */
+.blur-input :deep(input:-webkit-autofill:focus) {
+  -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
+}
+
+/* Firefox autofill */
+.blur-input :deep(input:-internal-autofill-selected) {
+  background-color: transparent !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+/* Force autofill to match dark input */
+.blur-input :deep(input:-webkit-autofill),
+.blur-input :deep(input:-webkit-autofill:hover),
+.blur-input :deep(input:-webkit-autofill:focus),
+.blur-input :deep(input:-webkit-autofill:active) {
+  -webkit-box-shadow: 0 0 0px 1000px rgba(0,0,0,0.4) inset !important; /* dark bg */
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
+  caret-color: white !important;
+  transition: background-color 9999s ease-in-out 0s !important;
+}
+
+/* Firefox */
+.blur-input :deep(input:-internal-autofill-selected) {
+  background-color: rgba(0,0,0,0.4) !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+}
+
 </style>

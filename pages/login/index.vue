@@ -8,7 +8,7 @@ const activeButton = computed(() => tab.value);
 const snackbar = ref<boolean>(false);
 const errors = ref<Record<string, string>>({});
 const messageInvalid = ref("");
-const dialog = ref<boolean>(false);
+const dialogOTP = ref<boolean>(false);
 const forgetPasswordDialog = ref<boolean>(false);
 const forgetPasswordStep = ref<number>(1); // 1: Phone input, 2: OTP verification, 3: Set new password
 
@@ -33,6 +33,33 @@ const loginStore = useLoginStore();
 const registerStore = useRegisterStore();
 const otpStore = useOtpRequestStore();
 type Errors = Record<string, string>;
+
+const emailRule = (v: string) => {
+  return /.+@.+\..+/.test(v) || "Email must be valid";
+};
+
+const onlyPhoneChars = (e: KeyboardEvent) => {
+  const char = e.key;
+  const value = (e.target as HTMLInputElement).value;
+
+  // Allow digits
+  if (/[0-9]/.test(char)) return;
+
+  // Allow space
+  // if (char === " ") return;
+
+  // Allow '+' only if it's the first character
+  if (char === "+" && value.length === 0) return;
+
+  // Otherwise block
+  e.preventDefault();
+};
+
+const sanitizePhoneInput = (value: string) => {
+  registerStore.user.phone_number = value
+    .replace(/[^0-9+ ]/g, "") // keep digits, +, and spaces
+    .replace(/(?!^)\+/g, ""); // remove + if not at the start
+};
 
 const handleLogin = async () => {
   try {
@@ -134,7 +161,7 @@ const handlerRegister = async () => {
     if (response) {
       // After successful registration, copy phone number to OTP store and show OTP dialog
       otpStore.otpRequest.phone_number = registerStore.user.phone_number;
-      dialog.value = true;
+      dialogOTP.value = true;
     }
   } catch (error: any) {
     if (error?.response?.data?.errors) {
@@ -195,7 +222,7 @@ const handleOTPVerification = async () => {
 
     if (response) {
       // OTP verification successful
-      dialog.value = false;
+      dialogOTP.value = false;
       tab.value = "login"; // Switch to login tab
       messageInvalid.value = "Registration completed! Please login.";
       snackbar.value = true;
@@ -216,7 +243,7 @@ const handleOTPVerification = async () => {
 };
 
 const closeOTPDialog = () => {
-  dialog.value = false;
+  dialogOTP.value = false;
   otpStore.otpRequest.otp_code = "";
 };
 
@@ -480,6 +507,9 @@ const resendForgetPasswordOTP = async () => {
                   prepend-inner-icon="mdi-phone"
                   variant="underlined"
                   :error-messages="errors.username"
+                  @keypress="onlyPhoneChars"
+                  @input="sanitizePhoneInput"
+                  @paste.prevent
                 />
 
                 <v-text-field
@@ -542,6 +572,7 @@ const resendForgetPasswordOTP = async () => {
                   class="text-white blur-input"
                   :error-messages="errors.last_name"
                 />
+
                 <v-text-field
                   v-model="registerStore.user.email"
                   label="Email"
@@ -550,7 +581,9 @@ const resendForgetPasswordOTP = async () => {
                   variant="underlined"
                   class="text-white blur-input"
                   :error-messages="errors.email"
+                  :rules="[emailRule]"
                 />
+
                 <v-text-field
                   v-model="registerStore.user.phone_number"
                   label="Phone Number"
@@ -558,7 +591,11 @@ const resendForgetPasswordOTP = async () => {
                   variant="underlined"
                   class="text-white blur-input"
                   :error-messages="errors.phone_number"
+                  @keypress="onlyPhoneChars"
+                  @input="sanitizePhoneInput"
+                  @paste.prevent
                 />
+
                 <v-text-field
                   v-model="registerStore.user.password"
                   label="Password (min. 8 characters)"
@@ -639,7 +676,7 @@ const resendForgetPasswordOTP = async () => {
       </v-snackbar>
 
       <!-- OTP Verification Dialog -->
-      <v-dialog v-model="dialog" width="400" persistent>
+      <v-dialog v-model="dialogOTP" width="400" persistent>
         <v-card class="bg-grey pa-5">
           <v-card-title class="text-center text-white">
             OTP Verification
@@ -678,18 +715,14 @@ const resendForgetPasswordOTP = async () => {
               </template>
             </v-text-field>
 
-            <div class="d-flex gap-2 mt-4">
+            <div class="flex justify-evenly">
+              <v-btn color="red" @click="closeOTPDialog()"> Cancel </v-btn>
               <v-btn
                 type="submit"
-                color="warning"
-                block
+                color="primary"
                 :loading="otpStore.isSpinning"
               >
                 Verify OTP
-              </v-btn>
-
-              <v-btn color="grey" variant="outlined" @click="closeOTPDialog">
-                Cancel
               </v-btn>
             </div>
           </v-form>
@@ -726,6 +759,9 @@ const resendForgetPasswordOTP = async () => {
                 variant="underlined"
                 :error-messages="errors.phone_number"
                 placeholder="Enter your phone number"
+                @keypress="onlyPhoneChars"
+                @input="sanitizePhoneInput"
+                @paste.prevent
               />
 
               <div class="d-flex gap-2 mt-4">
@@ -931,5 +967,79 @@ const resendForgetPasswordOTP = async () => {
 /* Error messages styling */
 .blur-input :deep(.v-messages__message) {
   color: #ff5252 !important;
+}
+
+/* Enhanced Chrome / Edge / Safari autofill override */
+.blur-input :deep(input:-webkit-autofill),
+.blur-input :deep(input:-webkit-autofill:hover),
+.blur-input :deep(input:-webkit-autofill:focus),
+.blur-input :deep(input:-webkit-autofill:active) {
+  -webkit-box-shadow: none !important;
+  -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
+  caret-color: white !important;
+  border-radius: inherit !important;
+  transition: background-color 0s !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  box-shadow: none !important;
+}
+
+/* Firefox autofill */
+.blur-input :deep(input:-internal-autofill-selected) {
+  background-color: transparent !important;
+  color: rgba(255, 255, 255, 0.9) !important;
+  background-image: none !important;
+}
+
+/* Additional autofill state overrides */
+.blur-input :deep(input:-webkit-autofill-strong-password) {
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important;
+  box-shadow: 0 0 0 1000px transparent inset !important;
+  background-color: transparent !important;
+}
+
+/* Force transparency on all possible autofill states */
+.blur-input :deep(input) {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+/* Override any Vuetify autofill styling */
+.blur-input :deep(.v-field--variant-filled .v-field__overlay),
+.blur-input :deep(.v-field--variant-outlined .v-field__overlay) {
+  background-color: transparent !important;
+}
+
+/* Ensure no background on the field wrapper */
+.blur-input :deep(.v-field) {
+  background-color: transparent !important;
+}
+
+/* Additional state-specific overrides */
+.blur-input :deep(input:autofill) {
+  background-color: transparent !important;
+  -webkit-box-shadow: 0 0 0 1000px transparent inset !important; /* Safari/Chrome */
+  box-shadow: 0 0 0 1000px transparent inset !important;         /* Standard for other browsers */
+}
+
+/* Force override with immediate effect */
+.blur-input :deep(input:-webkit-autofill) {
+  background: transparent !important;
+  -webkit-box-shadow: none !important;
+  box-shadow: none !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  -webkit-background-clip: text !important;
+}
+
+/* Additional aggressive override for persistent cases */
+.blur-input :deep(input[autocomplete]),
+.blur-input :deep(input[data-com-onepassword-filled]),
+.blur-input :deep(input[data-lastpass-autofill]) {
+  background: transparent !important;
+  background-color: transparent !important;
+  background-image: none !important;
+  -webkit-box-shadow: none !important;
+  box-shadow: none !important;
 }
 </style>

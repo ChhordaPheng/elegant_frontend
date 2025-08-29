@@ -76,6 +76,7 @@ export default defineNuxtConfig({
     '~/plugins/iconify.ts',  // Iconify plugin
     '~/plugins/vuetify.ts',  // Vuetify plugin
     '~/plugins/i18n.config.ts', // i18n plugin
+    '~/plugins/scroll-to-top.client.ts', // Add this
   ],
 
   // Pinia Configuration
