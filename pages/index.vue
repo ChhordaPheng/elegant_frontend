@@ -52,6 +52,12 @@ const bannersLoop = computed(() =>
   )
 );
 
+function goInstagram() {
+  window.open(
+    "https://ig.me/m/elegant_chic119",
+    "_blank"
+  )
+}
 const defaultImage = "https://via.placeholder.com/200x150";
 
 // Safe image loading for the first men's item
@@ -645,13 +651,7 @@ onUnmounted(() => {
                 rounded
                 class="!font-bold mt-6 md:mt-10 w-full md:w-auto"
                 size="large"
-                @click="
-                  () =>
-                    window.open(
-                      'https://www.instagram.com/daniael57/',
-                      '_blank'
-                    )
-                "
+                @click="goInstagram"
               >
                 follow us
                 <Icon icon="system-uicons:upward" width="24" height="24" />

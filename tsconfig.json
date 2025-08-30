@@ -9,6 +9,7 @@
       "#imports": [".nuxt/imports"]
     },
     "moduleResolution": "node",
+    "ignoreDeprecations": "6.0",
     "skipLibCheck": true
   },
   "exclude": ["node_modules"]
