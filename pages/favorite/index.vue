@@ -6,6 +6,7 @@ const currentProduct = ref<any>(null);
 const currentVariant = ref<any>(null);
 const text = ref(""); // message for snackbar
 const quantity = ref<number>(1);
+const router = useRouter(); // Make sure this is properly imported
 
 // Local state for loading and interactions
 const isLoading = ref(false);
@@ -46,6 +47,32 @@ const removeFromWishlist = (variantId: string) => {
   saveWishlistToStorage();
 };
 
+// Simple navigation function - only sends ID to product detail page
+const navigateToProductDetail = (wishlistItem: any) => {
+  try {
+    // Get the actual item ID from the nested structure
+    const itemId = wishlistItem.item?.id || wishlistItem.item_id;
+
+    if (!itemId) {
+      console.error("No item ID found in wishlist item:", wishlistItem);
+      text.value = "Unable to navigate: Missing product ID.";
+      snackbar.value = true;
+      return;
+    }
+
+    // Navigate to product detail page with only the item ID
+    // The detail page will fetch data from localStorage using this ID
+    router.push({
+      path: "/product-detail",
+      query: { id: itemId },
+    });
+  } catch (error) {
+    console.error("Error during navigation:", error);
+    text.value = "Failed to navigate to product detail.";
+    snackbar.value = true;
+  }
+};
+
 // Core add to cart logic
 const handleAddToCart = async () => {
   if (!currentProduct.value || !currentVariant.value) {
@@ -74,7 +101,7 @@ const handleAddToCart = async () => {
       item_id: currentProduct.value.id,
       quantity: quantity.value,
       added_at: new Date().toISOString(),
-      
+
       // Full variant data
       variant: {
         id: currentVariant.value.id,
@@ -83,12 +110,13 @@ const handleAddToCart = async () => {
         size_id: currentVariant.value.size_id,
         image: currentVariant.value.image,
         price: currentVariant.value.price,
-        final_price: currentVariant.value.final_price || currentVariant.value.price,
+        final_price:
+          currentVariant.value.final_price || currentVariant.value.price,
         quantity: currentVariant.value.quantity,
         is_favorite: currentVariant.value.is_favorite,
         created_at: currentVariant.value.created_at,
         updated_at: currentVariant.value.updated_at,
-        
+
         // Include color, size, and item data if available
         color: currentVariant.value.color,
         size: currentVariant.value.size,
@@ -106,14 +134,14 @@ const handleAddToCart = async () => {
           discount_id: currentProduct.value.discount_id,
           created_at: currentProduct.value.created_at,
           updated_at: currentProduct.value.updated_at,
-          
+
           // Include related data if available
           brand: currentProduct.value.brand,
           category: currentProduct.value.category,
           season: currentProduct.value.season,
-          discount: currentProduct.value.discount
-        }
-      }
+          discount: currentProduct.value.discount,
+        },
+      },
     };
 
     // Get current cart from localStorage
@@ -303,7 +331,10 @@ onMounted(() => {
           class="bg-white rounded-md shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group"
         >
           <!-- Product Image -->
-          <div class="aspect-square relative overflow-hidden bg-gray-100">
+          <div
+            @click="navigateToProductDetail(wishlistItem)"
+            class="aspect-square relative overflow-hidden bg-gray-100 cursor-pointer"
+          >
             <img
               :src="wishlistItem.item_variant?.image || wishlistItem.image"
               :alt="'Product image'"
@@ -316,7 +347,7 @@ onMounted(() => {
               class="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200"
             >
               <button
-                @click="
+                @click.stop="
                   handleRemoveFromWishlist(
                     wishlistItem.id || wishlistItem.item_variant?.id
                   )
@@ -391,6 +422,7 @@ onMounted(() => {
             <!-- Product Name -->
             <h3 class="text-sm font-medium text-gray-900 mb-2 line-clamp-2">
               {{
+                wishlistItem.item?.name ||
                 wishlistItem.name ||
                 wishlistItem.item_variant?.name ||
                 "Product Name"

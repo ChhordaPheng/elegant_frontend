@@ -1,4 +1,4 @@
-<script setup>
+<script setup lang="ts">
 import { useBannerStore } from "../stores/banner/bannerStore";
 
 definePageMeta({
@@ -17,8 +17,11 @@ const { men } = storeToRefs(menStore);
 const womenStore = useWomanIteStore();
 const { women } = storeToRefs(womenStore);
 
+const topTrendingStore = useTopTrendingStore();
+const { topTrendings } = storeToRefs(topTrendingStore);
+
 // Auto-fetch timer
-let fetchTimer = null;
+let fetchTimer: any = null;
 
 const bannerss = [
   {
@@ -53,10 +56,7 @@ const bannersLoop = computed(() =>
 );
 
 function goInstagram() {
-  window.open(
-    "https://ig.me/m/elegant_chic119",
-    "_blank"
-  )
+  window.open("https://ig.me/m/elegant_chic119", "_blank");
 }
 const defaultImage = "https://via.placeholder.com/200x150";
 
@@ -120,7 +120,7 @@ const startAutoFetch = (intervalSeconds = 30) => {
   }, intervalSeconds * 1000);
 };
 
-const quickView = (productId) => {
+const quickView = (productId: string) => {
   router.push({
     path: "/product-detail",
     query: { id: productId.toString() },
@@ -464,7 +464,10 @@ onUnmounted(() => {
                     v-for="(item, index) in men.slice(0, 3)"
                     :key="index"
                   >
-                    <div class="relative w-64 md:w-72">
+                    <div
+                      @click="quickView(item.id)"
+                      class="relative w-64 md:w-72 cursor-pointer"
+                    >
                       <v-img
                         :src="
                           item?.variants?.[0]?.image ||
@@ -518,7 +521,10 @@ onUnmounted(() => {
                     :key="index"
                     cover
                   >
-                    <div class="relative w-64 md:w-72">
+                    <div
+                      @click="quickView(item.id)"
+                      class="relative w-64 md:w-72 cursor-pointer"
+                    >
                       <v-img
                         :src="
                           item?.variants?.[0]?.image ||
@@ -559,7 +565,7 @@ onUnmounted(() => {
           {{ discount.discount_details.description }}
         </p>
 
-        <v-btn to="/man" variant="text" class="!underline w-auto">{{
+        <v-btn to="/discount" variant="text" class="!underline w-auto">{{
           $t("buttons.shop_now")
         }}</v-btn>
       </div>
@@ -670,7 +676,7 @@ onUnmounted(() => {
               <div class="photo-item photo-2 placeholder">
                 <img
                   :src="
-                    men?.[1]?.variants?.[0]?.image ||
+                    men?.[6]?.variants?.[0]?.image ||
                     'https://i.pinimg.com/736x/08/50/81/0850815065b7978f80fe952d4bfba244.jpg'
                   "
                   alt="trend"
@@ -680,7 +686,7 @@ onUnmounted(() => {
               <div class="photo-item photo-3 placeholder">
                 <img
                   :src="
-                    men?.[2]?.variants?.[0]?.image ||
+                    men?.[7]?.variants?.[0]?.image ||
                     'https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
                   "
                   alt="trend"
@@ -690,7 +696,7 @@ onUnmounted(() => {
               <div class="photo-item photo-4 placeholder">
                 <img
                   :src="
-                    men?.[3]?.variants?.[0]?.image ||
+                    men?.[8]?.variants?.[0]?.image ||
                     'https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
                   "
                   alt="trend"
@@ -700,7 +706,7 @@ onUnmounted(() => {
               <div class="photo-item photo-5 placeholder">
                 <img
                   :src="
-                    men?.[4]?.variants?.[0]?.image ||
+                    men?.[9]?.variants?.[0]?.image ||
                     'https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
                   "
                   alt="trend"
@@ -710,7 +716,7 @@ onUnmounted(() => {
               <div class="photo-item photo-6 placeholder">
                 <img
                   :src="
-                    men?.[5]?.variants?.[0]?.image ||
+                    men?.[10]?.variants?.[0]?.image ||
                     'https://i.pinimg.com/736x/a6/9b/73/a69b73a42de54464bf275b8bccc2a04d.jpg'
                   "
                   alt="trend"

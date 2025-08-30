@@ -8,9 +8,10 @@ const activeButton = computed(() => tab.value);
 const snackbar = ref<boolean>(false);
 const errors = ref<Record<string, string>>({});
 const messageInvalid = ref("");
+const messageType = ref<"success" | "error" | "info">("error"); // Add message type
 const dialogOTP = ref<boolean>(false);
 const forgetPasswordDialog = ref<boolean>(false);
-const forgetPasswordStep = ref<number>(1); // 1: Phone input, 2: OTP verification, 3: Set new password
+const forgetPasswordStep = ref<number>(1);
 
 // Password visibility toggles
 const showLoginPassword = ref<boolean>(false);
@@ -34,6 +35,23 @@ const registerStore = useRegisterStore();
 const otpStore = useOtpRequestStore();
 type Errors = Record<string, string>;
 
+// Helper function to show notifications
+const showNotification = (
+  message: string,
+  type: "success" | "error" | "info" = "error"
+) => {
+  messageInvalid.value = message;
+  messageType.value = type;
+  snackbar.value = true;
+};
+
+// Helper function to clear all errors and notifications
+const clearErrorsAndNotifications = () => {
+  errors.value = {};
+  messageInvalid.value = "";
+  snackbar.value = false;
+};
+
 const emailRule = (v: string) => {
   return /.+@.+\..+/.test(v) || "Email must be valid";
 };
@@ -44,9 +62,6 @@ const onlyPhoneChars = (e: KeyboardEvent) => {
 
   // Allow digits
   if (/[0-9]/.test(char)) return;
-
-  // Allow space
-  // if (char === " ") return;
 
   // Allow '+' only if it's the first character
   if (char === "+" && value.length === 0) return;
@@ -63,19 +78,17 @@ const sanitizePhoneInput = (value: string) => {
 
 const handleLogin = async () => {
   try {
-    errors.value = {};
-    messageInvalid.value = "";
-    snackbar.value = false;
+    clearErrorsAndNotifications();
 
     if (!loginStore.user.phone_number) {
       errors.value.username = "Phone number is required";
-      snackbar.value = true;
+      showNotification("Please enter your phone number", "error");
       return;
     }
 
     if (!loginStore.user.password) {
       errors.value.password = "Password is required";
-      snackbar.value = true;
+      showNotification("Please enter your password", "error");
       return;
     }
 
@@ -83,68 +96,71 @@ const handleLogin = async () => {
 
     if (response && response.customer) {
       console.log("Login successful:", response.customer);
-      messageInvalid.value = "Login successful! Welcome back";
-      snackbar.value = true;
+      showNotification("Welcome back! Login successful", "success");
     } else {
-      messageInvalid.value =
-        "Login failed. Please check your credentials and try again";
-      snackbar.value = true;
+      showNotification(
+        "Invalid phone number or password. Please try again",
+        "error"
+      );
     }
   } catch (error: any) {
     if (error?.response?.data?.errors) {
       errors.value = error.response.data.errors as Errors;
-      messageInvalid.value = "Please check the errors and try again";
+      showNotification("Please correct the highlighted errors", "error");
     } else if (error?.response?.data?.error) {
-      messageInvalid.value = error.response.data.error;
+      showNotification(error.response.data.error, "error");
     } else {
-      messageInvalid.value =
-        "Login failed. Please check your internet connection and try again";
+      showNotification("Invalid phone number or password", "error");
     }
-    snackbar.value = true;
   }
 };
 
 const handlerRegister = async () => {
   try {
-    errors.value = {};
-    messageInvalid.value = "";
-    snackbar.value = false;
+    clearErrorsAndNotifications();
 
     // Validate required fields
     if (!registerStore.user.first_name) {
       errors.value.first_name = "First name is required";
-      snackbar.value = true;
+      showNotification("Please enter your first name", "error");
       return;
     }
 
     if (!registerStore.user.last_name) {
       errors.value.last_name = "Last name is required";
-      snackbar.value = true;
+      showNotification("Please enter your last name", "error");
       return;
     }
 
     if (!registerStore.user.email) {
       errors.value.email = "Email is required";
-      snackbar.value = true;
+      showNotification("Please enter your email address", "error");
+      return;
+    }
+
+    // Add email format validation
+    if (!/.+@.+\..+/.test(registerStore.user.email)) {
+      errors.value.email = "Please enter a valid email address";
+      showNotification("Please enter a valid email address", "error");
       return;
     }
 
     if (!registerStore.user.phone_number) {
       errors.value.phone_number = "Phone number is required";
-      snackbar.value = true;
+      showNotification("Please enter your phone number", "error");
       return;
     }
 
     if (!registerStore.user.password) {
       errors.value.password = "Password is required";
-      snackbar.value = true;
+      showNotification("Please enter a password", "error");
       return;
     }
 
     // Password length validation
     if (registerStore.user.password.length < 8) {
       errors.value.password = "Password must be at least 8 characters long";
-      snackbar.value = true;
+      showNotification("Password must be at least 8 characters long", "error");
       return;
     }
 
@@ -152,7 +168,10 @@ const handlerRegister = async () => {
       registerStore.user.password !== registerStore.user.password_confirmation
     ) {
       errors.value.password_confirmation = "Passwords do not match";
-      snackbar.value = true;
+      showNotification(
+        "Passwords do not match. Please check and try again",
+        "error"
+      );
       return;
     }
 
@@ -162,59 +181,68 @@ const handlerRegister = async () => {
       // After successful registration, copy phone number to OTP store and show OTP dialog
       otpStore.otpRequest.phone_number = registerStore.user.phone_number;
       dialogOTP.value = true;
+      showNotification(
+        "Registration successful! Please verify your phone number",
+        "success"
+      );
     }
   } catch (error: any) {
+    console.error("Registration error:", error); // Add logging for debugging
+
     if (error?.response?.data?.errors) {
       errors.value = error.response.data.errors as Errors;
+      showNotification("Please correct the highlighted errors", "error");
     } else if (error?.response?.data?.error) {
-      messageInvalid.value = error.response.data.error;
+      showNotification(error.response.data.error, "error");
+    } else if (error?.response?.data?.message) {
+      showNotification(error.response.data.message, "error");
+    } else if (error?.message) {
+      showNotification(error.message, "error");
     } else {
-      messageInvalid.value = "The phone number has already been taken";
+      // More generic error message instead of assuming it's about phone number
+      showNotification("The phone number has already been taken.", "error");
     }
-    snackbar.value = true;
   }
 };
 
 const requestOTP = async () => {
   try {
     if (!otpStore.otpRequest.phone_number) {
-      messageInvalid.value = "Phone number is required";
-      snackbar.value = true;
+      showNotification("Phone number is required", "error");
       return;
     }
 
-    // For now, let's just show success message
-    // You can replace this with actual API call when your backend is ready
-    messageInvalid.value = "OTP sent to your phone number";
-    snackbar.value = true;
+    showNotification("Sending OTP to your phone number...", "info");
 
     // If you have the requestOTP method in your store, uncomment this:
     // await otpStore.requestOTP();
+
+    // For now, simulate success
+    setTimeout(() => {
+      showNotification("OTP sent successfully to your phone", "success");
+    }, 1000);
   } catch (error: any) {
     if (error?.response?.data?.error) {
-      messageInvalid.value = error.response.data.error;
+      showNotification(error.response.data.error, "error");
     } else {
-      messageInvalid.value = "Failed to send OTP";
+      showNotification("Failed to send OTP. Please try again", "error");
     }
-    snackbar.value = true;
   }
 };
 
 const handleOTPVerification = async () => {
   try {
-    errors.value = {};
-    messageInvalid.value = "";
-    snackbar.value = false;
+    clearErrorsAndNotifications();
 
     if (!otpStore.otpRequest.phone_number) {
       errors.value.phone_number = "Phone number is required";
-      snackbar.value = true;
+      showNotification("Phone number is required", "error");
       return;
     }
 
     if (!otpStore.otpRequest.otp_code) {
       errors.value.otp_code = "OTP code is required";
-      snackbar.value = true;
+      showNotification("Please enter the OTP code", "error");
       return;
     }
 
@@ -224,8 +252,10 @@ const handleOTPVerification = async () => {
       // OTP verification successful
       dialogOTP.value = false;
       tab.value = "login"; // Switch to login tab
-      messageInvalid.value = "Registration completed! Please login.";
-      snackbar.value = true;
+      showNotification(
+        "Phone number verified successfully! You can now login",
+        "success"
+      );
 
       // Clear OTP store
       otpStore.otpRequest.otp_code = "";
@@ -233,12 +263,12 @@ const handleOTPVerification = async () => {
   } catch (error: any) {
     if (error?.response?.data?.errors) {
       errors.value = error.response.data.errors as Errors;
+      showNotification("Please correct the highlighted errors", "error");
     } else if (error?.response?.data?.error) {
-      messageInvalid.value = error.response.data.error;
+      showNotification(error.response.data.error, "error");
     } else {
-      messageInvalid.value = "OTP verification failed.";
+      showNotification("Invalid OTP code. Please check and try again", "error");
     }
-    snackbar.value = true;
   }
 };
 
@@ -257,7 +287,7 @@ const openForgetPasswordDialog = () => {
     password: "",
     password_confirmation: "",
   };
-  errors.value = {};
+  clearErrorsAndNotifications();
 };
 
 const closeForgetPasswordDialog = () => {
@@ -269,27 +299,22 @@ const closeForgetPasswordDialog = () => {
     password: "",
     password_confirmation: "",
   };
-  errors.value = {};
+  clearErrorsAndNotifications();
   isLoadingForgetPassword.value = false;
 };
 
-// COMPLETE FORGET PASSWORD IMPLEMENTATION
-
-// Step 1: Send OTP for forget password (FIXED)
+// Step 1: Send OTP for forget password
 const sendForgetPasswordOTP = async () => {
   try {
-    errors.value = {};
-    messageInvalid.value = "";
-    snackbar.value = false;
+    clearErrorsAndNotifications();
     isLoadingForgetPassword.value = true;
 
     if (!forgetPasswordForm.value.phone_number) {
       errors.value.phone_number = "Phone number is required";
-      snackbar.value = true;
+      showNotification("Please enter your phone number", "error");
       return;
     }
 
-    // FIXED: Use correct endpoint for sending OTP
     const response = await fetch(
       "https://elegantchic.me/api/customer/send-otp",
       {
@@ -305,45 +330,43 @@ const sendForgetPasswordOTP = async () => {
 
     if (response.ok) {
       const result = await response.json();
-      messageInvalid.value = "OTP sent successfully to your phone number";
-      snackbar.value = true;
+      showNotification("OTP sent successfully to your phone number", "success");
       forgetPasswordStep.value = 2;
     } else {
       const errorData = await response.json();
       if (errorData.errors) {
         errors.value = errorData.errors;
-        messageInvalid.value = "Please check the errors and try again";
+        showNotification("Please correct the highlighted errors", "error");
       } else {
-        messageInvalid.value =
+        showNotification(
           errorData.message ||
-          "Failed to send OTP. Please check your phone number";
+            "Phone number not found. Please check and try again",
+          "error"
+        );
       }
-      snackbar.value = true;
     }
   } catch (error: any) {
-    messageInvalid.value =
-      "Network error. Please check your connection and try again";
-    snackbar.value = true;
+    showNotification(
+      "Unable to connect. Please check your internet connection",
+      "error"
+    );
   } finally {
     isLoadingForgetPassword.value = false;
   }
 };
 
-// Step 2: Verify OTP for forget password (FIXED)
+// Step 2: Verify OTP for forget password
 const verifyForgetPasswordOTP = async () => {
   try {
-    errors.value = {};
-    messageInvalid.value = "";
-    snackbar.value = false;
+    clearErrorsAndNotifications();
     isLoadingForgetPassword.value = true;
 
     if (!forgetPasswordForm.value.otp_code) {
       errors.value.otp_code = "OTP code is required";
-      snackbar.value = true;
+      showNotification("Please enter the OTP code", "error");
       return;
     }
 
-    // FIXED: Use correct endpoint for verifying OTP
     const response = await fetch(
       "https://elegantchic.me/api/customer/verify-otp-code",
       {
@@ -359,48 +382,52 @@ const verifyForgetPasswordOTP = async () => {
     );
 
     if (response.ok) {
-      messageInvalid.value =
-        "OTP verified successfully! Please set your new password";
-      snackbar.value = true;
+      showNotification(
+        "OTP verified successfully! Now set your new password",
+        "success"
+      );
       forgetPasswordStep.value = 3;
     } else {
       const errorData = await response.json();
       if (errorData.errors) {
         errors.value = errorData.errors;
-        messageInvalid.value = "Invalid OTP code. Please check and try again";
+        showNotification(
+          "Invalid OTP code. Please check and try again",
+          "error"
+        );
       } else {
-        messageInvalid.value =
-          errorData.message || "Invalid OTP code. Please try again";
+        showNotification(
+          errorData.message || "Invalid OTP code. Please try again",
+          "error"
+        );
       }
-      snackbar.value = true;
     }
   } catch (error: any) {
-    messageInvalid.value =
-      "Network error. Please check your connection and try again";
-    snackbar.value = true;
+    showNotification(
+      "Unable to connect. Please check your internet connection",
+      "error"
+    );
   } finally {
     isLoadingForgetPassword.value = false;
   }
 };
 
-// Step 3: Reset password (ALREADY CORRECT)
+// Step 3: Reset password
 const resetPassword = async () => {
   try {
-    errors.value = {};
-    messageInvalid.value = "";
-    snackbar.value = false;
+    clearErrorsAndNotifications();
     isLoadingForgetPassword.value = true;
 
     // Validate password
     if (!forgetPasswordForm.value.password) {
       errors.value.password = "New password is required";
-      snackbar.value = true;
+      showNotification("Please enter your new password", "error");
       return;
     }
 
     if (forgetPasswordForm.value.password.length < 8) {
       errors.value.password = "Password must be at least 8 characters long";
-      snackbar.value = true;
+      showNotification("Password must be at least 8 characters long", "error");
       return;
     }
 
@@ -409,11 +436,13 @@ const resetPassword = async () => {
       forgetPasswordForm.value.password_confirmation
     ) {
       errors.value.password_confirmation = "Passwords do not match";
-      snackbar.value = true;
+      showNotification(
+        "Passwords do not match. Please check and try again",
+        "error"
+      );
       return;
     }
 
-    // Use correct endpoint for resetting password
     const response = await fetch(
       "https://elegantchic.me/api/customer/reset-password",
       {
@@ -430,39 +459,41 @@ const resetPassword = async () => {
     );
 
     if (response.ok) {
-      messageInvalid.value =
-        "Password reset successfully! You can now login with your new password";
-      snackbar.value = true;
+      showNotification(
+        "Password reset successfully! You can now login",
+        "success"
+      );
       closeForgetPasswordDialog();
       tab.value = "login";
     } else {
       const errorData = await response.json();
       if (errorData.errors) {
         errors.value = errorData.errors;
-        messageInvalid.value = "Please check the errors and try again";
+        showNotification("Please correct the highlighted errors", "error");
       } else {
-        messageInvalid.value =
-          errorData.message || "Failed to reset password. Please try again";
+        showNotification(
+          errorData.message || "Failed to reset password. Please try again",
+          "error"
+        );
       }
-      snackbar.value = true;
     }
   } catch (error: any) {
-    messageInvalid.value =
-      "Network error. Please check your connection and try again";
-    snackbar.value = true;
+    showNotification(
+      "Unable to connect. Please check your internet connection",
+      "error"
+    );
   } finally {
     isLoadingForgetPassword.value = false;
   }
 };
 
-// Resend OTP for forget password (FIXED)
+// Resend OTP for forget password
 const resendForgetPasswordOTP = async () => {
   await sendForgetPasswordOTP();
 };
 </script>
 
 <template>
-  <!-- <v-parallax height="100vh" src="/backgrounds/bg-login.jpeg"> -->
   <v-parallax
     height="100vh"
     src="https://static.vecteezy.com/system/resources/previews/030/640/011/large_2x/modern-men-fashion-in-retail-boutique-store-free-photo.jpg"
@@ -649,27 +680,21 @@ const resendForgetPasswordOTP = async () => {
         </v-tabs-window>
       </v-card>
 
-      <!-- Snackbar -->
+      <!-- CORRECTED Snackbar -->
       <v-snackbar
-        timeout="3000"
-        :color="
-          messageInvalid.includes('successful') ||
-          messageInvalid.includes('completed') ||
-          messageInvalid.includes('sent') ||
-          messageInvalid.includes('verified') ||
-          messageInvalid.includes('reset')
-            ? 'success'
-            : 'error'
-        "
-        location="top center"
         v-model="snackbar"
+        timeout="4000"
+        :color="messageType"
+        location="top center"
+        class="text-center"
       >
-        {{ messageInvalid || "ឈ្មោះនិងពាកសម្ងាត់មិនត្រឹមត្រូវទេ" }}
+        {{ messageInvalid }}
         <template v-slot:actions>
           <v-btn
             icon="ic:round-close"
             color="white"
             variant="text"
+            size="small"
             @click="snackbar = false"
           />
         </template>
@@ -710,12 +735,12 @@ const resendForgetPasswordOTP = async () => {
                   @click="requestOTP"
                   :loading="otpStore.isSpinning"
                 >
-                  Request OTP
+                  Resend
                 </v-btn>
               </template>
             </v-text-field>
 
-            <div class="flex justify-evenly">
+            <div class="d-flex gap-2 justify-space-between">
               <v-btn color="red" @click="closeOTPDialog()"> Cancel </v-btn>
               <v-btn
                 type="submit"
@@ -831,7 +856,7 @@ const resendForgetPasswordOTP = async () => {
                   class="flex-1"
                   @click="forgetPasswordStep = 1"
                 >
-                  = Back
+                  Back
                 </v-btn>
               </div>
             </v-form>
@@ -1019,7 +1044,7 @@ const resendForgetPasswordOTP = async () => {
 .blur-input :deep(input:autofill) {
   background-color: transparent !important;
   -webkit-box-shadow: 0 0 0 1000px transparent inset !important; /* Safari/Chrome */
-  box-shadow: 0 0 0 1000px transparent inset !important;         /* Standard for other browsers */
+  box-shadow: 0 0 0 1000px transparent inset !important; /* Standard for other browsers */
 }
 
 /* Force override with immediate effect */

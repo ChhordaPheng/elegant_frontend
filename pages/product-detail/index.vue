@@ -22,6 +22,8 @@ const isSubmitting = ref(false);
 const favoriteVariants = ref<Set<string>>(new Set());
 const text = ref(""); // message for snackbar
 const snackbar = ref(false);
+const snackbarMessage = ref("");
+const snackbarColor = ref("success");
 
 // Router and Stores - Fixed naming consistency
 const route = useRoute();
@@ -95,10 +97,32 @@ const getRouteParam = (param: string | string[] | undefined): string => {
   if (!param) return "";
   return Array.isArray(param) ? param[0]?.toString() ?? "" : param.toString();
 };
+// Show snackbar function
+const showSnackbar = (message: string, color: string = "success") => {
+  snackbarMessage.value = message;  // ← Use snackbarMessage, not text
+  snackbarColor.value = color;
+  snackbar.value = true;
+};;
 
-function increase() {
-  quantity.value++;
-}
+const increase = () => {
+  if (!currentVariant.value) {
+    showSnackbar("No variant selected. Please select a variant.", "error");
+    return;
+  }
+
+  const maxStock = currentVariant.value.quantity ?? 0;
+
+  if (maxStock === 0) {
+    showSnackbar("This item is out of stock.", "error");
+    return;
+  }
+
+  if (quantity.value < maxStock) {
+    quantity.value++;
+  } else {
+    showSnackbar(`Only ${maxStock} items available in stock.`, "warning");
+  }
+};
 
 function decrease() {
   if (quantity.value > 1) quantity.value--;
@@ -358,6 +382,10 @@ const brandName = computed(
 
 const isDevelopment = computed(() => process.env.NODE_ENV === "development");
 
+function goToCart() {
+  router.push("/cart");
+  handleAddToCart();
+}
 const handleAddToCart = async () => {
   if (!currentProduct.value || !currentVariant.value) {
     text.value = "No item available to add to cart.";
@@ -385,7 +413,7 @@ const handleAddToCart = async () => {
       item_id: currentProduct.value.id,
       quantity: quantity.value,
       added_at: new Date().toISOString(),
-      
+
       // Full variant data
       variant: {
         id: currentVariant.value.id,
@@ -394,12 +422,13 @@ const handleAddToCart = async () => {
         size_id: currentVariant.value.size_id,
         image: currentVariant.value.image,
         price: currentVariant.value.price,
-        final_price: currentVariant.value.final_price || currentVariant.value.price,
+        final_price:
+          currentVariant.value.final_price || currentVariant.value.price,
         quantity: currentVariant.value.quantity,
         // is_favorite: currentVariant.value.is_favorite,
         created_at: currentVariant.value.created_at,
         updated_at: currentVariant.value.updated_at,
-        
+
         // Include color, size, and item data if available
         color: currentVariant.value.color,
         size: currentVariant.value.size,
@@ -417,14 +446,14 @@ const handleAddToCart = async () => {
           discount_id: currentProduct.value.discount_id,
           created_at: currentProduct.value.created_at,
           updated_at: currentProduct.value.updated_at,
-          
+
           // Include related data if available
           brand: currentProduct.value.brand,
           category: currentProduct.value.category,
-          season: currentProduct.value.season
+          season: currentProduct.value.season,
           // discount: currentProduct.value.discount // Removed to fix type error
-        }
-      }
+        },
+      },
     };
 
     // Get current cart from localStorage
@@ -909,7 +938,7 @@ onMounted(async () => {
                   size="large"
                   color="primary"
                   rounded="lg"
-                  @click="router.push('/cart')"
+                  @click="goToCart()"
                   :disabled="isAddToCartDisabled"
                   :loading="cartStore.loading"
                 >
