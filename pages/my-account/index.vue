@@ -783,7 +783,7 @@ onMounted(async () => {
                   <v-expansion-panel
                     v-for="(order, orderIndex) in sortedOrders"
                     :key="order.id"
-                    class="transition-all duration-300 hover:shadow-md hover:scale-[1.02]"
+                    class="transition-all duration-300 hover:shadow-md hover:scale-[1]"
                     :class="{
                       'border-l-4 border-green-500 bg-green-50':
                         order.order_status === 'completed',
@@ -1039,7 +1039,7 @@ onMounted(async () => {
                               >
                                 <!-- Step Icon -->
                                 <div
-                                  class="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shadow-sm mb-2 transition-all duration-300"
+                                  class="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shadow-sm mb-2 transition-all duration-100"
                                   :class="{
                                   'bg-green-500 animate-pulse': isStepCompleted(order.order_status as OrderStatus, step.status),
                                   'bg-blue-500 scale-110': isCurrentStep(order.order_status as OrderStatus, step.status),
