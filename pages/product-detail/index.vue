@@ -1185,7 +1185,7 @@ onMounted(async () => {
 
         <!-- recommendation -->
         <div class="">
-          <NewArrival />
+          <Related :product-id="currentProduct?.id" />
         </div>
       </v-container>
     </div>

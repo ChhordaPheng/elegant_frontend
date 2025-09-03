@@ -10,6 +10,9 @@ const snackbarProfileSuccess = ref<boolean>(false);
 const snackbarProfileFail = ref<boolean>(false);
 const addressMessage = ref<string>("");
 const profileMessage = ref<string>("");
+const snackbar = ref(false);
+const text = ref(""); // message for snackbar
+const router = useRouter(); // Make sure this is properly imported
 
 const userStore = useProfileStore();
 const { userProfile, loading, passwordChanging } = storeToRefs(userStore);
@@ -386,6 +389,23 @@ const saveAddress = async () => {
   }
 };
 
+const quickView = (productId: string | number) => {
+  try {
+    // Convert to string if needed
+    const idString = productId.toString();
+
+    // Navigate to product detail page
+    router.push({
+      path: "/product-detail",
+      query: { id: idString },
+    });
+  } catch (error) {
+    console.error("Error during navigation:", error);
+    text.value = "Failed to navigate to product detail.";
+    snackbar.value = true;
+  }
+};
+
 // Custom confirm dialog functions
 function showConfirm(
   title: string,
@@ -734,317 +754,420 @@ onMounted(async () => {
 
           <!-- Orders Tab -->
           <v-window-item value="orders">
-            <transition name="slide-fade" mode="out-in">
-              <div key="orders-content" class="px-2 py-4">
-                <div class="text-center mb-6">
-                  <h3 class="text-h4 font-weight-bold mb-2 primary--text">
-                    My Orders
+            <div class="px-4 py-6 max-w-[700px] mx-auto">
+              <!-- Simplified Header -->
+              <div
+                class="text-center mb-8 relative overflow-hidden rounded-3xl bg-gradient-to-br from-purple-500 via-pink-500 to-red-500 p-8 shadow-2xl"
+              >
+                <div class="absolute inset-0 bg-black/20"></div>
+                <div class="relative z-10">
+                  <h3 class="text-4xl font-bold mb-3 text-white drop-shadow-lg">
+                    My Orders ✨
                   </h3>
-                  <p class="text-body-2 text--secondary">
-                    Track your order history and status
+                  <p class="text-white/90 text-lg font-medium">
+                    Track your amazing purchases and deliveries
                   </p>
                 </div>
+                <!-- Animated floating elements -->
+                <div
+                  class="absolute top-4 right-4 w-16 h-16 bg-white/20 rounded-full animate-bounce"
+                ></div>
+                <div
+                  class="absolute bottom-4 left-4 w-12 h-12 bg-yellow-300/30 rounded-full animate-pulse"
+                ></div>
+              </div>
 
-                <!-- Orders List -->
-                <div v-if="hasOrders">
-                  <v-card
+              <!-- Orders List -->
+              <div v-if="hasOrders" class="space-y-4">
+                <v-expansion-panels variant="accordion" multiple>
+                  <v-expansion-panel
                     v-for="(order, orderIndex) in sortedOrders"
                     :key="order.id"
-                    class="mb-6 order-card"
-                    elevation="3"
+                    class="transition-all duration-300 hover:shadow-md hover:scale-[1.02]"
+                    :class="{
+                      'border-l-4 border-green-500 bg-green-50':
+                        order.order_status === 'completed',
+                      'border-l-4 border-blue-500 bg-blue-50':
+                        order.order_status === 'pending',
+                      'border-l-4 border-orange-500 bg-orange-50':
+                        order.order_status === 'processing',
+                      'border-l-4 border-purple-500 bg-purple-50':
+                        order.order_status === 'shipped',
+                    }"
                     rounded="xl"
+                    elevation="0"
                   >
-                    <!-- Order Header -->
-                    <v-card-title class="pb-3">
-                      <div class="d-flex align-center w-100">
-                        <v-avatar size="48" class="mr-4" color="primary">
-                          <v-icon color="white" size="24">mdi-receipt</v-icon>
-                        </v-avatar>
-                        <div class="flex-grow-1">
-                          <h4 class="text-h6 font-weight-bold mb-1">
-                            Order #{{ order.order_number }}
-                          </h4>
-                          <p class="text-body-2 text--secondary mb-0">
-                            {{ new Date(order.placed_at).toLocaleDateString() }}
-                          </p>
-                        </div>
-                        <v-chip
-                          :color="getStatusColor(order.order_status as OrderStatus)"
-                          variant="flat"
-                          size="large"
-                          class="font-weight-bold"
+                    <!-- Panel Header -->
+                    <template v-slot:title>
+                      <div class="flex items-center w-full p-2">
+                        <!-- Order Image -->
+                        <div
+                          class="mr-3 transition-transform duration-200 hover:scale-110 cursor-pointer"
+                          @click="
+                            quickView(order.order_items[0]?.id || order.id)
+                          "
                         >
-                          <v-icon start size="16">{{
-                            getStatusIcon(order.order_status as OrderStatus)
-                          }}</v-icon>
-                          {{ formatStatus(order.order_status as OrderStatus) }}
-                        </v-chip>
-                      </div>
-                    </v-card-title>
-
-                    <v-divider></v-divider>
-
-                    <v-card-text class="pt-4">
-                      <!-- Order Details Grid -->
-                      <v-row class="mb-6">
-                        <v-col cols="6" md="3">
-                          <v-card
-                            variant="outlined"
-                            class="pa-3 h-100 detail-card detail-card--blue"
-                            rounded="lg"
+                          <div
+                            class="w-12 h-12 rounded-lg overflow-hidden shadow-sm relative group"
                           >
-                            <div class="d-flex align-center">
-                              <v-icon color="blue" size="20" class="mr-2"
-                                >mdi-calendar</v-icon
-                              >
-                              <div>
-                                <p
-                                  class="text-caption font-weight-bold text-uppercase blue--text mb-1"
-                                >
-                                  Date
-                                </p>
-                                <p class="text-body-2 font-weight-medium mb-0">
-                                  {{
-                                    new Date(
-                                      order.placed_at
-                                    ).toLocaleDateString()
-                                  }}
-                                </p>
-                              </div>
-                            </div>
-                          </v-card>
-                        </v-col>
-
-                        <v-col cols="6" md="3">
-                          <v-card
-                            variant="outlined"
-                            class="pa-3 h-100 detail-card detail-card--green"
-                            rounded="lg"
-                          >
-                            <div class="d-flex align-center">
-                              <v-icon color="green" size="20" class="mr-2"
-                                >mdi-currency-usd</v-icon
-                              >
-                              <div>
-                                <p
-                                  class="text-caption font-weight-bold text-uppercase green--text mb-1"
-                                >
-                                  Total
-                                </p>
-                                <p class="text-body-2 font-weight-medium mb-0">
-                                  ${{ order.total_amount }}
-                                </p>
-                              </div>
-                            </div>
-                          </v-card>
-                        </v-col>
-
-                        <v-col cols="6" md="3">
-                          <v-card
-                            variant="outlined"
-                            class="pa-3 h-100 detail-card detail-card--purple"
-                            rounded="lg"
-                          >
-                            <div class="d-flex align-center">
-                              <v-icon color="purple" size="20" class="mr-2"
-                                >mdi-credit-card</v-icon
-                              >
-                              <div>
-                                <p
-                                  class="text-caption font-weight-bold text-uppercase purple--text mb-1"
-                                >
-                                  Payment
-                                </p>
-                                <p class="text-body-2 font-weight-medium mb-0">
-                                  {{
-                                    formatPaymentMethod(order.payment_method)
-                                  }}
-                                </p>
-                              </div>
-                            </div>
-                          </v-card>
-                        </v-col>
-
-                        <v-col cols="6" md="3">
-                          <v-card
-                            variant="outlined"
-                            class="pa-3 h-100 detail-card detail-card--orange"
-                            rounded="lg"
-                          >
-                            <div class="d-flex align-center">
-                              <v-icon color="orange" size="20" class="mr-2"
-                                >mdi-phone</v-icon
-                              >
-                              <div>
-                                <p
-                                  class="text-caption font-weight-bold text-uppercase orange--text mb-1"
-                                >
-                                  Contact
-                                </p>
-                                <p class="text-body-2 font-weight-medium mb-0">
-                                  {{ order.phone }}
-                                </p>
-                              </div>
-                            </div>
-                          </v-card>
-                        </v-col>
-                      </v-row>
-
-                      <!-- Order Tracking Section -->
-                      <v-card
-                        variant="outlined"
-                        class="pa-4 tracking-card"
-                        rounded="xl"
-                      >
-                        <h5 class="text-h6 font-weight-bold mb-4 text-center">
-                          Order Tracking
-                        </h5>
-
-                        <!-- Progress Steps -->
-                        <div class="position-relative mb-4">
-                          <v-row
-                            align="center"
-                            justify="space-between"
-                            class="mx-0 position-relative"
-                            style="z-index: 2"
-                          >
-                            <v-col
-                              v-for="(step, index) in trackingSteps"
-                              :key="index"
-                              cols="auto"
-                              class="d-flex flex-column align-center text-center pa-1"
-                            >
-                              <!-- Step Icon -->
-                              <v-avatar
-                                :size="
-                                  isCurrentStep(order.order_status as OrderStatus, step.status)
-                                    ? 56
-                                    : 48
-                                "
-                                :color="
-                                  getStepColor(order.order_status as OrderStatus, step.status)
-                                "
-                                class="mb-2 step-avatar"
-                                :class="{
-                                  'step-avatar--active': isCurrentStep(
-                                    order.order_status as OrderStatus,
-                                    step.status
-                                  ),
-                                  'step-avatar--completed': isStepCompleted(
-                                    order.order_status as OrderStatus,
-                                    step.status
-                                  ),
-                                  'step-avatar--pending': isStepPending(
-                                    order.order_status as OrderStatus,
-                                    step.status
-                                  ),
-                                }"
-                              >
-                                <v-icon
-                                  :color="
-                                    getStepIconColor(
-                                      order.order_status as OrderStatus,
-                                      step.status
-                                    )
-                                  "
-                                  :size="
-                                    isCurrentStep(
-                                      order.order_status as OrderStatus,
-                                      step.status
-                                    )
-                                      ? 24
-                                      : 20
-                                  "
-                                >
-                                  {{ step.icon }}
-                                </v-icon>
-                              </v-avatar>
-
-                              <!-- Step Label -->
-                              <span
-                                class="text-caption font-weight-medium"
-                                :class="
-                                  getStepTextClass(
-                                    order.order_status as OrderStatus,
-                                    step.status
-                                  )
-                                "
-                              >
-                                {{ step.label }}
-                              </span>
-                            </v-col>
-                          </v-row>
-
-                          <!-- Progress Line -->
-                          <div class="progress-line">
+                            <img
+                              v-if="
+                                order.order_items &&
+                                order.order_items.length > 0
+                              "
+                              :src="order.order_items[0].item_image"
+                              :alt="order.order_items[0].item_name"
+                              class="w-full h-full object-cover transition-transform duration-300 hover:scale-105"
+                            />
                             <div
-                              class="progress-fill"
-                              :style="{
-                                width: getProgressWidth(order.order_status as OrderStatus),
-                              }"
-                            ></div>
+                              v-else
+                              class="w-full h-full bg-gray-200 flex items-center justify-center"
+                            >
+                              <Icon
+                                icon="solar:box-linear"
+                                class="text-gray-400 text-lg"
+                              />
+                            </div>
+                            <!-- Hover overlay -->
+                            <div
+                              class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center"
+                            >
+                              <Icon
+                                icon="solar:eye-linear"
+                                class="text-white text-sm"
+                              />
+                            </div>
                           </div>
                         </div>
 
-                        <!-- Estimated Delivery -->
-                        <v-alert
-                          v-if="
-                            order.order_status !== 'delivered' &&
-                            order.order_status !== 'completed' &&
-                            order.order_status !== 'cancelled'
-                          "
-                          color="info"
-                          variant="tonal"
-                          icon="mdi-truck-fast"
-                          class="mb-0"
-                          rounded="lg"
-                        >
-                          <template v-slot:text>
-                            <span class="font-weight-medium">
-                              Estimated delivery: {{ getEstimatedDelivery() }}
+                        <div class="flex-grow min-w-0">
+                          <h4
+                            class="text-lg font-semibold text-gray-800 truncate"
+                          >
+                            {{
+                              order.order_items && order.order_items.length > 0
+                                ? order.order_items[0].item_name
+                                : "Order"
+                            }}
+                            <span
+                              v-if="
+                                order.order_items &&
+                                order.order_items.length > 1
+                              "
+                              class="text-sm text-gray-500 ml-1"
+                            >
+                              (+{{ order.order_items.length - 1 }})
                             </span>
-                          </template>
-                        </v-alert>
+                          </h4>
+                          <p class="text-gray-500 text-sm">
+                            #{{ order.order_number }} •
+                            {{ new Date(order.placed_at).toLocaleDateString() }}
+                          </p>
+                        </div>
 
-                        <!-- Order Note (if exists) -->
-                        <v-alert
-                          v-if="order.note"
-                          color="grey-lighten-6"
-                          variant="tonal"
-                          icon="mdi-note-text"
-                          class="mb-0 mt-3"
-                          rounded="lg"
-                        >
-                          <template v-slot:text>
-                            <strong>Note:</strong> {{ order.note }}
-                          </template>
-                        </v-alert>
-                      </v-card>
-                    </v-card-text>
-                  </v-card>
-                </div>
+                        <div class="text-right">
+                          <!-- Status Badge -->
+                          <div
+                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mb-1 transition-colors duration-200 hover:scale-105"
+                            :class="{
+                              'bg-green-100 text-green-700 hover:bg-green-200':
+                                order.order_status === 'completed',
+                              'bg-blue-100 text-blue-700 hover:bg-blue-200':
+                                order.order_status === 'pending',
+                              'bg-orange-100 text-orange-700 hover:bg-orange-200':
+                                order.order_status === 'processing',
+                              'bg-purple-100 text-purple-700 hover:bg-purple-200':
+                                order.order_status === 'shipped',
+                            }"
+                          >
+                            {{
+                              formatStatus(order.order_status as OrderStatus)
+                            }}
+                          </div>
+                          <p class="text-lg font-bold text-gray-800">
+                            ${{ order.total_amount }}
+                          </p>
+                        </div>
+                      </div>
+                    </template>
 
-                <!-- Empty State -->
-                <v-card
-                  v-else
-                  class="text-center pa-12"
-                  variant="outlined"
-                  rounded="xl"
-                >
-                  <v-icon size="80" color="grey-lighten-2" class="mb-4"
-                    >mdi-cart-off</v-icon
-                  >
-                  <h3 class="text-h5 mb-2 text--secondary">No orders yet</h3>
-                  <p class="text-body-1 text--secondary mb-4">
-                    Your order history will appear here when you make your first
-                    purchase
-                  </p>
-                  <v-btn color="primary" variant="elevated" rounded="pill">
-                    Start Shopping
-                  </v-btn>
-                </v-card>
+                    <!-- Panel Content -->
+                    <template v-slot:text>
+                      <div class="p-4 bg-white rounded-lg">
+                        <!-- Order Items -->
+                        <div class="mb-6">
+                          <h5 class="text-lg font-semibold mb-3 text-gray-800">
+                            Order Items
+                          </h5>
+                          <div class="space-y-3">
+                            <div
+                              v-for="(item, itemIndex) in order.order_items"
+                              :key="item.id"
+                              class="flex gap-3 p-3 bg-gray-50 rounded-lg transition-all duration-200 hover:bg-gray-100 hover:shadow-sm"
+                            >
+                              <div class="relative">
+                                <div
+                                  class="w-12 h-12 rounded-lg overflow-hidden cursor-pointer group"
+                                  @click="quickView(item.id)"
+                                >
+                                  <img
+                                    :src="item.item_image"
+                                    :alt="item.item_name"
+                                    class="w-full h-full object-cover transition-transform duration-300 group-hover:scale-110"
+                                  />
+                                  <!-- Hover overlay -->
+                                  <div
+                                    class="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity duration-200 rounded-lg flex items-center justify-center"
+                                  >
+                                    <Icon
+                                      icon="solar:eye-linear"
+                                      class="text-white text-sm"
+                                    />
+                                  </div>
+                                </div>
+                                <div
+                                  class="absolute -top-1 -right-1 w-5 h-5 bg-blue-500 rounded-full flex items-center justify-center text-white text-xs font-medium"
+                                >
+                                  {{ item.quantity }}
+                                </div>
+                              </div>
+                              <div class="flex-1 min-w-0">
+                                <h6 class="font-medium text-gray-800 truncate">
+                                  {{ item.item_name }}
+                                </h6>
+                                <p class="text-sm text-gray-500">
+                                  {{ item.size }} • {{ item.color }}
+                                </p>
+                                <p class="text-sm font-semibold text-green-600">
+                                  ${{ item.final_price }}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Order Details -->
+                        <div class="mb-6">
+                          <h5 class="text-lg font-semibold mb-3 text-gray-800">
+                            Order Details
+                          </h5>
+                          <div class="grid grid-cols-2 gap-3">
+                            <div
+                              class="bg-blue-50 p-3 rounded-lg transition-all duration-200 hover:bg-blue-100 hover:scale-[1.02]"
+                            >
+                              <div class="flex items-center gap-2 mb-1">
+                                <Icon
+                                  icon="solar:calendar-linear"
+                                  class="text-blue-500 text-sm"
+                                />
+                                <p class="text-xs text-blue-600 font-medium">
+                                  DATE
+                                </p>
+                              </div>
+                              <p class="text-sm font-semibold text-blue-800">
+                                {{
+                                  new Date(order.placed_at).toLocaleDateString()
+                                }}
+                              </p>
+                            </div>
+                            <div
+                              class="bg-green-50 p-3 rounded-lg transition-all duration-200 hover:bg-green-100 hover:scale-[1.02]"
+                            >
+                              <div class="flex items-center gap-2 mb-1">
+                                <Icon
+                                  icon="solar:dollar-linear"
+                                  class="text-green-500 text-sm"
+                                />
+                                <p class="text-xs text-green-600 font-medium">
+                                  TOTAL
+                                </p>
+                              </div>
+                              <p class="text-sm font-semibold text-green-800">
+                                ${{ order.total_amount }}
+                              </p>
+                            </div>
+                            <div
+                              class="bg-purple-50 p-3 rounded-lg transition-all duration-200 hover:bg-purple-100 hover:scale-[1.02]"
+                            >
+                              <div class="flex items-center gap-2 mb-1">
+                                <Icon
+                                  icon="solar:card-linear"
+                                  class="text-purple-500 text-sm"
+                                />
+                                <p class="text-xs text-purple-600 font-medium">
+                                  PAYMENT
+                                </p>
+                              </div>
+                              <p class="text-sm font-semibold text-purple-800">
+                                {{ formatPaymentMethod(order.payment_method) }}
+                              </p>
+                            </div>
+                            <div
+                              class="bg-orange-50 p-3 rounded-lg transition-all duration-200 hover:bg-orange-100 hover:scale-[1.02]"
+                            >
+                              <div class="flex items-center gap-2 mb-1">
+                                <Icon
+                                  icon="solar:phone-linear"
+                                  class="text-orange-500 text-sm"
+                                />
+                                <p class="text-xs text-orange-600 font-medium">
+                                  CONTACT
+                                </p>
+                              </div>
+                              <p class="text-sm font-semibold text-orange-800">
+                                {{ order.phone }}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+
+                        <!-- Order Tracking -->
+                        <div class="bg-gray-50 rounded-lg p-4">
+                          <h5 class="text-lg font-semibold mb-4 text-gray-800">
+                            Order Tracking
+                          </h5>
+
+                          <!-- Simple Progress Steps -->
+                          <div class="relative">
+                            <div
+                              class="flex justify-between items-center relative z-10"
+                            >
+                              <div
+                                v-for="(step, index) in trackingSteps"
+                                :key="index"
+                                class="flex flex-col items-center text-center"
+                              >
+                                <!-- Step Icon -->
+                                <div
+                                  class="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shadow-sm mb-2 transition-all duration-300"
+                                  :class="{
+                                  'bg-green-500 animate-pulse': isStepCompleted(order.order_status as OrderStatus, step.status),
+                                  'bg-blue-500 scale-110': isCurrentStep(order.order_status as OrderStatus, step.status),
+                                  'bg-gray-300': isStepPending(order.order_status as OrderStatus, step.status)
+                              }"
+                                >
+                                  <Icon
+                                    :icon="
+                                      step.status === 'pending'
+                                        ? 'solar:clock-circle-linear'
+                                        : step.status === 'confirmed'
+                                        ? 'solar:check-circle-linear'
+                                        : step.status === 'preparing'
+                                        ? 'solar:settings-linear'
+                                        : step.status === 'shipped'
+                                        ? 'solar:delivery-linear'
+                                        : step.status === 'delivered'
+                                        ? 'solar:home-linear'
+                                        : step.status === 'completed'
+                                        ? 'solar:verified-check-linear'
+                                        : 'solar:question-circle-linear'
+                                    "
+                                    class="text-sm"
+                                  />
+                                </div>
+
+                                <!-- Step Label -->
+                                <span
+                                  class="text-xs font-medium"
+                                  :class="{
+                                    'text-green-600': isStepCompleted(order.order_status as OrderStatus, step.status),
+                                    'text-blue-600': isCurrentStep(order.order_status as OrderStatus, step.status),
+                                    'text-gray-400': isStepPending(order.order_status as OrderStatus, step.status)
+                                  }"
+                                >
+                                  {{ step.label }}
+                                </span>
+                              </div>
+                            </div>
+
+                            <!-- Progress Line -->
+                            <div
+                              class="absolute top-5 left-5 right-5 h-1 bg-gray-200 rounded-full"
+                            >
+                              <div
+                                class="h-full bg-blue-500 rounded-full transition-all duration-500"
+                                :style="{ width: getProgressWidth(order.order_status as OrderStatus) }"
+                              ></div>
+                            </div>
+                          </div>
+
+                          <!-- Delivery Info -->
+                          <div
+                            v-if="
+                              order.order_status !== 'delivered' &&
+                              order.order_status !== 'completed' &&
+                              order.order_status !== 'cancelled'
+                            "
+                            class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4 flex items-center gap-3"
+                          >
+                            <Icon
+                              icon="solar:truck-linear"
+                              class="text-blue-500 text-lg"
+                            />
+                            <div>
+                              <p class="text-sm font-medium text-blue-800">
+                                Estimated Delivery
+                              </p>
+                              <p class="text-sm text-blue-600">
+                                {{ getEstimatedDelivery() }}
+                              </p>
+                            </div>
+                          </div>
+
+                          <!-- Order Note -->
+                          <div
+                            v-if="order.note"
+                            class="bg-amber-50 border border-amber-200 rounded-lg p-3 mt-3 flex items-start gap-3"
+                          >
+                            <Icon
+                              icon="solar:notes-linear"
+                              class="text-amber-500 mt-0.5 text-lg"
+                            />
+                            <div>
+                              <p class="text-sm font-medium text-amber-800">
+                                Order Note
+                              </p>
+                              <p class="text-sm text-amber-700">
+                                {{ order.note }}
+                              </p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </v-expansion-panel>
+                </v-expansion-panels>
               </div>
-            </transition>
+
+              <!-- Empty State -->
+              <div
+                v-else
+                class="text-center p-12 bg-gradient-to-br from-gray-50 to-white rounded-2xl border border-gray-200 shadow-sm"
+              >
+                <div
+                  class="w-20 h-20 bg-gradient-to-br from-purple-100 to-pink-100 rounded-2xl flex items-center justify-center text-purple-400 mx-auto mb-4"
+                >
+                  <Icon
+                    icon="solar:shopping-cart-large-2-linear"
+                    class="text-3xl"
+                  />
+                </div>
+                <h3
+                  class="text-xl font-semibold mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
+                >
+                  No orders yet
+                </h3>
+                <p class="text-gray-600 mb-6">
+                  Start your shopping journey and your orders will appear here
+                </p>
+                <button
+                  class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 px-8 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center gap-2 mx-auto"
+                >
+                  <Icon icon="solar:bag-heart-linear" class="text-lg" />
+                  Start Shopping
+                </button>
+              </div>
+            </div>
           </v-window-item>
         </v-window>
       </v-card>

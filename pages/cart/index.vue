@@ -74,14 +74,14 @@ interface Address {
 
 // Reactive state
 const dialog = ref(false);
-const paymentDialog = ref(false);
-const deliveryDialog = ref(false);
-const addressDialog = ref(false);
-const loginDialog = ref(false);
-const hahaDialog = ref(false);
-const loginTab = ref("login");
+const paymentDialog = ref<boolean>(false);
+const deliveryDialog = ref<boolean>(false);
+const addressDialog = ref<boolean>(false);
+const loginDialog = ref<boolean>(false);
+const hahaDialog = ref<boolean>(false);
+const loginTab = ref<string>("login");
 
-const isValid = ref(false);
+const isValid = ref<boolean>(false);
 const selectedDelivery = ref<Delivery | null>(null);
 const selectedAddress = ref<Address | null>(null);
 const selectedPaymentMethod = ref<
@@ -97,24 +97,24 @@ const paymentCheckInterval = ref<NodeJS.Timeout | null>(null);
 
 // Cart state (localStorage only)
 const cartItems = ref<any[]>([]);
-const cartLoaded = ref(false);
+const cartLoaded = ref<boolean>(false);
 
 // Loading and error states
-const isLoading = ref(false);
-const loading = ref(false);
+const isLoading = ref<boolean>(false);
+const loading = ref<boolean>(false);
 const error = ref<string | null>(null);
 
 // Success/Error snackbar
-const snackbar = ref(false);
-const snackbarMessage = ref("");
-const snackbarColor = ref("success");
+const snackbar = ref<boolean>(false);
+const snackbarMessage = ref<string>("");
+const snackbarColor = ref<string>("success");
 
 // Login form states
 const showLoginPassword = ref<boolean>(false);
 const showRegisterPassword = ref<boolean>(false);
 const showConfirmPassword = ref<boolean>(false);
 const loginErrors = ref<Record<string, string>>({});
-const loginMessage = ref("");
+const loginMessage = ref<string>("");
 const loginSnackbar = ref<boolean>(false);
 
 // Payment method options
@@ -375,19 +375,23 @@ const fetchAddresses = async () => {
 const transformCartItemsForOrder = (items: any[]) => {
   return items.map((item) => {
     const variantId = item.variant_id || item.variant?.id;
-    
+
     return {
       item_variant_id: variantId,
       quantity: item.quantity,
-      item_name: item.variant?.item?.name || 'Unknown Item',
+      item_name: item.variant?.item?.name || "Unknown Item",
       item_sku: item.variant?.item?.sku || null,
-      size: item.variant?.size?.name || 'Unknown Size',
-      color: item.variant?.color?.name || 'Unknown Color',
-      item_image: item.variant?.image || '',
-      original_price: parseFloat(item.variant?.price || '0'),
-      final_price: parseFloat(item.variant?.final_price || '0'),
-      total_price: parseFloat(item.variant?.final_price || '0') * item.quantity,
-      discount_amount: Math.max(0, parseFloat(item.variant?.price || '0') - parseFloat(item.variant?.final_price || '0')),
+      size: item.variant?.size?.name || "Unknown Size",
+      color: item.variant?.color?.name || "Unknown Color",
+      item_image: item.variant?.image || "",
+      original_price: parseFloat(item.variant?.price || "0"),
+      final_price: parseFloat(item.variant?.final_price || "0"),
+      total_price: parseFloat(item.variant?.final_price || "0") * item.quantity,
+      discount_amount: Math.max(
+        0,
+        parseFloat(item.variant?.price || "0") -
+          parseFloat(item.variant?.final_price || "0")
+      ),
       discount_type: null,
       discount_value: null,
     };
@@ -397,7 +401,7 @@ const transformCartItemsForOrder = (items: any[]) => {
 // Place order
 const placeOrder = async () => {
   const effectivePhone = getEffectivePhoneNumber();
-  
+
   // Validation
   if (!selectedDelivery.value || !selectedPaymentMethod.value) {
     showSnackbar("Please select delivery method and payment method.", "error");
@@ -424,7 +428,7 @@ const placeOrder = async () => {
   try {
     loading.value = true;
     error.value = null;
-    
+
     const orderData: OrderRequest = {
       items: transformCartItemsForOrder(cartItems.value),
       delivery_id: selectedDelivery.value.id,
@@ -592,15 +596,15 @@ const openAddressSelection = () => {
 const selectAddress = (address: Address) => {
   selectedAddress.value = address;
   form.value.useExistingAddress = true;
-  
+
   // Set form values when address is selected
   form.value.name = address.name;
   form.value.address = formattedAddress.value;
   // Always use profile phone number, not address phone
   form.value.phoneNumber = userProfile.value?.phone_number || "";
-  
+
   addressDialog.value = false;
-  
+
   // Show warning if profile phone is missing
   if (!userProfile.value?.phone_number) {
     showSnackbar(
@@ -753,7 +757,7 @@ onMounted(async () => {
     loadCartFromStorage();
     await fetchDeliveries();
     await profileStore.fetchUserProfile();
-    
+
     if (token.value && authenticated.value) {
       await fetchAddresses();
     }
@@ -1321,7 +1325,9 @@ onUnmounted(() => {
                 :rules="[rules.required, rules.phoneNumber]"
                 :readonly="form.useExistingAddress"
                 :variant="form.useExistingAddress ? 'filled' : 'outlined'"
-                :hint="form.useExistingAddress ? 'Using phone from your profile' : ''"
+                :hint="
+                  form.useExistingAddress ? 'Using phone from your profile' : ''
+                "
                 persistent-hint
                 required
                 class="mb-3"
@@ -1335,7 +1341,9 @@ onUnmounted(() => {
                 :rules="[rules.required, rules.address]"
                 :readonly="form.useExistingAddress"
                 :variant="form.useExistingAddress ? 'filled' : 'outlined'"
-                :hint="form.useExistingAddress ? 'Using selected saved address' : ''"
+                :hint="
+                  form.useExistingAddress ? 'Using selected saved address' : ''
+                "
                 persistent-hint
                 required
                 class="mb-3"
@@ -1513,7 +1521,9 @@ onUnmounted(() => {
                       </div>
                       <div class="address-line flex items-center space-x-2">
                         <v-icon size="14" color="gray">mdi-phone</v-icon>
-                        <span>{{ userProfile?.phone_number || "No phone in profile" }}</span>
+                        <span>{{
+                          userProfile?.phone_number || "No phone in profile"
+                        }}</span>
                       </div>
                     </div>
                   </div>
@@ -1590,12 +1600,12 @@ onUnmounted(() => {
 
           <div v-if="currentOrder">
             <!-- Order Summary -->
-            <v-card v-if="currentOrder" class="mb-4 pa-4 bg-gray-50">
+            <!-- <v-card v-if="currentOrder" class="mb-4 pa-4 bg-gray-50">
               <p class="font-bold">Order #{{ currentOrder.order_number }}</p>
               <p class="text-sm text-grey">
                 Delivery: {{ currentOrder.delivery_method }}
               </p>
-            </v-card>
+            </v-card> -->
 
             <!-- QR Code Display -->
             <div class="mb-4">
@@ -1654,7 +1664,7 @@ onUnmounted(() => {
             </div>
 
             <!-- Payment Status -->
-            <div class="mb-4">
+            <!-- <div class="mb-4">
               <v-alert
                 v-if="paymentStatus === 'pending'"
                 type="info"
@@ -1705,9 +1715,9 @@ onUnmounted(() => {
                   Payment failed. Please try again.
                 </div>
               </v-alert>
-            </div>
+            </div> -->
 
-            <v-card class="pa-3 bg-yellow-50 text-left">
+            <!-- <v-card class="pa-3 bg-yellow-50 text-left">
               <p class="font-bold mb-2">Payment Instructions:</p>
               <ol class="text-sm space-y-1">
                 <li>1. Open your banking app (ABA, Wing, etc.)</li>
@@ -1722,7 +1732,7 @@ onUnmounted(() => {
                   seconds
                 </p>
               </div>
-            </v-card>
+            </v-card> -->
 
             <v-btn
               v-if="paymentStatus === 'pending' || paymentStatus === 'checking'"

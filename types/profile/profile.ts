@@ -1,3 +1,5 @@
+import type { ItemVariant } from "../add_to_cart/add_to_cart";
+
 export interface UserResponse {
   data: User;
 }
@@ -57,6 +59,28 @@ export interface Order {
   paid_amount: string;
   created_at: string;
   updated_at: string;
+  order_items: OrderItem[];
+}
+
+export interface OrderItem {
+  id: string;
+  order_id: string;
+  item_variant_id: string;
+  item_name: string;
+  item_sku: null | string;
+  size: string;
+  color: string;
+  item_image: string;
+  quantity: number;
+  original_price: string;
+  final_price: string;
+  total_price: string;
+  discount_amount: string;
+  discount_type: null | string;
+  discount_value: null;
+  created_at: string;
+  updated_at: string;
+  item_variant: ItemVariant;
 }
 
 ////  change password 

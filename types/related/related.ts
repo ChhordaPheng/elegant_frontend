@@ -1,14 +1,12 @@
-export interface ItemResponse {
+export interface RelatedResponse {
   success: boolean;
   message: string;
   status_code: number; // corrected to number
-  data: Item[]; // corrected to array
-  pagination: Pagination;
-  filters_applied: FiltersApplied;
-  filter_summary: FilterSummary;
+  data: Related[]; // corrected to array
+  meta: Meta;
 }
 
-export interface Item {
+export interface Related {
   id: string;
   name: string;
   description: string;
@@ -151,58 +149,16 @@ export interface Review {
     full_name: string;
   };
 }
-export interface Pagination {
-  current_page: number;
-  per_page: number;
-  total: number;
-  last_page: number;
-  has_more_pages: boolean;
+
+export interface Meta {
+  total_found: number;
+  requested_limit: number;
+  base_item: BaseItem;
 }
 
-export interface FiltersApplied {
-  min_price: string;
-  max_price: string;
-}
-
-export interface FilterSummary {
-  price_range: {
-    min: string;
-    max: string;
-  };
-}
-
-export interface FilterParams {
-  page?: number;
-  per_page?: number;
-  brand_id?: string;
-  color_id?: string;
-  size_id?: string;
-  min_price?: number;
-  max_price?: number;
-  category_id?: string;
-  sort_order?: 'asc' | 'desc';
-  sort_by?: 'price' | 'name' | 'created_at';
-}
-
-// Update your interfaces to match actual API response
-export interface ItemListResponse {
-  status: string;
-  status_code: number;
-  message: string;
-  data: Item[];
-}
-
-export interface SingleItemResponse {
-  status: string;
-  status_code: number;
-  message: string;
-  data: Item;
-}
-
-export interface SearchParams {
-  search?: string;
-  category_id?: string;
-  brand_id?: string;
-  min_price?: number;
-  max_price?: number;
+export interface BaseItem {
+  id: string;
+  name: string;
+  category: string;
+  brand: string;
 }
