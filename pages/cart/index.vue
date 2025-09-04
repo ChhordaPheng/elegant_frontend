@@ -75,6 +75,7 @@ interface Address {
 // Reactive state
 const dialog = ref(false);
 const paymentDialog = ref<boolean>(false);
+const paymentDialogTest = ref<boolean>(true);
 const deliveryDialog = ref<boolean>(false);
 const addressDialog = ref<boolean>(false);
 const loginDialog = ref<boolean>(false);
@@ -749,6 +750,70 @@ watch(paymentDialog, (newValue) => {
   console.log("paymentDialog changed:", newValue);
 });
 
+const props = defineProps({
+  modelValue: {
+    type: Boolean,
+    default: false,
+  },
+  merchantName: {
+    type: String,
+    default: "Dogenote",
+  },
+  amount: {
+    type: Number,
+    default: 2.01,
+  },
+  qrImageSrc: {
+    type: String,
+    required: true,
+  },
+  paymentStatus: {
+    type: String,
+    default: "pending",
+    // validator: value => ['pending', 'checking', 'paid'].includes(value)
+  },
+});
+
+const emit = defineEmits([
+  "update:modelValue",
+  "payment-confirmed",
+  "qr-saved",
+  "dialog-closed",
+]);
+
+const handlePaymentConfirmation = () => {
+  paymentStatus.value = "completed";
+  stopPaymentCheck();
+  showSnackbar("Payment confirmed! Order processing...", "success");
+  clearCart();
+
+  // Use nextTick instead of setTimeout for better Vue compatibility
+  nextTick(() => {
+    setTimeout(() => {
+      paymentDialog.value = false;
+      router.push("/orders");
+    }, 2000);
+  });
+};
+
+const downloadQRCode = () => {
+  if (!qrCodeDataUrl.value || !process.client) return;
+
+  try {
+    const link = document.createElement("a");
+    link.href = qrCodeDataUrl.value;
+    link.download = `payment-qr-${
+      currentOrder.value?.order_number || "order"
+    }.png`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showSnackbar("QR code saved!", "success");
+  } catch (error) {
+    console.error("Failed to download QR code:", error);
+    showSnackbar("Failed to save QR code", "error");
+  }
+};
 // Lifecycle hooks
 onMounted(async () => {
   try {
@@ -1547,7 +1612,7 @@ onUnmounted(() => {
       </v-dialog>
 
       <!-- Delivery Selection Dialog -->
-      <v-dialog v-model="deliveryDialog" max-width="500px">
+      <v-dialog v-model="paymentDialog" max-width="400px" persistent>
         <v-card class="pa-4">
           <v-card-title class="text-h6 font-bold mb-4">
             <div class="flex justify-between items-center">
@@ -1592,175 +1657,250 @@ onUnmounted(() => {
       </v-dialog>
 
       <!-- Payment Dialog with QR Code (only for bank_transfer) -->
-      <v-dialog v-model="paymentDialog" max-width="500px" persistent>
-        <v-card class="pa-6 text-center">
-          <v-card-title class="text-h5 font-bold mb-4"
-            >Payment Required</v-card-title
-          >
+      <v-dialog v-model="paymentDialog" max-width="400px" persistent>
+        <v-card class="text-center pa-0">
+          <!-- Header with close button -->
+          <v-card-title class="d-flex justify-end pa-2">
+            <v-btn
+              v-if="paymentStatus === 'pending' || paymentStatus === 'checking'"
+              variant="text"
+              color="red"
+              @click="
+                paymentDialog = false;
+                stopPaymentCheck();
+              "
+              icon="mdi-close"
+              size="small"
+            />
+          </v-card-title>
 
-          <div v-if="currentOrder">
-            <!-- Order Summary -->
-            <!-- <v-card v-if="currentOrder" class="mb-4 pa-4 bg-gray-50">
-              <p class="font-bold">Order #{{ currentOrder.order_number }}</p>
-              <p class="text-sm text-grey">
-                Delivery: {{ currentOrder.delivery_method }}
-              </p>
-            </v-card> -->
+          <!-- Payment Card Content -->
+          <div class="px-4 pb-6">
+            <!-- KHQR Payment Card -->
+            <v-card
+              class="mx-auto max-w-xs shadow-lg overflow-hidden rounded-xl"
+              elevation="3"
+            >
+              <!-- Red KHQR Header -->
+              <div
+                class="bg-gradient-to-br from-red-600 to-red-600 px-4 py-3 relative"
+              >
+                <div class="flex justify-center">
+                  <img class="w-16" src="images/khqr.jpg" alt="khqr" />
+                </div>
+                <!-- Speech bubble tail -->
+                <div class="absolute bottom-0 -right-10 transform">
+                  <div class="w-[100px] h-[30px] bg-red-600 rotate-45"></div>
+                </div>
+              </div>
 
-            <!-- QR Code Display -->
-            <div class="mb-4">
-              <p class="font-bold mb-3">Scan QR Code to Pay</p>
-              <div class="flex justify-center mb-4">
-                <div
-                  class="border-2 border-gray-300 p-4 rounded-lg bg-white shadow-lg"
-                >
+              <!-- White Content Area -->
+              <v-card-text class="p-4">
+                <!-- Merchant Info -->
+                <div class="text-left mb-4 pb-4 border-b border-gray-200">
+                  <div class="text-md font-normal text-gray-800 mb-1">
+                    {{ currentOrder?.delivery_method || "Store Name" }}
+                  </div>
+                  <div class="text-2xl font-bold text-gray-900">
+                    {{ total.toFixed(2) }}
+                    <span class="text-lg font-normal">$</span>
+                  </div>
+                </div>
+
+                <!-- QR Code Display -->
+                <div class="flex justify-center mb-4">
                   <div
-                    v-if="qrCodeDataUrl && paymentStatus !== 'failed'"
-                    class="w-64 h-64 flex items-center justify-center"
+                    class="w-48 h-48 bg-white border border-gray-200 rounded flex items-center justify-center"
                   >
+                    <!-- QR Code when available -->
                     <img
+                      v-if="qrCodeDataUrl && paymentStatus !== 'failed'"
                       :src="qrCodeDataUrl"
                       alt="Payment QR Code"
-                      class="max-w-full max-h-full"
+                      class="max-w-full max-h-full object-contain"
                     />
-                  </div>
-                  <div
-                    v-else-if="!qrCodeDataUrl && paymentStatus === 'pending'"
-                    class="w-64 h-64 flex items-center justify-center bg-gray-100"
-                  >
-                    <v-progress-circular
-                      indeterminate
-                      size="40"
-                      width="4"
-                      color="primary"
-                      class="mb-2"
-                    ></v-progress-circular>
-                    <p class="text-sm text-gray-600">Generating QR Code...</p>
-                  </div>
-                  <div
-                    v-else
-                    class="w-64 h-64 flex items-center justify-center bg-red-50"
-                  >
-                    <div class="text-center">
+
+                    <!-- Loading QR Code -->
+                    <div
+                      v-else-if="!qrCodeDataUrl && paymentStatus === 'pending'"
+                      class="text-center"
+                    >
+                      <v-progress-circular
+                        indeterminate
+                        size="40"
+                        width="4"
+                        color="primary"
+                        class="mb-2"
+                      ></v-progress-circular>
+                      <p class="text-sm text-gray-600">Generating QR Code...</p>
+                    </div>
+
+                    <!-- Error state -->
+                    <div v-else class="text-center">
                       <v-icon size="40" color="error" class="mb-2"
                         >mdi-alert-circle</v-icon
                       >
-                      <p class="text-sm text-red-600">
+                      <p class="text-sm text-red-600 mb-2">
                         Failed to generate QR Code
                       </p>
                       <v-btn
                         size="small"
                         color="primary"
                         variant="outlined"
-                        class="mt-2"
-                        @click="generateQRCode(currentOrder.qr_string)"
+                        @click="retryPayment"
                       >
                         Retry
                       </v-btn>
                     </div>
                   </div>
                 </div>
-              </div>
-            </div>
 
-            <!-- Payment Status -->
-            <!-- <div class="mb-4">
-              <v-alert
-                v-if="paymentStatus === 'pending'"
-                type="info"
-                class="mb-2"
-              >
-                <div class="flex items-center">
-                  <v-progress-circular
-                    indeterminate
-                    size="20"
-                    width="2"
-                    class="mr-2"
-                  ></v-progress-circular>
-                  Waiting for payment...
+                <!-- Scan to Pay -->
+                <div class="text-center mb-4">
+                  <div class="text-xl font-medium text-gray-800">
+                    Scan to pay
+                  </div>
                 </div>
-              </v-alert>
-              <v-alert
-                v-if="paymentStatus === 'checking'"
-                type="warning"
-                class="mb-2"
-              >
-                <div class="flex items-center">
-                  <v-progress-circular
-                    indeterminate
-                    size="20"
-                    width="2"
-                    class="mr-2"
-                  ></v-progress-circular>
-                  Verifying payment...
-                </div>
-              </v-alert>
-              <v-alert
-                v-if="paymentStatus === 'completed'"
-                type="success"
-                class="mb-2"
-              >
-                <div class="flex items-center">
-                  <v-icon class="mr-2">mdi-check-circle</v-icon>
-                  Payment successful! Redirecting...
-                </div>
-              </v-alert>
-              <v-alert
-                v-if="paymentStatus === 'failed'"
-                type="error"
-                class="mb-2"
-              >
-                <div class="flex items-center">
-                  <v-icon class="mr-2">mdi-alert-circle</v-icon>
-                  Payment failed. Please try again.
-                </div>
-              </v-alert>
-            </div> -->
 
-            <!-- <v-card class="pa-3 bg-yellow-50 text-left">
-              <p class="font-bold mb-2">Payment Instructions:</p>
-              <ol class="text-sm space-y-1">
-                <li>1. Open your banking app (ABA, Wing, etc.)</li>
-                <li>2. Select QR code payment/KHQR</li>
-                <li>3. Scan the QR code above</li>
-                <li>4. Confirm the payment amount</li>
-                <li>5. Complete the transaction</li>
-              </ol>
-              <div class="mt-3 p-2 bg-yellow-100 rounded">
-                <p class="text-xs text-yellow-800">
-                  <strong>Note:</strong> Payment verification may take up to 30
-                  seconds
-                </p>
-              </div>
-            </v-card> -->
+                <!-- Payment Status Alert -->
+                <!-- <div class="mb-4" v-if="paymentStatus !== 'pending'">
+                  <v-alert
+                    v-if="paymentStatus === 'checking'"
+                    type="warning"
+                    density="compact"
+                    class="mb-2"
+                  >
+                    <div class="flex items-center">
+                      <v-progress-circular
+                        indeterminate
+                        size="16"
+                        width="2"
+                        class="mr-2"
+                      ></v-progress-circular>
+                      Verifying payment...
+                    </div>
+                  </v-alert>
 
-            <v-btn
-              v-if="paymentStatus === 'pending' || paymentStatus === 'checking'"
-              variant="text"
-              color="red"
-              class="mt-4"
-              @click="
-                paymentDialog = false;
-                stopPaymentCheck();
-              "
-            >
-              Cancel Order
-            </v-btn>
-          </div>
-          <div v-else class="text-center">
-            <v-icon size="40" color="error" class="mb-2"
-              >mdi-alert-circle</v-icon
-            >
-            <p class="text-sm text-red-600">Order data not available</p>
-            <v-btn
-              size="small"
-              color="primary"
-              variant="outlined"
-              class="mt-2"
-              @click="paymentDialog = false"
-            >
-              Close
-            </v-btn>
+                  <v-alert
+                    v-if="paymentStatus === 'completed'"
+                    type="success"
+                    density="compact"
+                    class="mb-2"
+                  >
+                    <div class="flex items-center">
+                      <v-icon class="mr-2" size="16">mdi-check-circle</v-icon>
+                      Payment successful!
+                    </div>
+                  </v-alert>
+
+                  <v-alert
+                    v-if="paymentStatus === 'failed'"
+                    type="error"
+                    density="compact"
+                    class="mb-2"
+                  >
+                    <div class="flex items-center">
+                      <v-icon class="mr-2" size="16">mdi-alert-circle</v-icon>
+                      Payment failed. Please try again.
+                    </div>
+                  </v-alert>
+                </div> -->
+
+                <!-- Action Buttons -->
+                <div
+                  class="flex justify-center gap-3 mb-4"
+                  v-if="paymentStatus !== 'completed'"
+                >
+                  <v-btn
+                    color="orange"
+                    variant="flat"
+                    rounded
+                    size="small"
+                    @click="handlePaymentConfirmation"
+                    class="text-white px-4"
+                  >
+                    I have paid.
+                  </v-btn>
+
+                  <v-btn
+                    color="orange"
+                    variant="flat"
+                    rounded
+                    size="small"
+                    @click="downloadQRCode"
+                    :disabled="!qrCodeDataUrl"
+                    class="text-white px-4"
+                  >
+                    <span>Save</span>
+                    <v-icon class="ml-1" size="small">mdi-download</v-icon>
+                  </v-btn>
+                </div>
+
+                <!-- Completed State Button -->
+                <div
+                  class="flex justify-center mb-4"
+                  v-if="paymentStatus === 'completed'"
+                >
+                  <v-btn
+                    color="primary"
+                    variant="flat"
+                    rounded
+                    size="small"
+                    @click="goToOrders"
+                    class="text-white px-6"
+                  >
+                    View Orders
+                  </v-btn>
+                </div>
+
+                <!-- Payment Summary -->
+                <div class="text-left">
+                  <div class="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Subtotal:</span>
+                    <span>{{ subtotal.toFixed(2) }} USD</span>
+                  </div>
+                  <div class="flex justify-between text-sm text-gray-600 mb-1">
+                    <span>Delivery:</span>
+                    <span>{{ deliveryFee.toFixed(2) }} USD</span>
+                  </div>
+                  <v-divider class="my-2"></v-divider>
+                  <div class="flex justify-between font-bold text-gray-900">
+                    <span>TOTAL:</span>
+                    <span>{{ total.toFixed(2) }} USD</span>
+                  </div>
+                </div>
+
+                <!-- Payment Instructions (collapsed by default) -->
+                <v-expansion-panels
+                  class="mt-4"
+                  variant="accordion"
+                  v-if="paymentStatus === 'pending'"
+                >
+                  <v-expansion-panel>
+                    <v-expansion-panel-title class="text-sm font-medium">
+                      <v-icon class="mr-2" size="16">mdi-help-circle</v-icon>
+                      Payment Instructions
+                    </v-expansion-panel-title>
+                    <v-expansion-panel-text>
+                      <div class="text-sm space-y-1 text-left">
+                        <p class="font-semibold mb-2">How to pay:</p>
+                        <ol class="list-decimal list-inside space-y-1">
+                          <li>Open your banking app (ABA, Wing, etc.)</li>
+                          <li>Select QR code payment/KHQR</li>
+                          <li>Scan the QR code above</li>
+                          <li>Confirm the payment amount</li>
+                          <li>Complete the transaction</li>
+                        </ol>
+                        <div class="mt-3 p-2 bg-yellow-100 rounded text-xs">
+                          <strong>Note:</strong> Payment verification may take
+                          up to 30 seconds
+                        </div>
+                      </div>
+                    </v-expansion-panel-text>
+                  </v-expansion-panel>
+                </v-expansion-panels>
+              </v-card-text>
+            </v-card>
           </div>
         </v-card>
       </v-dialog>
