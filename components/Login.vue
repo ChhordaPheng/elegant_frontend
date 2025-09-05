@@ -495,16 +495,23 @@ const resendForgetPasswordOTP = async () => {
 
 <template>
   <v-parallax
-    height="100vh"
-    src="https://static.vecteezy.com/system/resources/previews/030/640/011/large_2x/modern-men-fashion-in-retail-boutique-store-free-photo.jpg"
     class="relative"
+    style="
+      background-color: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      border-radius: 20px;
+    "
   >
     <!-- Dark + Blur Overlay -->
-    <div class="absolute inset-0 bg-black/25 backdrop-blur-md"></div>
 
     <!-- Content -->
     <div
-      class="d-flex flex-column align-center justify-center fill-height text-white relative"
+      class="d-flex flex-column align-center justify-center fill-height relative"
+      style="
+        background-color: rgba(255, 255, 255, 0.1);
+        backdrop-filter: blur(10px);
+        border-radius: 20px;
+      "
     >
       <v-card
         class="pa-6"
@@ -533,7 +540,7 @@ const resendForgetPasswordOTP = async () => {
               <v-form @submit.prevent="handleLogin">
                 <v-text-field
                   v-model="loginStore.user.phone_number"
-                  class="text-white blur-input"
+                  class="blur-input"
                   label="Phone Number"
                   prepend-inner-icon="mdi-phone"
                   variant="underlined"
@@ -549,7 +556,7 @@ const resendForgetPasswordOTP = async () => {
                   :type="showLoginPassword ? 'text' : 'password'"
                   prepend-inner-icon="mdi-lock"
                   variant="underlined"
-                  class="text-white blur-input"
+                  class=" blur-input"
                   :error-messages="errors.password"
                 >
                   <template #append-inner>
@@ -565,7 +572,7 @@ const resendForgetPasswordOTP = async () => {
 
                 <v-btn
                   variant="text"
-                  class="text-white !underline"
+                  class=" !underline"
                   @click="openForgetPasswordDialog"
                 >
                   Forgot password?
@@ -592,7 +599,7 @@ const resendForgetPasswordOTP = async () => {
                   label="First Name"
                   prepend-inner-icon="basil:user-solid"
                   variant="underlined"
-                  class="text-white blur-input"
+                  class=" blur-input"
                   :error-messages="errors.first_name"
                 />
                 <v-text-field
@@ -600,7 +607,7 @@ const resendForgetPasswordOTP = async () => {
                   label="Last Name"
                   prepend-inner-icon="mdi-account"
                   variant="underlined"
-                  class="text-white blur-input"
+                  class=" blur-input"
                   :error-messages="errors.last_name"
                 />
 
@@ -610,7 +617,7 @@ const resendForgetPasswordOTP = async () => {
                   type="email"
                   prepend-inner-icon="dashicons:email-alt"
                   variant="underlined"
-                  class="text-white blur-input"
+                  class=" blur-input"
                   :error-messages="errors.email"
                   :rules="[emailRule]"
                 />
@@ -620,7 +627,7 @@ const resendForgetPasswordOTP = async () => {
                   label="Phone Number"
                   prepend-inner-icon="mdi-cellphone"
                   variant="underlined"
-                  class="text-white blur-input"
+                  class=" blur-input"
                   :error-messages="errors.phone_number"
                   @keypress="onlyPhoneChars"
                   @input="sanitizePhoneInput"
@@ -633,7 +640,7 @@ const resendForgetPasswordOTP = async () => {
                   :type="showRegisterPassword ? 'text' : 'password'"
                   prepend-inner-icon="mdi:password"
                   variant="underlined"
-                  class="text-white blur-input"
+                  class=" blur-input"
                   :error-messages="errors.password"
                 >
                   <template #append-inner>
@@ -652,7 +659,7 @@ const resendForgetPasswordOTP = async () => {
                   :type="showConfirmPassword ? 'text' : 'password'"
                   prepend-inner-icon="mdi-shield-key"
                   variant="underlined"
-                  class="text-white blur-input"
+                  class=" blur-input"
                   :error-messages="errors.password_confirmation"
                 >
                   <template #append-inner>
@@ -703,14 +710,14 @@ const resendForgetPasswordOTP = async () => {
       <!-- OTP Verification Dialog -->
       <v-dialog v-model="dialogOTP" width="400" persistent>
         <v-card class="bg-grey pa-5">
-          <v-card-title class="text-center text-white">
+          <v-card-title class="text-center ">
             OTP Verification
           </v-card-title>
 
           <v-form @submit.prevent="handleOTPVerification">
             <v-text-field
               v-model="otpStore.otpRequest.phone_number"
-              class="text-white blur-input"
+              class=" blur-input"
               label="Phone Number"
               prepend-inner-icon="mdi-phone"
               variant="underlined"
@@ -723,7 +730,7 @@ const resendForgetPasswordOTP = async () => {
               label="Enter OTP Code"
               prepend-inner-icon="mdi-shield-key"
               variant="underlined"
-              class="text-white blur-input"
+              class=" blur-input"
               :error-messages="errors.otp_code"
               placeholder="Enter the OTP code"
             >
@@ -764,21 +771,21 @@ const resendForgetPasswordOTP = async () => {
             border-radius: 20px;
           "
         >
-          <v-card-title class="text-center text-white mb-4">
+          <v-card-title class="text-center  mb-4">
             <v-icon class="mr-2">mdi-lock-reset</v-icon>
             Reset Password
           </v-card-title>
 
           <!-- Step 1: Enter Phone Number -->
           <div v-if="forgetPasswordStep === 1">
-            <v-card-subtitle class="text-white text-center mb-4">
+            <v-card-subtitle class=" text-center mb-4">
               Enter your phone number to receive an OTP
             </v-card-subtitle>
 
             <v-form @submit.prevent="sendForgetPasswordOTP">
               <v-text-field
                 v-model="forgetPasswordForm.phone_number"
-                class="text-white blur-input"
+                class=" blur-input"
                 label="Phone Number"
                 prepend-inner-icon="mdi-phone"
                 variant="underlined"
@@ -813,7 +820,7 @@ const resendForgetPasswordOTP = async () => {
 
           <!-- Step 2: Enter OTP -->
           <div v-if="forgetPasswordStep === 2">
-            <v-card-subtitle class="text-white text-center mb-4">
+            <v-card-subtitle class=" text-center mb-4">
               Enter the OTP sent to {{ forgetPasswordForm.phone_number }}
             </v-card-subtitle>
 
@@ -823,7 +830,7 @@ const resendForgetPasswordOTP = async () => {
                 label="Enter OTP Code"
                 prepend-inner-icon="mdi-shield-key"
                 variant="underlined"
-                class="text-white blur-input"
+                class=" blur-input"
                 :error-messages="errors.otp_code"
                 placeholder="Enter the OTP code"
               >
@@ -864,7 +871,7 @@ const resendForgetPasswordOTP = async () => {
 
           <!-- Step 3: Set New Password -->
           <div v-if="forgetPasswordStep === 3">
-            <v-card-subtitle class="text-white text-center mb-4">
+            <v-card-subtitle class=" text-center mb-4">
               Set your new password
             </v-card-subtitle>
 
@@ -875,7 +882,7 @@ const resendForgetPasswordOTP = async () => {
                 :type="showNewPassword ? 'text' : 'password'"
                 prepend-inner-icon="mdi-lock"
                 variant="underlined"
-                class="text-white blur-input"
+                class=" blur-input"
                 :error-messages="errors.password"
               >
                 <template #append-inner>
@@ -895,7 +902,7 @@ const resendForgetPasswordOTP = async () => {
                 :type="showConfirmNewPassword ? 'text' : 'password'"
                 prepend-inner-icon="mdi-shield-key"
                 variant="underlined"
-                class="text-white blur-input"
+                class=" blur-input"
                 :error-messages="errors.password_confirmation"
               >
                 <template #append-inner>
@@ -978,11 +985,11 @@ const resendForgetPasswordOTP = async () => {
 }
 
 /* Autofill background fix */
-.blur-input :deep(input:-webkit-autofill) {
+/* .blur-input :deep(input:-webkit-autofill) {
   -webkit-box-shadow: 0 0 0px 1000px transparent inset !important;
   -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
-  transition: background-color 9999s ease-in-out 0s; /* prevents flashing */
-}
+  transition: background-color 9999s ease-in-out 0s; 
+} */
 
 /* When autofill is focused */
 .blur-input :deep(input:-webkit-autofill:focus) {
@@ -1000,7 +1007,7 @@ const resendForgetPasswordOTP = async () => {
 .blur-input :deep(input:-webkit-autofill:hover),
 .blur-input :deep(input:-webkit-autofill:focus),
 .blur-input :deep(input:-webkit-autofill:active) {
-  -webkit-box-shadow: 0 0 0px 1000px rgba(0,0,0,0.4) inset !important; /* dark bg */
+  -webkit-box-shadow: 0 0 0px 1000px rgba(0, 0, 0, 0.4) inset !important; /* dark bg */
   -webkit-text-fill-color: rgba(255, 255, 255, 0.9) !important;
   caret-color: white !important;
   transition: background-color 9999s ease-in-out 0s !important;
@@ -1008,8 +1015,7 @@ const resendForgetPasswordOTP = async () => {
 
 /* Firefox */
 .blur-input :deep(input:-internal-autofill-selected) {
-  background-color: rgba(0,0,0,0.4) !important;
+  background-color: rgba(0, 0, 0, 0.4) !important;
   color: rgba(255, 255, 255, 0.9) !important;
 }
-
 </style>

@@ -18,6 +18,10 @@ const display = useDisplay();
 const group = ref<string | null>(null);
 const { locale } = useI18n();
 
+// Add reactive counts for favorites and cart
+const favoriteCount = ref(0);
+const cartCount = ref(0);
+
 // Safe access to display properties
 const smAndDown = computed(() => display?.smAndDown?.value ?? false);
 
@@ -83,8 +87,79 @@ const router = useRouter();
 // Add loading state to prevent UI conflicts during navigation
 const isNavigating = ref(false);
 
-// Logout functionality
+// Functions to get counts from localStorage
+const getFavoriteCount = () => {
+  if (typeof window === "undefined") return 0;
+  try {
+    const favorites = localStorage.getItem("favorites");
+    if (favorites) {
+      const favoritesArray = JSON.parse(favorites);
+      return Array.isArray(favoritesArray) ? favoritesArray.length : 0;
+    }
+    return 0;
+  } catch (error) {
+    console.error("Error reading favorites from localStorage:", error);
+    return 0;
+  }
+};
 
+const getCartCount = () => {
+  if (typeof window === "undefined") return 0;
+  try {
+    const cart = localStorage.getItem("cart");
+    if (cart) {
+      const cartArray = JSON.parse(cart);
+      if (Array.isArray(cartArray)) {
+        // If cart items have quantity property, sum them up
+        return cartArray.reduce((total, item) => {
+          return total + (item.quantity || 1);
+        }, 0);
+      }
+      return 0;
+    }
+    return 0;
+  } catch (error) {
+    console.error("Error reading cart from localStorage:", error);
+    return 0;
+  }
+};
+
+// Function to update counts
+const updateCounts = () => {
+  favoriteCount.value = getFavoriteCount();
+  cartCount.value = getCartCount();
+};
+
+// Watch for localStorage changes
+const watchLocalStorage = () => {
+  if (typeof window === "undefined") return;
+
+  const handleStorageChange = (e: StorageEvent) => {
+    if (e.key === "favorites" || e.key === "cart") {
+      updateCounts();
+    }
+  };
+
+  window.addEventListener("storage", handleStorageChange);
+
+  // Also watch for changes in the same tab using a custom event
+  const handleCustomStorageChange = () => {
+    updateCounts();
+  };
+
+  window.addEventListener("localStorageUpdated", handleCustomStorageChange);
+
+  // Clean up function
+  return () => {
+    window.removeEventListener("storage", handleStorageChange);
+    window.removeEventListener(
+      "localStorageUpdated",
+      handleCustomStorageChange
+    );
+  };
+};
+
+// Logout functionality
 const handleLogout = () => {
   showLogoutDialog.value = true;
 };
@@ -270,7 +345,7 @@ watch(
   { immediate: false }
 );
 
-// let authCheckInterval: ReturnType<typeof setInterval>;
+let cleanupLocalStorageWatcher: (() => void) | undefined;
 
 onMounted(async () => {
   try {
@@ -283,6 +358,10 @@ onMounted(async () => {
 
     // Check authentication status
     checkAuthStatus();
+
+    // Initialize counts and start watching localStorage
+    updateCounts();
+    cleanupLocalStorageWatcher = watchLocalStorage();
   } catch (error) {
     console.error("Error fetching data:", error);
   }
@@ -304,12 +383,19 @@ onMounted(async () => {
 
 onBeforeUnmount(() => {
   try {
-    // clearInterval(authCheckInterval); // Removed: authCheckInterval is not defined
     window.removeEventListener("scroll", handleScroll);
+    if (cleanupLocalStorageWatcher) {
+      cleanupLocalStorageWatcher();
+    }
   } catch (error) {
     console.error("Error in cleanup:", error);
   }
 });
+
+// Expose updateCounts function globally so other components can call it
+if (typeof window !== "undefined") {
+  (window as any).updateNavCounts = updateCounts;
+}
 </script>
 
 <template>
@@ -387,25 +473,42 @@ onBeforeUnmount(() => {
             variant="elevated"
             :disabled="isNavigating"
           /> -->
-          <!-- favorite button -->
-          <v-btn
-            :size="btnSize"
-            :density="btnDensity"
-            icon="solar:heart-linear"
-            variant="elevated"
-            :disabled="isNavigating"
-            @click="handleNavigation('/favorite')"
-          />
 
-          <!-- Cart button -->
-          <v-btn
-            :size="btnSize"
-            :density="btnDensity"
-            icon="solar:bag-4-outline"
-            variant="elevated"
-            :disabled="isNavigating"
-            @click="handleNavigation('/cart')"
-          />
+          <!-- favorite button with count -->
+          <div class="position-relative">
+            <v-badge
+              :content="favoriteCount > 99 ? '99+' : favoriteCount.toString()"
+              color="red"
+              class="count-badge"
+            >
+              <v-btn
+                :size="btnSize"
+                :density="btnDensity"
+                icon="solar:heart-linear"
+                variant="elevated"
+                :disabled="isNavigating"
+                @click="handleNavigation('/favorite')"
+              />
+            </v-badge>
+          </div>
+
+          <!-- Cart button with count -->
+          <div class="position-relative">
+            <v-badge
+              :content="cartCount > 99 ? '99+' : cartCount.toString()"
+              color="red"
+              class="count-badge"
+            >
+              <v-btn
+                :size="btnSize"
+                :density="btnDensity"
+                icon="solar:bag-4-outline"
+                variant="elevated"
+                :disabled="isNavigating"
+                @click="handleNavigation('/cart')"
+              />
+            </v-badge>
+          </div>
 
           <!-- Profile button -->
           <v-btn
@@ -432,14 +535,6 @@ onBeforeUnmount(() => {
               :title="`Switch to ${locale === 'kh' ? 'English' : 'ខ្មែរ'}`"
               @click="toggleLanguage"
             />
-
-            <!-- <v-dialog v-model="dialog" max-width="400">
-              <v-card>
-                <v-card-text>
-                  <Language />
-                </v-card-text>
-              </v-card>
-            </v-dialog> -->
           </div>
 
           <!-- Authentication buttons -->
@@ -477,7 +572,6 @@ onBeforeUnmount(() => {
             <!-- Show Welcome message and Logout when authenticated -->
             <template v-else>
               <div class="auth-btn text-sm">
-                <!-- Hi, {{ userProfile?.last_name || "User" }} -->
                 {{ userProfile?.last_name || "User" }}
               </div>
 
@@ -494,6 +588,7 @@ onBeforeUnmount(() => {
         </v-col>
       </v-row>
     </v-app-bar>
+
     <v-dialog
       v-model="showLogoutDialog"
       max-width="420"
@@ -506,7 +601,7 @@ onBeforeUnmount(() => {
         </v-card-title>
 
         <v-card-text class="text-body-2 text-grey-darken-1">
-          Are you sure you want to log out? You’ll need to sign in again to
+          Are you sure you want to log out? You'll need to sign in again to
           access your account.
         </v-card-text>
 
@@ -561,6 +656,41 @@ onBeforeUnmount(() => {
           </v-list-item-title>
         </v-list-item>
 
+        <!-- Mobile Favorite and Cart with counts -->
+        <v-list-item
+          @click="handleNavigation('/favorite')"
+          :disabled="isNavigating"
+          link
+          class="mobile-menu-item"
+        >
+          <v-list-item-title class="d-flex align-center justify-space-between">
+            <span>Favorites</span>
+            <v-badge
+              v-if="favoriteCount > 0"
+              :content="favoriteCount > 99 ? '99+' : favoriteCount.toString()"
+              color="red"
+              inline
+            />
+          </v-list-item-title>
+        </v-list-item>
+
+        <v-list-item
+          @click="handleNavigation('/cart')"
+          :disabled="isNavigating"
+          link
+          class="mobile-menu-item"
+        >
+          <v-list-item-title class="d-flex align-center justify-space-between">
+            <span>Cart</span>
+            <v-badge
+              v-if="cartCount > 0"
+              :content="cartCount > 99 ? '99+' : cartCount.toString()"
+              color="primary"
+              inline
+            />
+          </v-list-item-title>
+        </v-list-item>
+
         <!-- Mobile authentication options -->
         <template v-if="!safeIsAuthenticated">
           <v-list-item
@@ -596,12 +726,6 @@ onBeforeUnmount(() => {
 
         <!-- Mobile user info when authenticated -->
         <template v-else>
-          <!-- <v-list-item class="mobile-menu-item" disabled>
-            <v-list-item-title class="text-gray-600">
-              Welcome, {{ safeUser?.name || safeUser?.email || "User" }}
-            </v-list-item-title>
-          </v-list-item> -->
-
           <!-- Mobile logout option -->
           <v-list-item
             @click="handleLogout"
@@ -622,11 +746,6 @@ onBeforeUnmount(() => {
       style="z-index: 9999"
       opacity="0.3"
     >
-      <!-- <v-progress-circular
-        indeterminate
-        size="64"
-        color="primary"
-      ></v-progress-circular> -->
       <Loading />
     </v-overlay>
 
@@ -770,5 +889,17 @@ onBeforeUnmount(() => {
 
 .transition-opacity {
   transition: opacity 0.2s ease;
+}
+
+/* Badge positioning and styling */
+:deep(.v-badge__badge) {
+  font-size: 10px !important;
+  font-weight: bold !important;
+  min-width: 16px !important;
+  height: 16px !important;
+}
+
+.position-relative {
+  position: relative;
 }
 </style>

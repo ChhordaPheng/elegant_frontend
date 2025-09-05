@@ -261,13 +261,22 @@ const getEffectivePhoneNumber = () => {
 const proceedToCheckout = () => {
   if (!process.client) return;
 
+  // Check if cart has items first
+  if (!hasItems.value) {
+    showSnackbar("Your cart is empty", "error");
+    return;
+  }
+
   const accessToken = token.value;
   const isAuthenticated = authenticated.value;
 
+  // Only check authentication when proceeding to checkout
   if (!accessToken || !isAuthenticated) {
-    hahaDialog.value = true;
+    hahaDialog.value = true; // Show login dialog
     return;
   }
+
+  // If authenticated, proceed to checkout
   dialog.value = true;
 };
 
@@ -351,6 +360,11 @@ const fetchDeliveries = async () => {
 };
 
 const fetchAddresses = async () => {
+  // Only fetch if authenticated
+  if (!token.value || !authenticated.value) {
+    return;
+  }
+
   try {
     const addressData = await profileStore.getAddress();
     if (addressData && Array.isArray(addressData)) {
@@ -359,10 +373,8 @@ const fetchAddresses = async () => {
       if (defaultAddress) {
         selectedAddress.value = defaultAddress;
         form.value.useExistingAddress = true;
-        // Set form values when default address is selected
         form.value.name = defaultAddress.name;
         form.value.address = formattedAddress.value;
-        // Always use profile phone number when using existing address
         form.value.phoneNumber = userProfile.value?.phone_number || "";
       }
     }
@@ -818,12 +830,17 @@ const downloadQRCode = () => {
 onMounted(async () => {
   try {
     isLoading.value = true;
-    checkAuthStatus();
-    loadCartFromStorage();
+    // Remove checkAuthStatus() from here - let users view cart without auth
+    loadCartFromStorage(); // This should work without authentication
     await fetchDeliveries();
-    await profileStore.fetchUserProfile();
 
-    if (token.value && authenticated.value) {
+    // Only fetch profile data if user is authenticated
+    const accessToken = token.value;
+    const isAuthenticated = authenticated.value;
+
+    if (accessToken && isAuthenticated) {
+      checkAuthStatus();
+      await profileStore.fetchUserProfile();
       await fetchAddresses();
     }
   } catch (err) {
@@ -855,7 +872,7 @@ onUnmounted(() => {
 
     <v-container class="mt-4">
       <!-- Loading state -->
-      <div v-if="isLoading || !cartLoaded" class="text-center py-8">
+      <div v-if="isLoading" class="text-center py-8">
         <v-progress-circular
           indeterminate
           color="primary"
@@ -865,10 +882,10 @@ onUnmounted(() => {
 
       <!-- Empty cart state -->
       <div
-        v-if="cartLoaded && !hasItems"
+        v-if="!isLoading && cartLoaded && !hasItems"
         class="text-center flex items-center justify-center"
       >
-        <div class="">
+        <div>
           <div class="text-center flex items-center justify-center">
             <img class="w-40" src="images/no_data.gif" alt="" />
           </div>
@@ -1120,7 +1137,7 @@ onUnmounted(() => {
                 variant="elevated"
                 size="large"
                 @click="proceedToCheckout"
-                :disabled="loading || !selectedDelivery"
+                :disabled="loading || !selectedDelivery || !hasItems"
               >
                 <v-progress-circular
                   v-if="loading"
@@ -1129,7 +1146,11 @@ onUnmounted(() => {
                   width="2"
                   class="mr-2"
                 ></v-progress-circular>
-                proceed to checkout
+                {{
+                  !token || !authenticated
+                    ? "Login to Checkout"
+                    : "Proceed to Checkout"
+                }}
               </v-btn>
             </div>
           </v-card>
