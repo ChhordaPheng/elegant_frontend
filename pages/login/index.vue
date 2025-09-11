@@ -540,7 +540,6 @@ const resendForgetPasswordOTP = async () => {
                   :error-messages="errors.username"
                   @keypress="onlyPhoneChars"
                   @input="sanitizePhoneInput"
-                  @paste.prevent
                 />
 
                 <v-text-field
@@ -624,7 +623,6 @@ const resendForgetPasswordOTP = async () => {
                   :error-messages="errors.phone_number"
                   @keypress="onlyPhoneChars"
                   @input="sanitizePhoneInput"
-                  @paste.prevent
                 />
 
                 <v-text-field
@@ -786,7 +784,6 @@ const resendForgetPasswordOTP = async () => {
                 placeholder="Enter your phone number"
                 @keypress="onlyPhoneChars"
                 @input="sanitizePhoneInput"
-                @paste.prevent
               />
 
               <div class="d-flex gap-2 mt-4">

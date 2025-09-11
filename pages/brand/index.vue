@@ -338,6 +338,18 @@ const activeFilters = computed(() => {
     });
   }
 
+  // brand
+  if (selectedBrand.value) {
+    const brand = brands.value?.find((b) => b.id === selectedBrand.value);
+    if (brand) {
+      filters.push({
+        type: "brand",
+        label: brand.name,
+        value: brand.id,
+      });
+    }
+  }
+
   // Size filter
   if (selectedSize.value) {
     const size = sizes.value?.find((s: Size) => s.id === selectedSize.value);
@@ -443,7 +455,7 @@ onMounted(async () => {
 <template>
   <div>
     <!-- Banner -->
-    <div
+    <!-- <div
       class="banner w-full flex flex-col justify-center items-center min-h-[300px] md:h-[400px] px-4"
     >
       <p
@@ -491,22 +503,22 @@ onMounted(async () => {
           </v-slide-group-item>
         </v-slide-group>
       </div>
-    </div>
+    </div> -->
 
     <!-- Main Content -->
     <v-app>
       <!-- App Bar for mobile -->
-      <v-app-bar app flat>
+      <v-app-bar v-if="isMobile" app flat>
         <v-app-bar-nav-icon v-if="isMobile" @click="drawer = true" />
-        <div v-if="isMobile">Responsive Layout</div>
+        <div v-if="isMobile">Filters</div>
       </v-app-bar>
 
       <!-- Large screen layout -->
       <template v-if="isLarge">
-        <v-container fluid class="pa-0 mt-[60px]">
+        <v-container fluid class="pa-0 mt-[20px]">
           <v-row no-gutters>
             <!-- Sidebar -->
-            <v-col cols="4" class="pa-3 pl-12" style="min-height: 100vh">
+            <v-col cols="3" class="pa-3 pl-12" style="min-height: 100vh">
               <!-- Price Filter - UPDATED range -->
               <div class="flex justify-between items-center border-b-2">
                 <p class="uppercase font-bold text-[25px]">price</p>
@@ -527,7 +539,7 @@ onMounted(async () => {
                   color="red"
                   track-color="grey"
                   thumb-color="red"
-                ></v-range-slider>
+                />
                 <div class="mt-2 font-weight-medium">
                   <span class="text-gray-600 mr-2">Range :</span>
                   <span class="text-black font-weight-bold">
@@ -601,7 +613,7 @@ onMounted(async () => {
               </v-container>
 
               <!-- Brand Filter - Fixed to use brands from store -->
-              <!-- <div class="flex justify-between items-center border-b-2 my-5">
+              <div class="flex justify-between items-center border-b-2 my-5">
                 <p class="uppercase font-bold text-[25px]">brands</p>
                 <v-btn
                   variant="text"
@@ -641,7 +653,7 @@ onMounted(async () => {
                     <p class="text-center text-gray-500">Loading brands...</p>
                   </v-col>
                 </v-row>
-              </v-container> -->
+              </v-container>
 
               <!-- Trending Products -->
               <div class="border-b-2 my-5">
@@ -669,16 +681,15 @@ onMounted(async () => {
                     <div class="ml-5 mt-2">
                       <!-- Star rating -->
                       <div class="flex items-end">
-                        <Icon icon="noto:star" width="25" height="25" />
+                        <Icon icon="noto:star" width="20" />
                         <div v-for="i in 4" :key="i">
                           <Icon
                             icon="uim:star"
                             class="!text-gray-400"
-                            width="25"
-                            height="25"
+                            width="20"
                           />
                         </div>
-                        <p class="text-gray-500 text-[16px] ml-1">
+                        <p class="text-gray-500 text-[13px] ml-1">
                           ( {{ topTrending.reviews.length || 0 }} Reviews )
                         </p>
                       </div>
@@ -712,7 +723,7 @@ onMounted(async () => {
             </v-col>
 
             <!-- Main Content -->
-            <v-col cols="8">
+            <v-col cols="9">
               <v-main class="pa-0">
                 <v-container class="pa-0 pr-12">
                   <v-row>
@@ -855,7 +866,7 @@ onMounted(async () => {
                       v-else
                       v-for="item in items"
                       :key="item.id"
-                      class="relative w-[280px] mr-5"
+                      class="relative w-[250px] mr-5"
                       variant="text"
                     >
                       <v-hover v-slot="{ isHovering, props }">
@@ -870,7 +881,7 @@ onMounted(async () => {
                               'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                             "
                             :alt="item.name"
-                            class="w-full cursor-pointer h-[400px] object-cover"
+                            class="w-full cursor-pointer h-[330px] object-cover"
                             @click="quickView(item.id)"
                           />
 

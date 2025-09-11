@@ -571,7 +571,7 @@ onMounted(async () => {
       <!-- App Bar for mobile -->
       <v-app-bar app flat>
         <v-app-bar-nav-icon v-if="isMobile" @click="drawer = true" />
-        <div v-if="isMobile">Responsive Layout</div>
+        <div v-if="isMobile">Filters</div>
       </v-app-bar>
 
       <!-- Large screen layout -->
@@ -579,7 +579,7 @@ onMounted(async () => {
         <v-container fluid class="pa-0 mt-[60px]">
           <v-row no-gutters>
             <!-- Sidebar -->
-            <v-col cols="4" class="pa-3 pl-12" style="min-height: 100vh">
+            <v-col cols="3" class="pa-3 pl-12" style="min-height: 100vh">
               <!-- Price Filter - UPDATED range -->
               <div class="flex justify-between items-center border-b-2">
                 <p class="uppercase font-bold text-[25px]">price</p>
@@ -742,16 +742,15 @@ onMounted(async () => {
                     <div class="ml-5 mt-2">
                       <!-- Star rating -->
                       <div class="flex items-end">
-                        <Icon icon="noto:star" width="25" height="25" />
+                        <Icon icon="noto:star" width="20"/>
                         <div v-for="i in 4" :key="i">
                           <Icon
                             icon="uim:star"
                             class="!text-gray-400"
-                            width="25"
-                            height="25"
+                            width="20"
                           />
                         </div>
-                        <p class="text-gray-500 text-[16px] ml-1">
+                        <p class="text-gray-500 text-[13px] ml-1">
                           ( {{ topTrending.reviews.length || 0 }} Reviews )
                         </p>
                       </div>
@@ -785,7 +784,7 @@ onMounted(async () => {
             </v-col>
 
             <!-- Main Content -->
-            <v-col cols="8">
+            <v-col cols="9">
               <v-main class="pa-0">
                 <v-container class="pa-0 pr-12">
                   <v-row>
@@ -928,7 +927,7 @@ onMounted(async () => {
                       v-else
                       v-for="manItem in men"
                       :key="manItem.id"
-                      class="relative w-[280px] mr-5"
+                      class="relative w-[250px] mr-5"
                       variant="text"
                     >
                       <v-hover v-slot="{ isHovering, props }">
@@ -943,7 +942,7 @@ onMounted(async () => {
                               'https://i.pinimg.com/736x/16/2c/0c/162c0ce5a325eb96b05aa19fba013427.jpg'
                             "
                             :alt="manItem.name"
-                            class="w-full cursor-pointer h-[400px] object-cover"
+                            class="w-full cursor-pointer h-[330px] object-cover"
                             @click="quickView(manItem.id)"
                           />
 

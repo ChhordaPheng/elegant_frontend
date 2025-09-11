@@ -15,8 +15,8 @@
 <style scoped lang="css">
 .wrapper {
   position: relative;
-  width: 56px;  /* 14px * 4 */
-  height: 56px;
+  width: 42px;  /* smaller than 56px */
+  height: 42px;
   animation: 2s spining infinite;
 }
 
@@ -24,46 +24,46 @@
 .item2,
 .item3,
 .item4 {
-  width: 14px;
-  height: 14px;
+  width: 10.5px;   /* smaller than 14px */
+  height: 10.5px;
   position: absolute;
   background: #1576F5;
-  border-radius: 14px;
+  border-radius: 10.5px;
 }
 
 .item1 {
-  top: 8.4px;   /* 14px * 0.6 */
-  left: 8.4px;
+  top: 6.3px;   /* 10.5 * 0.6 */
+  left: 6.3px;
   animation: 1s changeHeight infinite;
 }
 
 .item2 {
-  top: 8.4px;
-  right: 8.4px;
+  top: 6.3px;
+  right: 6.3px;
   animation: 1s changeWidth infinite;
 }
 
 .item3 {
-  bottom: 8.4px;
-  left: 8.4px;
+  bottom: 6.3px;
+  left: 6.3px;
   animation: 1s changeWidth infinite;
 }
 
 .item4 {
-  bottom: 8.4px;
-  right: 8.4px;
+  bottom: 6.3px;
+  right: 6.3px;
   animation: 1s changeHeight infinite;
 }
 
 @keyframes changeHeight {
   50% {
-    height: 47.6px; /* 56px - 8.4px */
+    height: 35.7px; /* 42 - 6.3 */
   }
 }
 
 @keyframes changeWidth {
   50% {
-    width: 47.6px; /* 56px - 8.4px */
+    width: 35.7px; /* 42 - 6.3 */
   }
 }
 

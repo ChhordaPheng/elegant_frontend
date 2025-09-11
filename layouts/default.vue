@@ -88,47 +88,87 @@ const router = useRouter();
 const isNavigating = ref(false);
 
 // Functions to get counts from localStorage
-const getFavoriteCount = () => {
+// Replace your existing count functions with these:
+
+const getFavoriteCount = (): number => {
   if (typeof window === "undefined") return 0;
   try {
-    const favorites = localStorage.getItem("favorites");
-    if (favorites) {
-      const favoritesArray = JSON.parse(favorites);
-      return Array.isArray(favoritesArray) ? favoritesArray.length : 0;
-    }
-    return 0;
+    const wishlist = localStorage.getItem("wishlist"); // Changed to "wishlist"
+    if (!wishlist) return 0;
+
+    const wishlistArray = JSON.parse(wishlist);
+    if (!Array.isArray(wishlistArray)) return 0;
+
+    // Just count the number of items, not quantities
+    return wishlistArray.length;
   } catch (error) {
-    console.error("Error reading favorites from localStorage:", error);
+    console.error("Error reading wishlist from localStorage:", error);
     return 0;
   }
 };
 
-const getCartCount = () => {
+const getCartCount = (): number => {
+  // Added return type for consistency
   if (typeof window === "undefined") return 0;
   try {
     const cart = localStorage.getItem("cart");
-    if (cart) {
-      const cartArray = JSON.parse(cart);
-      if (Array.isArray(cartArray)) {
-        // If cart items have quantity property, sum them up
-        return cartArray.reduce((total, item) => {
-          return total + (item.quantity || 1);
-        }, 0);
-      }
-      return 0;
-    }
-    return 0;
+    if (!cart) return 0;
+
+    const cartArray = JSON.parse(cart);
+    if (!Array.isArray(cartArray)) return 0;
+
+    // Just count the number of items, not quantities
+    return cartArray.length;
   } catch (error) {
     console.error("Error reading cart from localStorage:", error);
     return 0;
   }
 };
 
-// Function to update counts
+// Simple update function that fetches fresh counts
 const updateCounts = () => {
   favoriteCount.value = getFavoriteCount();
   cartCount.value = getCartCount();
+  console.log(
+    `Updated counts - Favorites: ${favoriteCount.value}, Cart: ${cartCount.value}`
+  );
 };
+
+// Make it truly reactive by checking every 500ms
+let countWatcher: NodeJS.Timeout | null = null;
+
+const startCountWatcher = () => {
+  if (countWatcher) clearInterval(countWatcher);
+
+  countWatcher = setInterval(() => {
+    const newFavoriteCount = getFavoriteCount();
+    const newCartCount = getCartCount();
+
+    // Update if counts changed
+    if (
+      favoriteCount.value !== newFavoriteCount ||
+      cartCount.value !== newCartCount
+    ) {
+      favoriteCount.value = newFavoriteCount;
+      cartCount.value = newCartCount;
+      console.log(
+        `Reactive update - Favorites: ${favoriteCount.value}, Cart: ${cartCount.value}`
+      );
+    }
+  }, 500); // Check every 500ms for faster reactivity
+};
+
+const stopCountWatcher = () => {
+  if (countWatcher) {
+    clearInterval(countWatcher);
+    countWatcher = null;
+  }
+};
+
+// Expose simple global function to manually refresh counts
+if (typeof window !== "undefined") {
+  (window as any).updateNavCounts = updateCounts;
+}
 
 // Watch for localStorage changes
 const watchLocalStorage = () => {
@@ -347,10 +387,12 @@ watch(
 
 let cleanupLocalStorageWatcher: (() => void) | undefined;
 
+// Replace your onMounted function with this:
 onMounted(async () => {
   try {
     // Always fetch site info
     await SiteInfoStore.fetchSiteInfo();
+
     // Fetch user profile only if logged in
     if (safeIsAuthenticated.value) {
       await userProfileStore.fetchUserProfile();
@@ -359,34 +401,32 @@ onMounted(async () => {
     // Check authentication status
     checkAuthStatus();
 
-    // Initialize counts and start watching localStorage
+    // Initialize counts and start reactive watching
     updateCounts();
-    cleanupLocalStorageWatcher = watchLocalStorage();
+    startCountWatcher();
+
+    // Set language from localStorage or default
+    const storedLanguage =
+      localStorage.getItem("app_language") ||
+      process.env.NUXT_PUBLIC_APP_DEFAULT_LANGUAGE ||
+      "kh";
+
+    if (languages[storedLanguage]) {
+      locale.value = storedLanguage;
+    } else {
+      locale.value = "kh";
+      localStorage.setItem("app_language", "kh");
+    }
   } catch (error) {
-    console.error("Error fetching data:", error);
-  }
-
-  // Set language from localStorage or default
-  const storedLanguage =
-    localStorage.getItem("app_language") ||
-    process.env.NUXT_PUBLIC_APP_DEFAULT_LANGUAGE ||
-    "kh";
-
-  // Ensure the stored language is valid
-  if (languages[storedLanguage]) {
-    locale.value = storedLanguage;
-  } else {
-    locale.value = "kh";
-    localStorage.setItem("app_language", "kh");
+    console.error("Error in onMounted:", error);
   }
 });
 
+// Replace your onBeforeUnmount function with this:
 onBeforeUnmount(() => {
   try {
     window.removeEventListener("scroll", handleScroll);
-    if (cleanupLocalStorageWatcher) {
-      cleanupLocalStorageWatcher();
-    }
+    stopCountWatcher(); // Stop the reactive watcher
   } catch (error) {
     console.error("Error in cleanup:", error);
   }

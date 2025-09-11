@@ -571,7 +571,7 @@ onMounted(async () => {
       <!-- App Bar for mobile -->
       <v-app-bar app flat>
         <v-app-bar-nav-icon v-if="isMobile" @click="drawer = true" />
-        <div v-if="isMobile">Responsive Layout</div>
+        <div v-if="isMobile">Filters</div>
       </v-app-bar>
 
       <!-- Large screen layout -->
