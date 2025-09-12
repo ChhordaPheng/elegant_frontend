@@ -243,6 +243,18 @@ onMounted(async () => {
 </script>
 
 <template>
+  <div
+    v-if="!isLoading && newArrival.length === 0"
+    class="text-center flex items-center justify-center"
+  >
+    <div>
+      <div class="text-center flex items-center justify-center">
+        <img class="w-40" src="images/no_data.gif" alt="" />
+      </div>
+      <p class="text-xl text-gray-600">{{ $t("content.no_data") }}</p>
+    </div>
+  </div>
+
   <v-slide-group center-active>
     <v-slide-group-item
       v-for="item in newArrival.slice(0, 4)"
@@ -394,8 +406,10 @@ onMounted(async () => {
     <v-progress-circular indeterminate color="primary" />
   </div>
 
-  <div class="flex justify-end">
-    <v-btn variant="outlined" color="primary" to="/new-arrival">see more</v-btn>
+  <div class="flex justify-end" v-if="newArrival.length > 0">
+    <v-btn variant="outlined" color="primary" to="/new-arrival">{{
+      $t("buttons.see_more")
+    }}</v-btn>
   </div>
 
   <!-- Global snackbar -->

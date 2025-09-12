@@ -80,7 +80,7 @@ const handleAddToCart = async () => {
       item_id: currentProduct.value.id,
       quantity: quantity.value,
       added_at: new Date().toISOString(),
-      
+
       // Full variant data
       variant: {
         id: currentVariant.value.id,
@@ -89,12 +89,13 @@ const handleAddToCart = async () => {
         size_id: currentVariant.value.size_id,
         image: currentVariant.value.image,
         price: currentVariant.value.price,
-        final_price: currentVariant.value.final_price || currentVariant.value.price,
+        final_price:
+          currentVariant.value.final_price || currentVariant.value.price,
         quantity: currentVariant.value.quantity,
         is_favorite: currentVariant.value.is_favorite,
         created_at: currentVariant.value.created_at,
         updated_at: currentVariant.value.updated_at,
-        
+
         // Include color, size, and item data if available
         color: currentVariant.value.color,
         size: currentVariant.value.size,
@@ -112,14 +113,14 @@ const handleAddToCart = async () => {
           discount_id: currentProduct.value.discount_id,
           created_at: currentProduct.value.created_at,
           updated_at: currentProduct.value.updated_at,
-          
+
           // Include related data if available
           brand: currentProduct.value.brand,
           category: currentProduct.value.category,
           season: currentProduct.value.season,
-          discount: currentProduct.value.discount
-        }
-      }
+          discount: currentProduct.value.discount,
+        },
+      },
     };
 
     // Get current cart from localStorage
@@ -220,6 +221,17 @@ onMounted(async () => {
 </script>
 
 <template>
+  <div
+    v-if="bestSellers.length === 0"
+    class="text-center flex items-center justify-center"
+  >
+    <div>
+      <div class="text-center flex items-center justify-center">
+        <img class="w-40" src="images/no_data.gif" alt="" />
+      </div>
+      <p class="text-xl text-gray-600">{{ $t("content.no_data") }}</p>
+    </div>
+  </div>
   <v-slide-group center-active>
     <v-slide-group-item
       v-for="item in bestSellers.slice(0, 4)"
@@ -365,8 +377,10 @@ onMounted(async () => {
     </v-slide-group-item>
   </v-slide-group>
 
-  <div class="flex justify-end">
-    <v-btn variant="outlined" color="primary" to="/best-seller">see more</v-btn>
+  <div class="flex justify-end" v-if="bestSellers.length > 0">
+    <v-btn variant="outlined" color="primary" to="/best-seller">{{
+      $t("buttons.see_more")
+    }}</v-btn>
   </div>
 
   <!-- Global snackbar -->

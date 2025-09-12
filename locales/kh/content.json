@@ -1,8 +1,9 @@
 {
     "select_language": "ជ្រើសភាសារបស់លោកអ្នក",
-        "shop_now": "ទិញឥឡូវនេះ",
+    "shop_now": "ទិញឥឡូវនេះ",
     "new_arrival": "ទើបតែមកដល់ថ្មីៗ",
     "best_seller": "លក់ដាច់បំផុត",
     "top_trending": "ពេញនិយម",
-    "product_you_may_like": "ផលិតផលអ្នកប្រហែលចូលចិត្ត"
+    "product_you_may_like": "ផលិតផលអ្នកប្រហែលចូលចិត្ត",
+    "no_data": "មិនមានទិន្នន័យនោះទេ"
 }
