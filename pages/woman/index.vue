@@ -783,7 +783,7 @@ onMounted(async () => {
             </v-col>
 
             <!-- Main Content -->
-            <v-col cols="8">
+            <v-col cols="9">
               <v-main class="pa-0">
                 <v-container class="pa-0 pr-12">
                   <v-row>

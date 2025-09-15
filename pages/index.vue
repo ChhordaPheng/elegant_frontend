@@ -270,6 +270,7 @@ onUnmounted(() => {
 
     <!-- promotion with auto-fetched countdown -->
     <v-container
+    v-if="promotions"
       fluid
       class="bg-[#F3F4F5] min-h-[120px] md:h-[150px] flex items-center py-4"
     >
