@@ -1016,7 +1016,9 @@ onUnmounted(() => {
         <!-- Order Summary -->
         <v-col cols="12" sm="5" md="4">
           <v-card class="!bg-gray-100 pa-5">
-            <p class="uppercase border-b pb-3 font-bold">order summary</p>
+            <p class="uppercase border-b pb-3 font-bold">
+              {{ $t("content.order_summary") }}
+            </p>
 
             <!-- Delivery Selection -->
             <v-card class="mt-3 mb-4" elevation="1">
@@ -1075,12 +1077,16 @@ onUnmounted(() => {
                   </v-card>
                   <div>
                     <p>{{ item.variant?.item?.name || item.name }}</p>
-                    <p class="text-grey">Quantity : {{ item.quantity }}</p>
                     <p class="text-grey">
-                      Size : {{ item.variant?.size?.name || item.size }}
+                      {{ $t("content.quantity") }} : {{ item.quantity }}
                     </p>
                     <p class="text-grey">
-                      Color : {{ item.variant?.color?.name || item.color }}
+                      {{ $t("content.size") }} :
+                      {{ item.variant?.size?.name || item.size }}
+                    </p>
+                    <p class="text-grey">
+                      {{ $t("content.color") }} :
+                      {{ item.variant?.color?.name || item.color }}
                     </p>
                   </div>
                 </div>
@@ -1104,19 +1110,25 @@ onUnmounted(() => {
             <div>
               <v-row class="items-center">
                 <v-col>
-                  <p class="uppercase font-bold">subtotal</p>
+                  <p class="uppercase font-bold">
+                    {{ $t("content.subtotal") }}
+                  </p>
                 </v-col>
                 <p class="pr-3 text-grey">${{ subtotal.toFixed(2) }}</p>
               </v-row>
               <v-row class="items-center">
                 <v-col>
-                  <p class="uppercase font-bold">DELIVERY</p>
+                  <p class="uppercase font-bold">
+                    {{ $t("content.delivery") }}
+                  </p>
                 </v-col>
                 <p class="pr-3 text-grey">${{ deliveryFee.toFixed(2) }}</p>
               </v-row>
               <v-row class="items-center" v-if="totalSavings > 0">
                 <v-col>
-                  <p class="uppercase font-bold">TOTAL SAVINGS</p>
+                  <p class="uppercase font-bold">
+                    {{ $t("content.total_savings") }}
+                  </p>
                 </v-col>
                 <p class="pr-3 text-red-500">
                   - ${{ totalSavings.toFixed(2) }}
@@ -1126,7 +1138,7 @@ onUnmounted(() => {
               <div class="border-b my-8"></div>
               <v-row class="items-center text-[20px] font-bold">
                 <v-col>
-                  <p class="uppercase">TOTAL</p>
+                  <p class="uppercase">{{ $t("content.total") }}</p>
                 </v-col>
                 <p class="pr-3">${{ total.toFixed(2) }}</p>
               </v-row>
@@ -1204,7 +1216,7 @@ onUnmounted(() => {
           <v-card-text class="pa-0">
             <!-- Delivery Summary -->
             <v-card v-if="selectedDelivery" class="mb-4 pa-3 bg-green-50">
-              <p class="font-bold mb-2">Delivery Method:</p>
+              <p class="font-bold mb-2">{{ $t("content.delivery_method") }}:</p>
               <div class="flex items-center space-x-3">
                 <img
                   :src="selectedDelivery.logo"
@@ -1225,13 +1237,13 @@ onUnmounted(() => {
 
             <!-- Payment Method Selection -->
             <v-card class="mb-4 pa-3 bg-blue-50">
-              <p class="font-bold mb-3">Payment Method:</p>
+              <p class="font-bold mb-3">{{ $t("content.payment_method") }}:</p>
               <v-select
                 v-model="selectedPaymentMethod"
                 :items="paymentMethods"
                 item-title="label"
                 item-value="value"
-                label="Select Payment Method"
+                :label="$t('form.select_payment_method')"
                 variant="outlined"
                 class="mb-3"
               >
@@ -1278,7 +1290,7 @@ onUnmounted(() => {
                   <v-icon size="20" class="mr-2" color="primary"
                     >mdi-map-marker-check</v-icon
                   >
-                  Address Options
+                  {{ $t("content.address_options") }}
                 </h3>
               </div>
 
@@ -1301,7 +1313,9 @@ onUnmounted(() => {
                     ></v-radio-btn>
                     <div class="flex items-center justify-between w-full">
                       <div>
-                        <h4 class="font-semibold">Use saved address</h4>
+                        <h4 class="font-semibold">
+                          {{ $t("content.use_saved_address") }}
+                        </h4>
                         <p class="text-sm text-gray-500">
                           {{
                             addresses.length > 0
@@ -1347,9 +1361,15 @@ onUnmounted(() => {
                       color="primary"
                     ></v-radio-btn>
                     <div>
-                      <h4 class="font-semibold">Enter new address</h4>
+                      <h4 class="font-semibold">
+                        {{ $t("content.enter_new_address") }}
+                      </h4>
                       <p class="text-sm text-gray-500">
-                        Add a new shipping address for this order
+                        {{
+                          $t(
+                            "content.add_a_new_shipping_address_for_this_order"
+                          )
+                        }}
                       </p>
                     </div>
                   </div>
@@ -1395,7 +1415,7 @@ onUnmounted(() => {
               <!-- Name Field -->
               <v-text-field
                 v-model="form.name"
-                label="Full Name"
+                :label="$t('form.username')"
                 :rules="[rules.required]"
                 :readonly="form.useExistingAddress"
                 :variant="form.useExistingAddress ? 'filled' : 'outlined'"
@@ -1407,7 +1427,7 @@ onUnmounted(() => {
               <!-- Phone Number Field -->
               <v-text-field
                 v-model="form.phoneNumber"
-                label="Phone Number"
+                :label="$t('form.phone_number')"
                 :rules="[rules.required, rules.phoneNumber]"
                 :readonly="form.useExistingAddress"
                 :variant="form.useExistingAddress ? 'filled' : 'outlined'"
@@ -1423,7 +1443,7 @@ onUnmounted(() => {
               <!-- Address Field -->
               <v-text-field
                 v-model="form.address"
-                label="Shipping Address"
+                :label="$t('form.address')"
                 :rules="[rules.required, rules.address]"
                 :readonly="form.useExistingAddress"
                 :variant="form.useExistingAddress ? 'filled' : 'outlined'"
@@ -1439,7 +1459,7 @@ onUnmounted(() => {
               <!-- Note Field -->
               <v-textarea
                 v-model="form.note"
-                label="Order Note (Optional)"
+                :label="$t('form.order_note')"
                 class="mb-3"
                 prepend-inner-icon="mdi-note-text"
                 rows="3"
@@ -1488,7 +1508,7 @@ onUnmounted(() => {
                 </div>
                 <div>
                   <h2 class="text-xl font-bold text-white">
-                    Select Shipping Address
+                    {{ $t("content.select_shipping_address") }}
                   </h2>
                   <p class="text-blue-100 text-sm">
                     Choose from saved addresses or add new one
@@ -1516,10 +1536,12 @@ onUnmounted(() => {
                 </div>
                 <div class="flex-1">
                   <h3 class="font-bold text-lg text-primary">
-                    Add New Address
+                    {{ $t("content.add_new_address") }}
                   </h3>
                   <p class="text-gray-600">
-                    Enter a new shipping address for this order
+                    {{
+                      $t("content.enter_a_new_shipping_address_for_this_order")
+                    }}
                   </p>
                 </div>
                 <div class="new-address-arrow">
@@ -1537,10 +1559,10 @@ onUnmounted(() => {
                   <v-icon size="20" class="mr-2" color="gray"
                     >mdi-bookmark-multiple</v-icon
                   >
-                  Saved Addresses
+                  {{ $t("content.save_addresses") }}
                 </h3>
                 <span class="text-sm text-gray-500"
-                  >{{ addresses.length }} saved</span
+                  >{{ addresses.length }} {{ $t("buttons.save") }}</span
                 >
               </div>
 
@@ -1633,7 +1655,7 @@ onUnmounted(() => {
       </v-dialog>
 
       <!-- Delivery Selection Dialog -->
-      <v-dialog v-model="paymentDialog" max-width="400px" persistent>
+      <v-dialog v-model="deliveryDialog" max-width="400px" persistent>
         <v-card class="pa-4">
           <v-card-title class="text-h6 font-bold mb-4">
             <div class="flex justify-between items-center">
@@ -1770,7 +1792,7 @@ onUnmounted(() => {
                         variant="outlined"
                         @click="retryPayment"
                       >
-                        Retry
+                        {{ $t("buttons.retry") }}
                       </v-btn>
                     </div>
                   </div>
@@ -1779,7 +1801,7 @@ onUnmounted(() => {
                 <!-- Scan to Pay -->
                 <div class="text-center mb-4">
                   <div class="text-xl font-medium text-gray-800">
-                    Scan to pay
+                    {{ $t("content.scan_to_pay") }}
                   </div>
                 </div>
 
@@ -1840,7 +1862,7 @@ onUnmounted(() => {
                     @click="handlePaymentConfirmation"
                     class="text-white px-4"
                   >
-                    I have paid.
+                    {{ $t("content.i_have_paid") }}.
                   </v-btn>
 
                   <v-btn
@@ -1852,7 +1874,7 @@ onUnmounted(() => {
                     :disabled="!qrCodeDataUrl"
                     class="text-white px-4"
                   >
-                    <span>Save</span>
+                    <span>{{ $t("buttons.save") }}</span>
                     <v-icon class="ml-1" size="small">mdi-download</v-icon>
                   </v-btn>
                 </div>
@@ -1870,23 +1892,23 @@ onUnmounted(() => {
                     @click="goToOrders"
                     class="text-white px-6"
                   >
-                    View Orders
+                    {{ $t("content.view_orders") }}
                   </v-btn>
                 </div>
 
                 <!-- Payment Summary -->
                 <div class="text-left">
                   <div class="flex justify-between text-sm text-gray-600 mb-1">
-                    <span>Subtotal:</span>
+                    <span>{{ $t("content.subtotal") }}:</span>
                     <span>{{ subtotal.toFixed(2) }} USD</span>
                   </div>
                   <div class="flex justify-between text-sm text-gray-600 mb-1">
-                    <span>Delivery:</span>
+                    <span>{{ $t("content.delivery") }}:</span>
                     <span>{{ deliveryFee.toFixed(2) }} USD</span>
                   </div>
                   <v-divider class="my-2"></v-divider>
                   <div class="flex justify-between font-bold text-gray-900">
-                    <span>TOTAL:</span>
+                    <span class="uppercase">{{ $t("content.total") }}:</span>
                     <span>{{ total.toFixed(2) }} USD</span>
                   </div>
                 </div>

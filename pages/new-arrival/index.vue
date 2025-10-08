@@ -597,13 +597,15 @@ onMounted(async () => {
             <v-col cols="3" class="pa-3 pl-12" style="min-height: 100vh">
               <!-- Price Filter - UPDATED range -->
               <div class="flex justify-between items-center border-b-2">
-                <p class="uppercase font-bold text-[25px]">price</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.price") }}
+                </p>
                 <v-btn
                   variant="text"
                   class="uppercase !font-bold text-[15px] text-gray-500"
                   @click="resetPrice"
                 >
-                  reset
+                  {{ $t("buttons.reset") }}
                 </v-btn>
               </div>
               <div class="my-10">
@@ -626,13 +628,15 @@ onMounted(async () => {
 
               <!-- Color Filter -->
               <div class="flex justify-between items-center border-b-2 my-5">
-                <p class="uppercase font-bold text-[25px]">colors</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.color") }}
+                </p>
                 <v-btn
                   variant="text"
                   class="uppercase !font-bold text-[15px] text-gray-500"
                   @click="resetColor"
                 >
-                  reset
+                  {{ $t("buttons.reset") }}
                 </v-btn>
               </div>
               <v-sheet class="py-4 px-1">
@@ -660,13 +664,15 @@ onMounted(async () => {
 
               <!-- Size Filter - UPDATED for single selection -->
               <div class="flex justify-between items-center border-b-2 my-5">
-                <p class="uppercase font-bold text-[25px]">size</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.size") }}
+                </p>
                 <v-btn
                   variant="text"
                   class="uppercase !font-bold text-[15px] text-gray-500"
                   @click="resetSizes"
                 >
-                  reset
+                  {{ $t("buttons.reset") }}
                 </v-btn>
               </div>
               <v-container>
@@ -690,13 +696,15 @@ onMounted(async () => {
 
               <!-- Brand Filter - Fixed to use brands from store -->
               <div class="flex justify-between items-center border-b-2 my-5">
-                <p class="uppercase font-bold text-[25px]">brands</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.brand") }}s
+                </p>
                 <v-btn
                   variant="text"
                   class="uppercase !font-bold text-[15px] text-gray-500"
                   @click="resetBrands"
                 >
-                  reset
+                  {{ $t("buttons.reset") }}
                 </v-btn>
               </div>
               <v-container>
@@ -733,7 +741,9 @@ onMounted(async () => {
 
               <!-- Trending Products -->
               <div class="border-b-2 my-5">
-                <p class="uppercase font-bold text-[25px]">TRENDING PRODUCTS</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.trending_product") }}
+                </p>
               </div>
               <div
                 v-for="topTrending in topTrendings.slice(0, 2)"
@@ -775,7 +785,7 @@ onMounted(async () => {
                         {{ topTrending.name }}
                       </p>
                       <p class="text-gray-600 text-[16px] mb-2">
-                        Brand: {{ topTrending.brand.name }}
+                        {{ $t("content.brand") }}: {{ topTrending.brand.name }}
                       </p>
 
                       <!-- Price -->
@@ -804,9 +814,11 @@ onMounted(async () => {
                 <v-container class="pa-0 pr-12">
                   <v-row>
                     <v-col>
-                      <div class="pl-3">
+                      <div class="pl-3 mt-1">
                         <p>
-                          Clothing ({{ newArrival?.length || 0 }}
+                          {{ $t("content.clothing") }} ({{
+                            newArrival?.length || 0
+                          }}
                           items)
                         </p>
                         <div class="my-3 flex items-center flex-wrap">
@@ -830,7 +842,7 @@ onMounted(async () => {
                             class="text-[13px] text-red underline cursor-pointer mb-2"
                             @click="clearAllFilters"
                           >
-                            Clear All
+                            {{ $t("buttons.clear_all") }}
                           </p>
                         </div>
                       </div>
@@ -865,7 +877,7 @@ onMounted(async () => {
                             ]"
                             @click="handleItemsPerPageChange('all')"
                           >
-                            all
+                            {{ $t("buttons.all") }}
                           </p>
                         </div>
                         <div>
@@ -925,7 +937,7 @@ onMounted(async () => {
                         class="text-gray-400 mb-4"
                       ></v-icon>
                       <h3 class="text-xl font-medium text-gray-600 mb-2">
-                        No products found
+                        {{ $t("content.no_product_found") }}
                       </h3>
                       <p class="text-gray-500">
                         Try adjusting your filters or search criteria.
@@ -1112,13 +1124,15 @@ onMounted(async () => {
               <!-- Mobile filter content (same as desktop but in drawer) -->
               <!-- Price Filter -->
               <div class="flex justify-between items-center border-b-2">
-                <p class="uppercase font-bold text-[25px]">price</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.price") }}
+                </p>
                 <v-btn
                   variant="text"
                   class="uppercase !font-bold text-[15px] text-gray-500"
                   @click="resetPrice"
                 >
-                  reset
+                  {{ $t("buttons.reset") }}
                 </v-btn>
               </div>
               <div class="my-10">
@@ -1132,7 +1146,9 @@ onMounted(async () => {
                   thumb-color="red"
                 ></v-range-slider>
                 <div class="mt-2 font-weight-medium">
-                  <span class="text-gray-600 mr-2">Range :</span>
+                  <span class="text-gray-600 mr-2"
+                    >{{ $t("content.range") }} :</span
+                  >
                   <span class="text-black font-weight-bold">
                     ${{ priceRange[0] }} - ${{ priceRange[1] }}
                   </span>
@@ -1141,13 +1157,15 @@ onMounted(async () => {
 
               <!-- Color Filter for Mobile -->
               <div class="flex justify-between items-center border-b-2 my-5">
-                <p class="uppercase font-bold text-[25px]">colors</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.color") }}
+                </p>
                 <v-btn
                   variant="text"
                   class="uppercase !font-bold text-[15px] text-gray-500"
                   @click="resetColor"
                 >
-                  reset
+                  {{ $t("buttons.reset") }}
                 </v-btn>
               </div>
               <v-sheet class="py-4 px-1">
@@ -1175,13 +1193,15 @@ onMounted(async () => {
 
               <!-- Size Filter for Mobile -->
               <div class="flex justify-between items-center border-b-2 my-5">
-                <p class="uppercase font-bold text-[25px]">size</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.size") }}
+                </p>
                 <v-btn
                   variant="text"
                   class="uppercase !font-bold text-[15px] text-gray-500"
                   @click="resetSizes"
                 >
-                  reset
+                  {{ $t("buttons.reset") }}
                 </v-btn>
               </div>
               <v-container>
@@ -1205,13 +1225,15 @@ onMounted(async () => {
 
               <!-- Brand Filter for Mobile -->
               <div class="flex justify-between items-center border-b-2 my-5">
-                <p class="uppercase font-bold text-[25px]">brands</p>
+                <p class="uppercase font-bold text-[25px]">
+                  {{ $t("content.brand") }}s
+                </p>
                 <v-btn
                   variant="text"
                   class="uppercase !font-bold text-[15px] text-gray-500"
                   @click="resetBrands"
                 >
-                  reset
+                  {{ $t("buttons.reset") }}
                 </v-btn>
               </div>
               <v-container>
@@ -1269,7 +1291,7 @@ onMounted(async () => {
                   class="text-[13px] text-red underline cursor-pointer mb-2"
                   @click="clearAllFilters"
                 >
-                  Clear All
+                  {{ $t("buttons.clear_all") }}
                 </p>
               </div>
 
@@ -1319,7 +1341,7 @@ onMounted(async () => {
                   class="text-gray-400 mb-4"
                 ></v-icon>
                 <h3 class="text-lg font-medium text-gray-600 mb-2">
-                  No products found
+                  {{ $t("content.no_product_found") }}
                 </h3>
                 <p class="text-gray-500 text-sm">Try adjusting your filters.</p>
                 <v-btn
@@ -1504,7 +1526,7 @@ onMounted(async () => {
 
       <template v-slot:actions>
         <v-btn variant="text" class="text-white" @click="snackbar = false">
-          Close
+          {{ $t("buttons.close") }}
         </v-btn>
       </template>
     </v-snackbar>

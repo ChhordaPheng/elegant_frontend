@@ -558,7 +558,7 @@ onMounted(async () => {
               <v-form @submit.prevent="saveAccount" key="account-form">
                 <v-text-field
                   v-model="account.firstname"
-                  label="First Name"
+                  label="$t('content.first_name')"
                   prepend-inner-icon="mdi-account"
                   variant="outlined"
                   class="mb-4 mt-2"
@@ -566,7 +566,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="account.lastname"
-                  label="Last Name"
+                  label="$t('content.last_name')"
                   prepend-inner-icon="mdi-account"
                   variant="outlined"
                   class="mb-4 mt-2"
@@ -574,7 +574,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="account.email"
-                  label="Email Address"
+                  label="$t('content.email_address')"
                   prepend-inner-icon="mdi-email"
                   variant="outlined"
                   type="email"
@@ -583,7 +583,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="account.phone_number"
-                  label="Phone Number"
+                  label="$t('content.phone_number')"
                   prepend-inner-icon="mdi-phone"
                   variant="outlined"
                   type="tel"
@@ -598,7 +598,7 @@ onMounted(async () => {
                   :loading="loading"
                   :disabled="loading"
                 >
-                  Save Changes
+                  {{ $t("buttons.save") }}
                 </v-btn>
               </v-form>
             </transition>
@@ -610,7 +610,7 @@ onMounted(async () => {
               <v-form @submit.prevent="changePassword" key="password-form">
                 <v-text-field
                   v-model="password.old"
-                  label="Old Password"
+                  label="$t('form.old_password')"
                   prepend-inner-icon="mdi-lock"
                   type="password"
                   variant="outlined"
@@ -619,7 +619,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="password.new"
-                  label="New Password"
+                  label="$t('form.new_password')"
                   prepend-inner-icon="mdi-lock"
                   type="password"
                   variant="outlined"
@@ -628,7 +628,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="password.confirm"
-                  label="Confirm Password"
+                  label="$t('form.confirm_password')"
                   prepend-inner-icon="mdi-lock-check"
                   type="password"
                   variant="outlined"
@@ -643,7 +643,7 @@ onMounted(async () => {
                   :loading="passwordChanging"
                   :disabled="passwordChanging"
                 >
-                  Change Password
+                  {{ $t("buttons.change_password") }}
                 </v-btn>
               </v-form>
             </transition>
@@ -654,7 +654,9 @@ onMounted(async () => {
             <transition name="slide-fade" mode="out-in">
               <div key="address-content">
                 <div class="d-flex justify-between align-center mb-4">
-                  <h3 class="text-h6 font-weight-bold">My Addresses</h3>
+                  <h3 class="text-h6 font-weight-bold">
+                    {{ $t("content.my_address") }}
+                  </h3>
                   <v-btn
                     color="primary"
                     prepend-icon="mdi-plus"
@@ -662,7 +664,7 @@ onMounted(async () => {
                     class="animated-btn"
                     :disabled="addressLoading"
                   >
-                    Add Address
+                    {{ $t("content.add_new_address") }}
                   </v-btn>
                 </div>
 
@@ -734,7 +736,7 @@ onMounted(async () => {
                     mdi-map-marker-off
                   </v-icon>
                   <h3 class="text-h6 mb-2 text-grey-darken-1">
-                    No addresses yet
+                    {{ $t("content.no_address_yet") }}
                   </h3>
                   <p class="text-body-2 text-grey mb-4">
                     Add your first address to get started with deliveries
@@ -762,10 +764,12 @@ onMounted(async () => {
                 <div class="absolute inset-0 bg-black/20"></div>
                 <div class="relative z-10">
                   <h3 class="text-4xl font-bold mb-3 text-white drop-shadow-lg">
-                    My Orders ✨
+                    {{ $t("content.my_orders") }} ✨
                   </h3>
                   <p class="text-white/90 text-lg font-medium">
-                    Track your amazing purchases and deliveries
+                    {{
+                      $t("content.track_your_amazing_purchases_and_deliveries")
+                    }}
                   </p>
                 </div>
                 <!-- Animated floating elements -->
@@ -897,7 +901,7 @@ onMounted(async () => {
                         <!-- Order Items -->
                         <div class="mb-6">
                           <h5 class="text-lg font-semibold mb-3 text-gray-800">
-                            Order Items
+                            {{ $t("content.order_items") }}
                           </h5>
                           <div class="space-y-3">
                             <div
@@ -949,7 +953,7 @@ onMounted(async () => {
                         <!-- Order Details -->
                         <div class="mb-6">
                           <h5 class="text-lg font-semibold mb-3 text-gray-800">
-                            Order Details
+                            {{ $t("content.order_details") }}
                           </h5>
                           <div class="grid grid-cols-2 gap-3">
                             <div
@@ -978,8 +982,10 @@ onMounted(async () => {
                                   icon="solar:dollar-linear"
                                   class="text-green-500 text-sm"
                                 />
-                                <p class="text-xs text-green-600 font-medium">
-                                  TOTAL
+                                <p
+                                  class="text-xs text-green-600 font-medium uppercase"
+                                >
+                                  {{ $t("content.total") }}
                                 </p>
                               </div>
                               <p class="text-sm font-semibold text-green-800">
@@ -994,8 +1000,10 @@ onMounted(async () => {
                                   icon="solar:card-linear"
                                   class="text-purple-500 text-sm"
                                 />
-                                <p class="text-xs text-purple-600 font-medium">
-                                  PAYMENT
+                                <p
+                                  class="text-xs text-purple-600 font-medium uppercase"
+                                >
+                                  {{ $t("content.payment") }}
                                 </p>
                               </div>
                               <p class="text-sm font-semibold text-purple-800">
@@ -1011,7 +1019,7 @@ onMounted(async () => {
                                   class="text-orange-500 text-sm"
                                 />
                                 <p class="text-xs text-orange-600 font-medium">
-                                  CONTACT
+                                  {{ $t("content.Contact") }}
                                 </p>
                               </div>
                               <p class="text-sm font-semibold text-orange-800">
@@ -1024,7 +1032,7 @@ onMounted(async () => {
                         <!-- Order Tracking -->
                         <div class="bg-gray-50 rounded-lg p-4">
                           <h5 class="text-lg font-semibold mb-4 text-gray-800">
-                            Order Tracking
+                            {{ $t("content.order_tracking") }}
                           </h5>
 
                           <!-- Simple Progress Steps -->
@@ -1106,7 +1114,7 @@ onMounted(async () => {
                             />
                             <div>
                               <p class="text-sm font-medium text-blue-800">
-                                Estimated Delivery
+                                {{ $t("content.estimated_delivery") }}
                               </p>
                               <p class="text-sm text-blue-600">
                                 {{ getEstimatedDelivery() }}
@@ -1125,7 +1133,7 @@ onMounted(async () => {
                             />
                             <div>
                               <p class="text-sm font-medium text-amber-800">
-                                Order Note
+                                {{ $t("content.order_note") }}
                               </p>
                               <p class="text-sm text-amber-700">
                                 {{ order.note }}
@@ -1155,7 +1163,7 @@ onMounted(async () => {
                 <h3
                   class="text-xl font-semibold mb-2 bg-gradient-to-r from-purple-600 to-pink-600 bg-clip-text text-transparent"
                 >
-                  No orders yet
+                  {{ $t("content.no_order_yet") }}
                 </h3>
                 <p class="text-gray-600 mb-6">
                   Start your shopping journey and your orders will appear here
@@ -1164,7 +1172,7 @@ onMounted(async () => {
                   class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white font-medium py-3 px-8 rounded-xl transition-all duration-200 hover:scale-105 hover:shadow-lg flex items-center gap-2 mx-auto"
                 >
                   <Icon icon="solar:bag-heart-linear" class="text-lg" />
-                  Start Shopping
+                  {{ $t("content.start_shopping") }}
                 </button>
               </div>
             </div>
@@ -1184,7 +1192,7 @@ onMounted(async () => {
           <v-form @submit.prevent="saveAddress">
             <v-text-field
               v-model="addressForm.name"
-              label="Address Name"
+              label="$t('content.address_name)"
               prepend-inner-icon="mdi-tag"
               variant="outlined"
               class="mb-4"
@@ -1194,7 +1202,7 @@ onMounted(async () => {
 
             <v-text-field
               v-model="addressForm.home"
-              label="House/Building Number"
+              label="$t('content.house_or_building_number')"
               prepend-inner-icon="mdi-home"
               variant="outlined"
               class="mb-4"
@@ -1204,7 +1212,7 @@ onMounted(async () => {
 
             <v-text-field
               v-model="addressForm.street"
-              label="Street Address"
+              label="$t('content.street_address')"
               prepend-inner-icon="mdi-road"
               variant="outlined"
               class="mb-4"
@@ -1214,7 +1222,7 @@ onMounted(async () => {
 
             <v-text-field
               v-model="addressForm.city"
-              label="City"
+              label="$t('content.city')"
               prepend-inner-icon="mdi-city"
               variant="outlined"
               class="mb-4"
@@ -1223,7 +1231,7 @@ onMounted(async () => {
 
             <v-text-field
               v-model="addressForm.country"
-              label="Country"
+              label="$t('content.country')"
               prepend-inner-icon="mdi-earth"
               variant="outlined"
               class="mb-4"
@@ -1241,7 +1249,7 @@ onMounted(async () => {
             class="mr-3"
             :disabled="addressLoading"
           >
-            Cancel
+            {{ $t("buttons.close") }}
           </v-btn>
           <v-btn
             color="primary"
@@ -1278,10 +1286,10 @@ onMounted(async () => {
             @click="closeConfirmDialog"
             class="mr-3"
           >
-            Cancel
+            {{ $t("buttons.cancel") }}
           </v-btn>
           <v-btn color="error" @click="handleConfirm" class="animated-btn">
-            Delete
+            {{ $t("buttons.delete") }}
           </v-btn>
         </v-card-actions>
       </v-card>
@@ -1294,7 +1302,7 @@ onMounted(async () => {
       location="top right"
       v-model="snackbarChangePasswordSuccess"
     >
-      Password changed successfully!
+      {{ $t("content.password_changed_successfully") }}!
       <template v-slot:actions>
         <v-btn
           icon="mdi-close"

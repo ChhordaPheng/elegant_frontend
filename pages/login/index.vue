@@ -534,7 +534,7 @@ const resendForgetPasswordOTP = async () => {
                 <v-text-field
                   v-model="loginStore.user.phone_number"
                   class="text-white blur-input"
-                  label="Phone Number"
+                  :label="$t('form.phone_number')"
                   prepend-inner-icon="mdi-phone"
                   variant="underlined"
                   :error-messages="errors.username"
@@ -544,7 +544,7 @@ const resendForgetPasswordOTP = async () => {
 
                 <v-text-field
                   v-model="loginStore.user.password"
-                  label="Password"
+                  :label="$t('form.password')"
                   :type="showLoginPassword ? 'text' : 'password'"
                   prepend-inner-icon="mdi-lock"
                   variant="underlined"
@@ -567,7 +567,7 @@ const resendForgetPasswordOTP = async () => {
                   class="text-white !underline"
                   @click="openForgetPasswordDialog"
                 >
-                  Forgot password?
+                  {{ $t("content.forgot_password") }}?
                 </v-btn>
                 <v-btn
                   type="submit"
@@ -576,7 +576,7 @@ const resendForgetPasswordOTP = async () => {
                   class="mt-4"
                   :loading="loginStore.isSpinning"
                 >
-                  LOGIN
+                  {{ $t("content.login") }}
                 </v-btn>
               </v-form>
             </v-card-text>
@@ -588,7 +588,7 @@ const resendForgetPasswordOTP = async () => {
               <v-form @submit.prevent="handlerRegister">
                 <v-text-field
                   v-model="registerStore.user.first_name"
-                  label="First Name"
+                  :label="$t('form.first_name')"
                   prepend-inner-icon="basil:user-solid"
                   variant="underlined"
                   class="text-white blur-input"
@@ -596,7 +596,7 @@ const resendForgetPasswordOTP = async () => {
                 />
                 <v-text-field
                   v-model="registerStore.user.last_name"
-                  label="Last Name"
+                  :label="$t('form.last_name')"
                   prepend-inner-icon="mdi-account"
                   variant="underlined"
                   class="text-white blur-input"
@@ -605,7 +605,7 @@ const resendForgetPasswordOTP = async () => {
 
                 <v-text-field
                   v-model="registerStore.user.email"
-                  label="Email"
+                  :label="$t('form.email_address')"
                   type="email"
                   prepend-inner-icon="dashicons:email-alt"
                   variant="underlined"
@@ -616,7 +616,7 @@ const resendForgetPasswordOTP = async () => {
 
                 <v-text-field
                   v-model="registerStore.user.phone_number"
-                  label="Phone Number"
+                  :label="$t('form.phone_number')"
                   prepend-inner-icon="mdi-cellphone"
                   variant="underlined"
                   class="text-white blur-input"
@@ -627,7 +627,7 @@ const resendForgetPasswordOTP = async () => {
 
                 <v-text-field
                   v-model="registerStore.user.password"
-                  label="Password (min. 8 characters)"
+                  :label="$t('form.password_minimum_8_characters')"
                   :type="showRegisterPassword ? 'text' : 'password'"
                   prepend-inner-icon="mdi:password"
                   variant="underlined"
@@ -646,7 +646,7 @@ const resendForgetPasswordOTP = async () => {
                 </v-text-field>
                 <v-text-field
                   v-model="registerStore.user.password_confirmation"
-                  label="Confirm Password"
+                  :label="$t('form.confirm_password')"
                   :type="showConfirmPassword ? 'text' : 'password'"
                   prepend-inner-icon="mdi-shield-key"
                   variant="underlined"
@@ -670,7 +670,7 @@ const resendForgetPasswordOTP = async () => {
                   type="submit"
                   :loading="registerStore.isSpinning"
                 >
-                  REGISTER
+                  {{ $t("content.register") }}
                 </v-btn>
               </v-form>
             </v-card-text>
@@ -709,7 +709,7 @@ const resendForgetPasswordOTP = async () => {
             <v-text-field
               v-model="otpStore.otpRequest.phone_number"
               class="text-white blur-input"
-              label="Phone Number"
+              :label="$t('form.phone_number')"
               prepend-inner-icon="mdi-phone"
               variant="underlined"
               readonly
@@ -718,7 +718,7 @@ const resendForgetPasswordOTP = async () => {
 
             <v-text-field
               v-model="otpStore.otpRequest.otp_code"
-              label="Enter OTP Code"
+              :label="$t('form.enter_otp_code')"
               prepend-inner-icon="mdi-shield-key"
               variant="underlined"
               class="text-white blur-input"
@@ -729,17 +729,19 @@ const resendForgetPasswordOTP = async () => {
                 <v-btn
                   size="small"
                   variant="text"
-                  color="primary"
+                  color="black"
                   @click="requestOTP"
                   :loading="otpStore.isSpinning"
                 >
-                  Resend
+                  {{ $t("buttons.resend") }}
                 </v-btn>
               </template>
             </v-text-field>
 
             <div class="d-flex gap-2 justify-space-between">
-              <v-btn color="red" @click="closeOTPDialog()"> Cancel </v-btn>
+              <v-btn color="red" @click="closeOTPDialog()">
+                {{ $t("buttons.cancel") }}
+              </v-btn>
               <v-btn
                 type="submit"
                 color="primary"
@@ -777,11 +779,11 @@ const resendForgetPasswordOTP = async () => {
               <v-text-field
                 v-model="forgetPasswordForm.phone_number"
                 class="text-white blur-input"
-                label="Phone Number"
+                :label="$t('form.phone_number')"
                 prepend-inner-icon="mdi-phone"
                 variant="underlined"
                 :error-messages="errors.phone_number"
-                placeholder="Enter your phone number"
+                placeholder="$t('form.enter_your_phone_number')"
                 @keypress="onlyPhoneChars"
                 @input="sanitizePhoneInput"
               />
@@ -802,7 +804,7 @@ const resendForgetPasswordOTP = async () => {
                   class="flex-1"
                   @click="closeForgetPasswordDialog"
                 >
-                  Cancel
+                  {{ $t("buttons.cancel") }}
                 </v-btn>
               </div>
             </v-form>
@@ -817,22 +819,22 @@ const resendForgetPasswordOTP = async () => {
             <v-form @submit.prevent="verifyForgetPasswordOTP">
               <v-text-field
                 v-model="forgetPasswordForm.otp_code"
-                label="Enter OTP Code"
+                :label="$t('form.enter_otp_code')"
                 prepend-inner-icon="mdi-shield-key"
                 variant="underlined"
                 class="text-white blur-input"
                 :error-messages="errors.otp_code"
-                placeholder="Enter the OTP code"
+                placeholder="$t('form.enter_otp_code')"
               >
                 <template #append-inner>
                   <v-btn
                     size="small"
                     variant="text"
-                    color="primary"
+                    color="black"
                     @click="resendForgetPasswordOTP"
                     :loading="isLoadingForgetPassword"
                   >
-                    Resend
+                    {{ $t("buttons.resend") }}
                   </v-btn>
                 </template>
               </v-text-field>
@@ -853,7 +855,7 @@ const resendForgetPasswordOTP = async () => {
                   class="flex-1"
                   @click="forgetPasswordStep = 1"
                 >
-                  Back
+                  {{ $t("buttons.back") }}
                 </v-btn>
               </div>
             </v-form>
@@ -868,7 +870,7 @@ const resendForgetPasswordOTP = async () => {
             <v-form @submit.prevent="resetPassword">
               <v-text-field
                 v-model="forgetPasswordForm.password"
-                label="New Password (min. 8 characters)"
+                :label="$t('form.new_password_minimum_8_characters')"
                 :type="showNewPassword ? 'text' : 'password'"
                 prepend-inner-icon="mdi-lock"
                 variant="underlined"
@@ -888,7 +890,7 @@ const resendForgetPasswordOTP = async () => {
 
               <v-text-field
                 v-model="forgetPasswordForm.password_confirmation"
-                label="Confirm New Password"
+                :label="$t('form.confirm_new_password')"
                 :type="showConfirmNewPassword ? 'text' : 'password'"
                 prepend-inner-icon="mdi-shield-key"
                 variant="underlined"
@@ -913,7 +915,7 @@ const resendForgetPasswordOTP = async () => {
                   class="flex-1"
                   :loading="isLoadingForgetPassword"
                 >
-                  Reset Password
+                  {{ $t("form.reset_password") }}
                 </v-btn>
 
                 <v-btn
@@ -922,7 +924,7 @@ const resendForgetPasswordOTP = async () => {
                   class="flex-1"
                   @click="forgetPasswordStep = 2"
                 >
-                  Back
+                  {{ $t("buttons.back") }}
                 </v-btn>
               </div>
             </v-form>

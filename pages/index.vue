@@ -270,7 +270,7 @@ onUnmounted(() => {
 
     <!-- promotion with auto-fetched countdown -->
     <v-container
-    v-if="promotions"
+      v-if="promotions"
       fluid
       class="bg-[#F3F4F5] min-h-[120px] md:h-[150px] flex items-center py-4"
     >
@@ -440,9 +440,9 @@ onUnmounted(() => {
                   Discover Your <br />
                   Style
                 </p>
-                <a href="/man" class="underline text-black md:text-black"
-                  >SeeMore</a
-                >
+                <a href="/man" class="underline text-black md:text-black">{{
+                  $t("content.see_more")
+                }}</a>
               </div>
               <div
                 class="hidden md:block absolute z-10 top-[70px] left-[200px]"
@@ -498,9 +498,9 @@ onUnmounted(() => {
                   Redefine Your <br />
                   Look
                 </p>
-                <a href="/woman" class="underline text-black md:text-black"
-                  >SeeMore</a
-                >
+                <a href="/woman" class="underline text-black md:text-black">{{
+                  $t("content.see_more")
+                }}</a>
               </div>
               <div
                 class="hidden md:block absolute z-10 top-[70px] left-[200px]"
@@ -745,9 +745,15 @@ onUnmounted(() => {
               width="50"
               height="50"
             />
-            <p class="font-bold text-lg md:text-[20px] mb-2">Free Shipping</p>
+            <p class="font-bold text-lg md:text-[20px] mb-2">
+              {{ $t("content.free_shipping") }}
+            </p>
             <p class="text-gray-500 text-sm md:text-base">
-              We offer free shipping for new customers on orders over $50.
+              {{
+                $t(
+                  "content.we_offer_free_shipping_for_new_customers_on_orders_over_$50"
+                )
+              }}
             </p>
           </v-col>
           <v-col
@@ -763,11 +769,10 @@ onUnmounted(() => {
               height="50"
             />
             <p class="font-bold text-lg md:text-[20px] mb-2">
-              25 Provinces/Cities Delivered
+              {{ $t("content.25_provinces_cities_delivered") }}
             </p>
             <p class="text-gray-500 text-sm md:text-base">
-              Experience fast, reliable, and free delivery right to your
-              doorstep every time, on time.
+              {{ $t("content.fast_delivery") }}
             </p>
           </v-col>
           <v-col
@@ -782,9 +787,11 @@ onUnmounted(() => {
               width="50"
               height="50"
             />
-            <p class="font-bold text-lg md:text-[20px] mb-2">Returns</p>
+            <p class="font-bold text-lg md:text-[20px] mb-2">
+              {{ $t("content.returns") }}
+            </p>
             <p class="text-gray-500 text-sm md:text-base">
-              We do not offer refunds, but exchanges items in our store.
+              {{ $t("content.not_exchange_items") }}
             </p>
           </v-col>
           <v-col
@@ -800,11 +807,10 @@ onUnmounted(() => {
               height="50"
             />
             <p class="font-bold text-lg md:text-[20px] mb-2">
-              24/7 Customer Service
+              {{ $t("content.24/7_customer_service") }}
             </p>
             <p class="text-gray-500 text-sm md:text-base">
-              Excited to share our new product with you! designed to bring
-              exceptional value
+              {{ $t("content.new_product") }}
             </p>
           </v-col>
         </v-row>

@@ -3,5 +3,19 @@
     "cancel": "Cancel",
     "ok": "Submit",
     "shop_now": "Shop Now",
-    "see_more": "See more"
+    "see_more": "See more",
+    "save": "Save",
+    "retry": "Retry",
+    "reset": "Reset",
+    "all": "All",
+    "send_to_telegram": "Send to telegram",
+    "close": "Close",
+    "resend": "Resend",
+    "back": "Back",
+    "change_password": "Change Password",
+    "delete": "Delete",
+    "password_changed_successfully": "Password changed successfully",
+    "clear_all": "Clear All",
+    "buy_now": "Buy Now",
+    "back_to_products": "Back to Products"
 }

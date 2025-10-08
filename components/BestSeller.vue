@@ -395,7 +395,7 @@ onMounted(async () => {
 
     <template v-slot:actions>
       <v-btn variant="text" class="text-white" @click="snackbar = false">
-        Close
+        {{ $t('buttons.close') }}
       </v-btn>
     </template>
   </v-snackbar>

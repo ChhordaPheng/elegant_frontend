@@ -21,9 +21,9 @@ const coreValues = [
 
 const team = [
   {
-    name: "Sophie Lee",
-    role: "Creative Director",
-    img: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=400&q=80",
+    name: "Pheng Chhorda",
+    role: "Web Developer",
+    img: "images/daa.jpg",
   },
   {
     name: "David Tran",
@@ -64,6 +64,7 @@ onMounted(() => {
         <svg width="24" height="24" fill="currentColor" viewBox="0 0 24 24">
           <path d="M12 16l-6-6h12l-6 6z" />
         </svg>
+        <!-- <iconify-icon icon="material-symbols:keyboard-arrow-down-rounded" width="24" height="24"></iconify-icon> -->
       </div>
     </section>
 
@@ -73,7 +74,9 @@ onMounted(() => {
       <v-container>
         <div class="about-grid">
           <div class="about-content" :class="{ 'animate-in': isLoaded }">
-            <h2 class="text-[35px] font-bold mb-5 shadow-sm">About Our Brand</h2>
+            <h2 class="text-[35px] font-bold mb-5 shadow-sm">
+              About Our Brand
+            </h2>
             <p class="section-desc">
               Founded with a passion for elevated simplicity, Elegant Chic
               merges classic silhouettes with modern refinement. We believe

@@ -99,10 +99,10 @@ const getRouteParam = (param: string | string[] | undefined): string => {
 };
 // Show snackbar function
 const showSnackbar = (message: string, color: string = "success") => {
-  snackbarMessage.value = message;  // ← Use snackbarMessage, not text
+  snackbarMessage.value = message; // ← Use snackbarMessage, not text
   snackbarColor.value = color;
   snackbar.value = true;
-};;
+};
 
 const increase = () => {
   if (!currentVariant.value) {
@@ -615,7 +615,7 @@ onMounted(async () => {
       </v-alert>
       <p class="text-gray-600 mb-4">Product ID: {{ productId }}</p>
       <v-btn color="primary" @click="router.push('/')">
-        Back to Products
+        {{ $t("buttons.back") }}
       </v-btn>
     </div>
 
@@ -713,7 +713,9 @@ onMounted(async () => {
               <!-- brand -->
               <div class="flex justify-between">
                 <div class="flex justify-between items-center">
-                  <p class="font-bold mr-3 text-[20px]">Brand:</p>
+                  <p class="font-bold mr-3 text-[20px]">
+                    {{ $t("content.brand") }}:
+                  </p>
                   <div class="w-32 border-2 rounded border-blue-400 p-2">
                     <p class="text-center font-semibold">
                       {{ brandName }}
@@ -834,7 +836,7 @@ onMounted(async () => {
 
               <!-- share -->
               <div class="flex items-center my-4">
-                <p class="mr-2 font-semibold">Share:</p>
+                <p class="mr-2 font-semibold">{{ $t('content.share') }}:</p>
                 <div class="d-flex text-[#1576F5]">
                   <v-btn
                     v-for="icon in icons"
@@ -928,7 +930,7 @@ onMounted(async () => {
                       class="text-white"
                       @click="snackbar = false"
                     >
-                      Close
+                      {{ $t("buttons.close") }}
                     </v-btn>
                   </template>
                 </v-snackbar>
@@ -942,7 +944,7 @@ onMounted(async () => {
                   :disabled="isAddToCartDisabled"
                   :loading="cartStore.loading"
                 >
-                  BUY NOW
+                  {{ $t("buttons.buy_now") }}
                 </v-btn>
               </div>
 
@@ -1202,7 +1204,7 @@ onMounted(async () => {
         </span>
       </v-alert>
       <v-btn color="primary" @click="router.push('/')">
-        Back to Products
+        {{ $t("buttons.back_to_products") }}
       </v-btn>
     </div>
   </div>

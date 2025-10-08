@@ -23,7 +23,7 @@ const rules = {
 };
 function filterNumbers(e: Event) {
   const input = e.target as HTMLInputElement;
-  input.value = input.value.replace(/\D+/g, ''); // remove non-digits
+  input.value = input.value.replace(/\D+/g, ""); // remove non-digits
   form.value.phone = input.value;
 }
 const submitForm = () => {
@@ -90,14 +90,14 @@ const submitForm = () => {
       <v-col cols="12" md="8" lg="6">
         <v-slide-y-transition>
           <v-card class="pa-8 rounded-2xl shadow-md" elevation="6">
-            <v-card-title class="text-center text-h4 font-weight-bold mb-6">
-              Contact Us
+            <v-card-title class="text-center !text-2xl font-weight-bold mb-6">
+              {{ $t("content.contact_us") }}
             </v-card-title>
 
             <v-form v-model="formValid" @submit.prevent="submitForm">
               <v-text-field
                 v-model="form.name"
-                label="Full Name"
+                :label="$t('form.username')"
                 prepend-icon="mdi-account"
                 :rules="[rules.required]"
                 class="mb-4"
@@ -108,7 +108,7 @@ const submitForm = () => {
 
               <v-text-field
                 v-model="form.email"
-                label="Email Address"
+                :label="$t('form.email_address')"
                 prepend-icon="mdi-email"
                 :rules="[rules.required, rules.email]"
                 class="mb-4"
@@ -119,7 +119,7 @@ const submitForm = () => {
 
               <v-text-field
                 v-model="form.phone"
-                label="Phone Number"
+                :label="$t('form.phone_number')"
                 prepend-icon="mdi-phone"
                 :rules="[rules.required]"
                 class="mb-4"
@@ -132,7 +132,7 @@ const submitForm = () => {
 
               <v-textarea
                 v-model="form.message"
-                label="Message"
+                :label="$t('form.your_message')"
                 prepend-icon="mdi-message-text"
                 :rules="[rules.required]"
                 class="mb-6"
@@ -150,7 +150,7 @@ const submitForm = () => {
                 block
                 class="text-white text-capitalize"
               >
-                Send to Telegram
+                {{ $t("buttons.send_to_telegram") }}
               </v-btn>
             </v-form>
           </v-card>
@@ -172,7 +172,9 @@ const submitForm = () => {
       </div>
 
       <template v-slot:actions>
-        <v-btn variant="text" @click="snackbar.show = false"> Close </v-btn>
+        <v-btn variant="text" @click="snackbar.show = false">
+          {{ $t("content.close") }}
+        </v-btn>
       </template>
     </v-snackbar>
   </v-container>

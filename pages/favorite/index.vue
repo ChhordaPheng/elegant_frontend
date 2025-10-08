@@ -251,7 +251,8 @@ onMounted(() => {
             <div>
               <h1 class="text-3xl font-bold text-gray-900">My Wishlist</h1>
               <p class="mt-1 text-sm text-gray-500" v-if="hasWishlist">
-                {{ totalItems }} {{ totalItems === 1 ? "item" : "items" }} saved
+                {{ totalItems }} {{ totalItems === 1 ? "item" : "items" }}
+                {{ $t("buttons.save") }}
               </p>
             </div>
             <div class="flex items-center space-x-3">
@@ -315,7 +316,7 @@ onMounted(() => {
             color="primary"
             class="bg-purple-600 hover:bg-purple-700 px-6 py-2 rounded-lg font-medium transition-colors"
           >
-            Start Shopping
+            {{ $t("content.start_shopping") }}
           </v-btn>
         </nuxt-link>
       </div>

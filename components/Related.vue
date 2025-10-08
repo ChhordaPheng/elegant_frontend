@@ -5,7 +5,7 @@ interface Props {
 }
 
 const props = withDefaults(defineProps<Props>(), {
-  productId: ''
+  productId: "",
 });
 
 // Add missing router import
@@ -204,23 +204,27 @@ const addToCart = (variantId: string) => {
 };
 
 // Watch for productId changes and fetch related items
-watch(() => props.productId, async (newProductId) => {
-  if (newProductId) {
-    try {
-      await relatedStore.fetchRelateds(newProductId.toString());
-    } catch (error) {
-      console.error("Error fetching related items:", error);
-      text.value = "Failed to load related items.";
-      snackbar.value = true;
+watch(
+  () => props.productId,
+  async (newProductId) => {
+    if (newProductId) {
+      try {
+        await relatedStore.fetchRelateds(newProductId.toString());
+      } catch (error) {
+        console.error("Error fetching related items:", error);
+        text.value = "Failed to load related items.";
+        snackbar.value = true;
+      }
     }
-  }
-}, { immediate: true });
+  },
+  { immediate: true }
+);
 
 onMounted(async () => {
   try {
     // Initialize favorites from localStorage
     initializeFavoriteVariants();
-    
+
     // Fetch related items if productId is provided
     if (props.productId) {
       await relatedStore.fetchRelateds(props.productId.toString());
@@ -387,11 +391,16 @@ onMounted(async () => {
 
   <!-- No items message -->
   <div v-else-if="relateds.length === 0" class="text-center my-4">
-    <p class="text-gray-500">No related items found</p>
+    <div>
+      <div class="text-center flex items-center justify-center">
+        <img class="w-40" src="images/no_data.gif" alt="" />
+      </div>
+      <p class="text-xl text-gray-600">{{ $t("content.no_data") }}</p>
+    </div>
   </div>
 
-  <div class="flex justify-end">
-    <v-btn variant="outlined" color="primary" to="/new-arrival">see more</v-btn>
+  <div v-if="relateds.length > 1" class="flex justify-end">
+    <v-btn variant="outlined" color="primary" to="/new-arrival">{{ $t('content.see_more') }}</v-btn>
   </div>
 
   <!-- Global snackbar -->

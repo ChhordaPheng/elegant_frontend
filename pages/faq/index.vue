@@ -1,8 +1,4 @@
 <script setup lang="ts">
-definePageMeta({
-  layout: "main-layout",
-});
-
 const faqs = [
   {
     question: "What is your return policy?",
