@@ -65,5 +65,16 @@
     "password_changed_successfully": "Password changed successfully",
     "order_summary": "Order Summary",
     "share": "Share",
-    "contact_us": "Contact Us"
+    "contact_us": "Contact Us",
+    "title": "Frequently Asked Questions",
+    "return_policy_question": "What is your return policy?",
+    "return_policy_answer": "We accept returns within 14 days of delivery. Items must be unworn and in original packaging.",
+    "international_shipping_question": "Do you offer international shipping?",
+    "international_shipping_answer": "No, we ship only in the Cambodia. Shipping fees and delivery times vary depending on your location.",
+    "track_order_question": "How can I track my order?",
+    "track_order_answer": "Once your order is shipped, you’ll receive an email with a tracking number and link.",
+    "sizes_question": "What sizes do you carry?",
+    "sizes_answer": "Our clothing is available in sizes XS to XXL. Check the size chart on each product page.",
+    "cancel_order_question": "Can I cancel or change my order?",
+    "cancel_order_answer": "Please contact us within 12 hours of placing your order to make changes or request cancellation."
 }
