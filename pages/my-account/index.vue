@@ -64,7 +64,7 @@ const statusOrder: OrderStatus[] = [
 // Status configurations - NOW WITH PROPER COLORS FOR ALL STATUSES
 const statusColors: Record<OrderStatus, string> = {
   pending: "orange",
-  accepted: "green",
+  accepted: "lightgreen",
   confirmed: "blue",
   preparing: "purple",
   ready: "indigo",
@@ -1131,17 +1131,22 @@ onMounted(async () => {
                               order.order_status !== 'completed' &&
                               order.order_status !== 'cancelled'
                             "
-                            class="bg-blue-50 border border-blue-200 rounded-lg p-3 mt-4 flex items-center gap-3"
+                            class="border rounded-lg p-3 mt-4 flex items-center gap-3"
+                            :style="{
+                              backgroundColor: getStatusBgColor(order.order_status as OrderStatus),
+                              borderColor: getStatusBorderColor(order.order_status as OrderStatus)
+                            }"
                           >
                             <Icon
                               icon="solar:truck-linear"
-                              class="text-blue-500 text-lg"
+                              class="text-lg"
+                              :style="{ color: getStatusBorderColor(order.order_status as OrderStatus) }"
                             />
                             <div>
-                              <p class="text-sm font-medium text-blue-800">
+                              <p class="text-sm font-medium" :style="{ color: getStatusBorderColor(order.order_status as OrderStatus) }">
                                 {{ $t("content.estimated_delivery") }}
                               </p>
-                              <p class="text-sm text-blue-600">
+                              <p class="text-sm" :style="{ color: getStatusBorderColor(order.order_status as OrderStatus) }">
                                 {{ getEstimatedDelivery() }}
                               </p>
                             </div>

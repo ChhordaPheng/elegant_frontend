@@ -455,7 +455,7 @@ const placeOrder = async () => {
     }
 
     const response = await useFetchDataApi<{ status: string; data: Order }>(
-      "/items",
+      "/orders",
       {
         method: "POST",
         body: orderData,
