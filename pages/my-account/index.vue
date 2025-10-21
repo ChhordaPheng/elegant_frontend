@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import type { UpdateProfileRequest } from "~/types/profile/profile";
 
-const tab = ref<"account" | "password" | "address">("account");
+const tab = ref<"account" | "password" | "address" | "orders">("account");
 const snackbarChangePasswordSuccess = ref<boolean>(false);
 const snackbarChangePasswordFail = ref<boolean>(false);
 const snackbarAddressSuccess = ref<boolean>(false);
@@ -12,7 +12,7 @@ const addressMessage = ref<string>("");
 const profileMessage = ref<string>("");
 const snackbar = ref(false);
 const text = ref(""); // message for snackbar
-const router = useRouter(); // Make sure this is properly imported
+const router = useRouter();
 
 const userStore = useProfileStore();
 const { userProfile, loading, passwordChanging } = storeToRefs(userStore);
@@ -27,6 +27,7 @@ const tabs = [
 // Define all possible statuses as a union type
 type OrderStatus =
   | "pending"
+  | "accepted"
   | "confirmed"
   | "preparing"
   | "ready"
@@ -40,6 +41,7 @@ const trackingSteps = ref<
   { status: OrderStatus; label: string; icon: string }[]
 >([
   { status: "pending", label: "Pending", icon: "mdi-clock-outline" },
+  { status: "accepted", label: "Accepted", icon: "mdi-check" },
   { status: "confirmed", label: "Confirmed", icon: "mdi-check-circle" },
   { status: "preparing", label: "Preparing", icon: "mdi-chef-hat" },
   { status: "ready", label: "Ready", icon: "mdi-package-variant" },
@@ -50,6 +52,7 @@ const trackingSteps = ref<
 
 const statusOrder: OrderStatus[] = [
   "pending",
+  "accepted",
   "confirmed",
   "preparing",
   "ready",
@@ -58,9 +61,10 @@ const statusOrder: OrderStatus[] = [
   "completed",
 ];
 
-// Status configurations
+// Status configurations - NOW WITH PROPER COLORS FOR ALL STATUSES
 const statusColors: Record<OrderStatus, string> = {
   pending: "orange",
+  accepted: "green",
   confirmed: "blue",
   preparing: "purple",
   ready: "indigo",
@@ -70,8 +74,33 @@ const statusColors: Record<OrderStatus, string> = {
   cancelled: "red",
 };
 
+const statusBorderColors: Record<OrderStatus, string> = {
+  pending: "#fb923c",      // orange-400
+  accepted: "#84cc16",     // lime-500
+  confirmed: "#3b82f6",    // blue-500
+  preparing: "#a855f7",    // purple-500
+  ready: "#6366f1",        // indigo-500
+  shipped: "#14b8a6",      // teal-500
+  delivered: "#22c55e",    // green-500
+  completed: "#10b981",    // green-600
+  cancelled: "#ef4444",    // red-500
+};
+
+const statusBgColors: Record<OrderStatus, string> = {
+  pending: "#fff7ed",      // orange-50
+  accepted: "#f7fee7",     // lime-50
+  confirmed: "#eff6ff",    // blue-50
+  preparing: "#faf5ff",    // purple-50
+  ready: "#eef2ff",        // indigo-50
+  shipped: "#f0fdfa",      // teal-50
+  delivered: "#f0fdf4",    // green-50
+  completed: "#f0fdf4",    // green-50
+  cancelled: "#fef2f2",    // red-50
+};
+
 const statusIcons: Record<OrderStatus, string> = {
   pending: "mdi-clock-outline",
+  accepted: "mdi-check",
   confirmed: "mdi-check-circle",
   preparing: "mdi-chef-hat",
   ready: "mdi-package-variant",
@@ -80,6 +109,7 @@ const statusIcons: Record<OrderStatus, string> = {
   completed: "mdi-check-all",
   cancelled: "mdi-close-circle",
 };
+
 // Computed properties
 const hasOrders = computed(() => {
   return userProfile.value?.orders && userProfile.value.orders.length > 0;
@@ -93,15 +123,23 @@ const sortedOrders = computed(() => {
 });
 
 // Methods
-
 const getEstimatedDelivery = (): string => {
   const tomorrow = new Date();
   tomorrow.setDate(tomorrow.getDate() + 1);
   return tomorrow.toLocaleDateString();
 };
-// Methods
+
+// NOW ACTUALLY USING THESE FUNCTIONS!
 const getStatusColor = (status: OrderStatus): string => {
   return statusColors[status] || "grey";
+};
+
+const getStatusBorderColor = (status: OrderStatus): string => {
+  return statusBorderColors[status] || "#9ca3af";
+};
+
+const getStatusBgColor = (status: OrderStatus): string => {
+  return statusBgColors[status] || "#f9fafb";
 };
 
 const getStatusIcon = (status: OrderStatus): string => {
@@ -125,9 +163,11 @@ const getStepColor = (
   const orderIndex = statusOrder.indexOf(orderStatus);
   const stepIndex = statusOrder.indexOf(stepStatus);
 
-  if (stepIndex < orderIndex) return "success";
-  if (stepIndex === orderIndex) return "primary";
-  return "grey-lighten-2";
+  // Completed steps (including current step) - green
+  if (stepIndex <= orderIndex) return "#22c55e"; // green-500
+  
+  // Pending steps - gray
+  return "#d1d5db"; // gray-300
 };
 
 const getStepIconColor = (
@@ -148,9 +188,14 @@ const getStepTextClass = (
   const orderIndex = statusOrder.indexOf(orderStatus);
   const stepIndex = statusOrder.indexOf(stepStatus);
 
-  if (stepIndex < orderIndex) return "success--text font-weight-bold";
-  if (stepIndex === orderIndex) return "primary--text font-weight-bold";
-  return "text--secondary";
+  // Current step - blue and bold
+  if (stepIndex === orderIndex) return "text-blue-600 font-weight-bold";
+  
+  // Completed steps - green and bold
+  if (stepIndex < orderIndex) return "text-green-600 font-weight-bold";
+  
+  // Pending steps - gray
+  return "text-gray-400";
 };
 
 const isCurrentStep = (
@@ -235,7 +280,6 @@ function onFileSelected(event: Event) {
     };
     reader.readAsDataURL(files[0]);
 
-    // Immediately trigger save if we're on the account tab
     if (tab.value === "account") {
       saveAccount();
     }
@@ -275,7 +319,6 @@ const saveAccount = async () => {
     const response = await userStore.updateProfile(payload);
 
     if (response) {
-      // Update local state with new data
       if (userProfile.value) {
         userProfile.value.first_name = account.value.firstname;
         userProfile.value.last_name = account.value.lastname;
@@ -283,7 +326,6 @@ const saveAccount = async () => {
         userProfile.value.phone_number = account.value.phone_number;
       }
 
-      // Show success message
       profileMessage.value = "Profile updated successfully!";
       snackbarProfileSuccess.value = true;
     }
@@ -367,18 +409,15 @@ const saveAddress = async () => {
 
   try {
     if (editingAddress.value) {
-      // Update existing address
       await userStore.updateAddress(addressForm.value, editingAddress.value.id);
       addressMessage.value = "Address updated successfully!";
       snackbarAddressSuccess.value = true;
     } else {
-      // Add new address
       await userStore.addAdress(addressForm.value);
       addressMessage.value = "Address added successfully!";
       snackbarAddressSuccess.value = true;
     }
 
-    // Refresh user profile to get updated addresses
     await userStore.fetchUserProfile();
     closeAddressDialog();
   } catch (error: any) {
@@ -391,10 +430,7 @@ const saveAddress = async () => {
 
 const quickView = (productId: string | number) => {
   try {
-    // Convert to string if needed
     const idString = productId.toString();
-
-    // Navigate to product detail page
     router.push({
       path: "/product-detail",
       query: { id: idString },
@@ -406,7 +442,6 @@ const quickView = (productId: string | number) => {
   }
 };
 
-// Custom confirm dialog functions
 function showConfirm(
   title: string,
   message: string,
@@ -439,7 +474,6 @@ const deleteAddress = async (addressId: string) => {
       addressMessage.value = message || "Address deleted successfully!";
       snackbarAddressSuccess.value = true;
 
-      // Refresh user profile to get updated addresses
       await userStore.fetchUserProfile();
     } catch (error: any) {
       addressMessage.value = error.message || "Failed to delete address";
@@ -464,7 +498,6 @@ onMounted(async () => {
     account.value.email = userProfile.value.email;
     account.value.phone_number = userProfile.value.phone_number;
 
-    // Initialize avatar with user's profile image if available
     if (userProfile.value.profile_image) {
       avatarUrl.value = userProfile.value.profile_image;
     }
@@ -788,15 +821,9 @@ onMounted(async () => {
                     v-for="(order, orderIndex) in sortedOrders"
                     :key="order.id"
                     class="transition-all duration-300 hover:shadow-md hover:scale-[1]"
-                    :class="{
-                      'border-l-4 border-green-500 bg-green-50':
-                        order.order_status === 'completed',
-                      'border-l-4 border-blue-500 bg-blue-50':
-                        order.order_status === 'pending',
-                      'border-l-4 border-orange-500 bg-orange-50':
-                        order.order_status === 'processing',
-                      'border-l-4 border-purple-500 bg-purple-50':
-                        order.order_status === 'shipped',
+                    :style="{
+                      borderLeft: `4px solid ${getStatusBorderColor(order.order_status as OrderStatus)}`,
+                      backgroundColor: getStatusBgColor(order.order_status as OrderStatus)
                     }"
                     rounded="xl"
                     elevation="0"
@@ -870,23 +897,22 @@ onMounted(async () => {
                         </div>
 
                         <div class="text-right">
-                          <!-- Status Badge -->
+                          <!-- Status Badge - NOW USING HELPER FUNCTIONS! -->
                           <div
-                            class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium mb-1 transition-colors duration-200 hover:scale-105"
-                            :class="{
-                              'bg-green-100 text-green-700 hover:bg-green-200':
-                                order.order_status === 'completed',
-                              'bg-blue-100 text-blue-700 hover:bg-blue-200':
-                                order.order_status === 'pending',
-                              'bg-orange-100 text-orange-700 hover:bg-orange-200':
-                                order.order_status === 'processing',
-                              'bg-purple-100 text-purple-700 hover:bg-purple-200':
-                                order.order_status === 'shipped',
+                            class="inline-flex items-center px-3 py-1 rounded-full text-xs font-medium mb-1 transition-all duration-200 hover:scale-105 shadow-sm"
+                            :style="{
+                              backgroundColor: getStatusBgColor(order.order_status as OrderStatus),
+                              color: getStatusBorderColor(order.order_status as OrderStatus),
+                              border: `1px solid ${getStatusBorderColor(order.order_status as OrderStatus)}`
                             }"
                           >
-                            {{
-                              formatStatus(order.order_status as OrderStatus)
-                            }}
+                            <v-icon 
+                              :icon="getStatusIcon(order.order_status as OrderStatus)" 
+                              size="x-small" 
+                              class="mr-1"
+                              :style="{ color: getStatusBorderColor(order.order_status as OrderStatus) }"
+                            ></v-icon>
+                            {{ formatStatus(order.order_status as OrderStatus) }}
                           </div>
                           <p class="text-lg font-bold text-gray-800">
                             ${{ order.total_amount }}
@@ -1035,7 +1061,7 @@ onMounted(async () => {
                             {{ $t("content.order_tracking") }}
                           </h5>
 
-                          <!-- Simple Progress Steps -->
+                          <!-- Simple Progress Steps - NOW USING HELPER FUNCTIONS! -->
                           <div class="relative">
                             <div
                               class="flex justify-between items-center relative z-10"
@@ -1047,17 +1073,20 @@ onMounted(async () => {
                               >
                                 <!-- Step Icon -->
                                 <div
-                                  class="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shadow-sm mb-2 transition-all duration-100"
+                                  class="w-10 h-10 rounded-full flex items-center justify-center text-white font-medium shadow-sm mb-2 transition-all duration-300"
+                                  :style="{
+                                    backgroundColor: getStepColor(order.order_status as OrderStatus, step.status)
+                                  }"
                                   :class="{
-                                  'bg-green-500 animate-pulse': isStepCompleted(order.order_status as OrderStatus, step.status),
-                                  'bg-blue-500 scale-110': isCurrentStep(order.order_status as OrderStatus, step.status),
-                                  'bg-gray-300': isStepPending(order.order_status as OrderStatus, step.status)
-                              }"
+                                    'scale-110 ring-4 ring-blue-200': isCurrentStep(order.order_status as OrderStatus, step.status)
+                                  }"
                                 >
                                   <Icon
                                     :icon="
                                       step.status === 'pending'
                                         ? 'solar:clock-circle-linear'
+                                        : step.status === 'accepted'
+                                        ? 'solar:check-read-linear'
                                         : step.status === 'confirmed'
                                         ? 'solar:check-circle-linear'
                                         : step.status === 'preparing'
@@ -1074,14 +1103,10 @@ onMounted(async () => {
                                   />
                                 </div>
 
-                                <!-- Step Label -->
+                                <!-- Step Label - NOW USING HELPER FUNCTION! -->
                                 <span
                                   class="text-xs font-medium"
-                                  :class="{
-                                    'text-green-600': isStepCompleted(order.order_status as OrderStatus, step.status),
-                                    'text-blue-600': isCurrentStep(order.order_status as OrderStatus, step.status),
-                                    'text-gray-400': isStepPending(order.order_status as OrderStatus, step.status)
-                                  }"
+                                  :class="getStepTextClass(order.order_status as OrderStatus, step.status)"
                                 >
                                   {{ step.label }}
                                 </span>
@@ -1093,7 +1118,7 @@ onMounted(async () => {
                               class="absolute top-5 left-5 right-5 h-1 bg-gray-200 rounded-full"
                             >
                               <div
-                                class="h-full bg-blue-500 rounded-full transition-all duration-500"
+                                class="h-full bg-gradient-to-r from-green-500 to-blue-500 rounded-full transition-all duration-500 ease-out shadow-sm"
                                 :style="{ width: getProgressWidth(order.order_status as OrderStatus) }"
                               ></div>
                             </div>
@@ -1192,7 +1217,7 @@ onMounted(async () => {
           <v-form @submit.prevent="saveAddress">
             <v-text-field
               v-model="addressForm.name"
-              label="$t('content.address_name)"
+              :label="$t('content.address_name')"
               prepend-inner-icon="mdi-tag"
               variant="outlined"
               class="mb-4"
@@ -1202,7 +1227,7 @@ onMounted(async () => {
 
             <v-text-field
               v-model="addressForm.home"
-              label="$t('content.house_or_building_number')"
+              :label="$t('content.house_or_building_number')"
               prepend-inner-icon="mdi-home"
               variant="outlined"
               class="mb-4"
@@ -1212,7 +1237,7 @@ onMounted(async () => {
 
             <v-text-field
               v-model="addressForm.street"
-              label="$t('content.street_address')"
+              :label="$t('content.street_address')"
               prepend-inner-icon="mdi-road"
               variant="outlined"
               class="mb-4"
@@ -1222,7 +1247,7 @@ onMounted(async () => {
 
             <v-text-field
               v-model="addressForm.city"
-              label="$t('content.city')"
+              :label="$t('content.city')"
               prepend-inner-icon="mdi-city"
               variant="outlined"
               class="mb-4"
@@ -1231,7 +1256,7 @@ onMounted(async () => {
 
             <v-text-field
               v-model="addressForm.country"
-              label="$t('content.country')"
+              :label="$t('content.country')"
               prepend-inner-icon="mdi-earth"
               variant="outlined"
               class="mb-4"
@@ -1504,64 +1529,5 @@ onMounted(async () => {
   50% {
     box-shadow: 0 0 20px rgba(158, 158, 164, 0.6);
   }
-}
-.slide-fade-enter-active {
-  transition: all 0.6s ease-out;
-}
-
-.slide-fade-leave-active {
-  transition: all 0.4s ease-in;
-}
-
-.slide-fade-enter-from {
-  transform: translateY(20px);
-  opacity: 0;
-}
-
-.slide-fade-leave-to {
-  transform: translateY(-20px);
-  opacity: 0;
-}
-
-/* Card entrance animation */
-.v-card {
-  animation: slideInUp 0.6s ease-out forwards;
-}
-
-@keyframes slideInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-/* Custom hover effects */
-.group:hover .animate-bounce {
-  animation-duration: 2s;
-}
-
-/* Progress bar shimmer effect */
-@keyframes shimmer {
-  0% {
-    background-position: -200px 0;
-  }
-  100% {
-    background-position: calc(200px + 100%) 0;
-  }
-}
-
-.progress-shimmer {
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.4),
-    transparent
-  );
-  background-size: 200px 100%;
-  animation: shimmer 2s infinite;
 }
 </style>
