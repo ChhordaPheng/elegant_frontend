@@ -32,6 +32,7 @@ type OrderStatus =
   | "preparing"
   | "ready"
   | "shipped"
+  | "on_delivery"
   | "delivered"
   | "completed"
   | "cancelled";
@@ -44,8 +45,7 @@ const trackingSteps = ref<
   { status: "accepted", label: "Accepted", icon: "mdi-check" },
   { status: "confirmed", label: "Confirmed", icon: "mdi-check-circle" },
   { status: "preparing", label: "Preparing", icon: "mdi-chef-hat" },
-  { status: "ready", label: "Ready", icon: "mdi-package-variant" },
-  { status: "shipped", label: "Shipped", icon: "mdi-truck" },
+  { status: "on_delivery", label: "On Delivery", icon: "mdi-truck-fast" },
   { status: "delivered", label: "Delivered", icon: "mdi-home-heart" },
   { status: "completed", label: "Completed", icon: "mdi-check-all" },
 ]);
@@ -57,6 +57,7 @@ const statusOrder: OrderStatus[] = [
   "preparing",
   "ready",
   "shipped",
+  "on_delivery",
   "delivered",
   "completed",
 ];
@@ -69,6 +70,7 @@ const statusColors: Record<OrderStatus, string> = {
   preparing: "purple",
   ready: "indigo",
   shipped: "teal",
+  on_delivery: "cyan",
   delivered: "green",
   completed: "success",
   cancelled: "red",
@@ -81,6 +83,7 @@ const statusBorderColors: Record<OrderStatus, string> = {
   preparing: "#a855f7",    // purple-500
   ready: "#6366f1",        // indigo-500
   shipped: "#14b8a6",      // teal-500
+  on_delivery: "#06b6d4",  // cyan-500
   delivered: "#22c55e",    // green-500
   completed: "#10b981",    // green-600
   cancelled: "#ef4444",    // red-500
@@ -93,6 +96,7 @@ const statusBgColors: Record<OrderStatus, string> = {
   preparing: "#faf5ff",    // purple-50
   ready: "#eef2ff",        // indigo-50
   shipped: "#f0fdfa",      // teal-50
+  on_delivery: "#ecfeff",  // cyan-50
   delivered: "#f0fdf4",    // green-50
   completed: "#f0fdf4",    // green-50
   cancelled: "#fef2f2",    // red-50
@@ -105,6 +109,7 @@ const statusIcons: Record<OrderStatus, string> = {
   preparing: "mdi-chef-hat",
   ready: "mdi-package-variant",
   shipped: "mdi-truck",
+  on_delivery: "mdi-truck-fast",
   delivered: "mdi-home-heart",
   completed: "mdi-check-all",
   cancelled: "mdi-close-circle",
@@ -1091,8 +1096,12 @@ onMounted(async () => {
                                         ? 'solar:check-circle-linear'
                                         : step.status === 'preparing'
                                         ? 'solar:settings-linear'
+                                        : step.status === 'ready'
+                                        ? 'solar:box-linear'
                                         : step.status === 'shipped'
                                         ? 'solar:delivery-linear'
+                                        : step.status === 'on_delivery'
+                                        ? 'solar:map-arrow-right-linear'
                                         : step.status === 'delivered'
                                         ? 'solar:home-linear'
                                         : step.status === 'completed'
@@ -1131,7 +1140,7 @@ onMounted(async () => {
                               order.order_status !== 'completed' &&
                               order.order_status !== 'cancelled'
                             "
-                            class="border rounded-lg p-3 mt-4 flex items-center gap-3"
+                            class="border rounded-lg p-3 mt-4 flex items-center gap-3 transition-all duration-200"
                             :style="{
                               backgroundColor: getStatusBgColor(order.order_status as OrderStatus),
                               borderColor: getStatusBorderColor(order.order_status as OrderStatus)
