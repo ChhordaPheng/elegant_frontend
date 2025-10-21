@@ -96,7 +96,7 @@ onMounted(() => {
         </div>
       </v-container>
     </section>
-
+ 
     <!-- Philosophy Section -->
     <section class="section philosophy-section">
       <v-container>

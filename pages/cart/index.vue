@@ -455,7 +455,7 @@ const placeOrder = async () => {
     }
 
     const response = await useFetchDataApi<{ status: string; data: Order }>(
-      "/orders",
+      "/items",
       {
         method: "POST",
         body: orderData,
@@ -803,7 +803,7 @@ const handlePaymentConfirmation = () => {
   nextTick(() => {
     setTimeout(() => {
       paymentDialog.value = false;
-      router.push("/orders");
+      router.push("/items");
     }, 2000);
   });
 };

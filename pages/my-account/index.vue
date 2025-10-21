@@ -558,7 +558,7 @@ onMounted(async () => {
               <v-form @submit.prevent="saveAccount" key="account-form">
                 <v-text-field
                   v-model="account.firstname"
-                  label="$t('content.first_name')"
+                  :label="$t('form.first_name')"
                   prepend-inner-icon="mdi-account"
                   variant="outlined"
                   class="mb-4 mt-2"
@@ -566,7 +566,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="account.lastname"
-                  label="$t('content.last_name')"
+                  :label="$t('form.last_name')"
                   prepend-inner-icon="mdi-account"
                   variant="outlined"
                   class="mb-4 mt-2"
@@ -574,7 +574,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="account.email"
-                  label="$t('content.email_address')"
+                  :label="$t('form.email_address')"
                   prepend-inner-icon="mdi-email"
                   variant="outlined"
                   type="email"
@@ -583,7 +583,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="account.phone_number"
-                  label="$t('content.phone_number')"
+                  :label="$t('form.phone_number')"
                   prepend-inner-icon="mdi-phone"
                   variant="outlined"
                   type="tel"
@@ -610,7 +610,7 @@ onMounted(async () => {
               <v-form @submit.prevent="changePassword" key="password-form">
                 <v-text-field
                   v-model="password.old"
-                  label="$t('form.old_password')"
+                  :label="$t('form.old_password')"
                   prepend-inner-icon="mdi-lock"
                   type="password"
                   variant="outlined"
@@ -619,7 +619,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="password.new"
-                  label="$t('form.new_password')"
+                  :label="$t('form.new_password')"
                   prepend-inner-icon="mdi-lock"
                   type="password"
                   variant="outlined"
@@ -628,7 +628,7 @@ onMounted(async () => {
 
                 <v-text-field
                   v-model="password.confirm"
-                  label="$t('form.confirm_password')"
+                  :label="$t('form.confirm_password')"
                   prepend-inner-icon="mdi-lock-check"
                   type="password"
                   variant="outlined"
