@@ -553,7 +553,7 @@ onUnmounted(() => {
     <!-- super sell  -->
     <div class="relative mb-20 md:mb-0">
       <div
-        v-for="discount in discountedItems"
+        v-for="discount in discountedItems.slice(0, 1)"
         :key="discount.id"
         class="banner-discount bg-gray-500 min-h-[400px] md:h-[550px] flex flex-col text-white uppercase text-center pt-16 md:pt-24 px-4"
       >
@@ -578,7 +578,7 @@ onUnmounted(() => {
         >
           <v-slide-group show-arrows center-active class="h-full">
             <v-slide-group-item
-              v-for="(banner, index) in bannersLoop"
+              v-for="(banner, index) in bannersLoop.slice(0,4)"
               :key="banner.id"
             >
               <div class="relative h-[400px] flex items-center">

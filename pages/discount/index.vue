@@ -116,44 +116,43 @@ watch(
 // Function to get image path based on category slug - NEW
 const getCategoryImage = (slug: string) => {
   const imageMap: { [key: string]: string } = {
-    "womens-tops-blouses":
+    "women-tops-blouses":
       "https://i.pinimg.com/1200x/ff/77/bb/ff77bb54104159804f94781b5da0e762.jpg",
-    "mens-jackets-coats":
+    "men-jackets-coats":
       "https://i.pinimg.com/1200x/f0/05/e2/f005e2c108fb06178812753158a344ba.jpg",
-    "kids-boys-clothing":
+    "kids-boy-clothing":
       "https://i.pinimg.com/1200x/56/9a/06/569a064e2b1d5d781d4a1e7156d1fb80.jpg",
     "kids-baby-toddler":
       "https://i.pinimg.com/736x/ad/78/6f/ad786f96ef655f7a216e5d455872c9a6.jpg",
     "mens-suits-formal":
       "https://i.pinimg.com/736x/4d/21/c2/4d21c2427196914481a05bbff2e80a91.jpg",
-    "mens-jeans-pants":
+    "men-jeans-pants":
       "https://i.pinimg.com/1200x/c6/fb/f9/c6fbf9d664b617c74cf956f1edf15c39.jpg",
-    "mens-shoes":
+    "men-shoes":
       "https://i.pinimg.com/1200x/8b/3b/fa/8b3bfaf6d9a9ad6cc09c45f3d1b06395.jpg",
-    "womens-skirts":
+    skirts:
       "https://i.pinimg.com/1200x/89/f1/85/89f1853d61a0895406183def9ede595d.jpg",
     "kids-girls-clothing":
       "https://i.pinimg.com/736x/94/be/72/94be728a18d26fbcfe35f0a51038e7ff.jpg",
-    "womens-jewelry":
+    accessoriess:
       "https://i.pinimg.com/736x/4a/f0/95/4af095b9178fa98828b0fff937a08e9c.jpg",
-    "womens-jackets-coats":
+    "women-jackets-coats":
       "https://i.pinimg.com/1200x/9d/e4/fa/9de4fa6a964166ad640af14855fb2fef.jpg",
     "kids-shoes":
       "https://i.pinimg.com/736x/da/96/75/da9675ed0b94e99b62c395af7e039d8f.jpg",
     "mens-shirts":
       "https://i.pinimg.com/1200x/f1/15/e4/f115e4321d524351b04c7ecbf24b00c2.jpg",
-    "womens-handbags":
+    accessories:
       "https://i.pinimg.com/1200x/48/0d/57/480d57c02cdbc6c26a613778b6facd42.jpg",
-    "womens-pants-jeans":
+    "women-jeans-pants":
       "https://i.pinimg.com/736x/6a/d7/51/6ad7512d276c29f6909b2b8b648fe516.jpg",
-    "womens-shoes":
+    "women-shoes":
       "https://i.pinimg.com/736x/28/a8/7f/28a87f7b9a4f4cdcfb1aa96e1d74a6ad.jpg",
-    "mens-tshirts-polos":
+    "men-t-shirts-polos":
       "https://i.pinimg.com/736x/34/68/4f/34684fefc4cdb721100a442c23e4c8f8.jpg",
     "womens-dresses":
       "https://i.pinimg.com/736x/67/3a/e5/673ae596d272dd6412c493bb6167d4bb.jpg",
   };
-
   return (
     imageMap[slug] ||
     "https://i.pinimg.com/1200x/ff/77/bb/ff77bb54104159804f94781b5da0e762.jpg"
