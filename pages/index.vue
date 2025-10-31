@@ -152,7 +152,7 @@ onUnmounted(() => {
     <!-- banner  -->
     <div>
       <div
-        class="banner bg-[#E0F0FF] min-h-[400px] md:h-[710px] relative overflow-hidden"
+        class="banner bg-[#E0F0FF] min-h-[380px] md:h-[715px] relative overflow-hidden"
       >
         <!-- Background circle - hidden on mobile -->
         <div
@@ -165,7 +165,7 @@ onUnmounted(() => {
           <v-col
             cols="12"
             md="4"
-            class="flex justify-center items-center mb-4 md:mb-0"
+            class="hidden md:flex justify-center items-center -mt-[90px] md:mb-0"
           >
             <v-carousel
               :show-arrows="false"
@@ -173,7 +173,7 @@ onUnmounted(() => {
               hide-delimiters
               :interval="5000"
               cycle
-              class="w-full max-w-[300px] md:max-w-[405px] h-auto"
+              class="w-full max-w-[300px] md:max-w-[480px] h-auto"
             >
               <v-carousel-item v-for="banner in banners" :key="banner.id">
                 <img
@@ -192,7 +192,7 @@ onUnmounted(() => {
           <v-col
             cols="12"
             md="4"
-            class="flex flex-col justify-center text-center py-8 md:h-[900px]"
+            class="flex flex-col justify-center text-center py-8 h-[400px] md:h-[900px]"
           >
             <v-carousel
               :show-arrows="false"
@@ -578,7 +578,7 @@ onUnmounted(() => {
         >
           <v-slide-group show-arrows center-active class="h-full">
             <v-slide-group-item
-              v-for="(banner, index) in bannersLoop.slice(0,4)"
+              v-for="(banner, index) in bannersLoop.slice(0, 4)"
               :key="banner.id"
             >
               <div class="relative h-[400px] flex items-center">
