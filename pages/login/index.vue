@@ -824,7 +824,6 @@ const resendForgetPasswordOTP = async () => {
                 variant="underlined"
                 class="text-white blur-input"
                 :error-messages="errors.otp_code"
-                placeholder="$t('form.enter_otp_code')"
               >
                 <template #append-inner>
                   <v-btn
